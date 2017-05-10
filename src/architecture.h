@@ -34,10 +34,19 @@
 #define HHFFT_AVX512F
 #endif
 
+namespace hhfft
+{
 
-// These functions are used to determine what version to actually use at run-time
-bool sse2_supported();
-bool avx_supported();
-bool avx512f_supported();
+struct CPUID_info
+{
+    bool sse2 = false;
+    bool avx = false;
+    bool avx512f = false;
+};
+
+// This function is used to determine what versions to actually use at run-time
+CPUID_info get_supported_instructions();
+
+}
 
 # endif

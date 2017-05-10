@@ -19,29 +19,61 @@
 
 #include "architecture.h"
 
-bool sse2_supported()
-{
-#ifdef __GNUC__
-    return __builtin_cpu_supports("sse2");
-#else
-    return false; // Sorry, only GCC (and clang) supported
-#endif
-}
+#include <cpuid.h>
 
-bool avx_supported()
+hhfft::CPUID_info hhfft::get_supported_instructions()
 {
-#ifdef __GNUC__
-    return __builtin_cpu_supports("avx");
-#else
-    return false; // Sorry, only GCC (and clang) supported
-#endif
-}
+    // TODO this function checks what CPU supports, but in addition there must also be OS support!
 
-bool avx512f_supported()
-{
+    hhfft::CPUID_info si;
+
+// Currently support only for gcc
 #ifdef __GNUC__
-    return __builtin_cpu_supports("avx512f");
-#else
-    return false; // Sorry, only GCC (and clang) supported
-#endif
+
+    unsigned int max_basic_level = __get_cpuid_max(0x0, nullptr);
+
+    unsigned int eax = 0, ebx = 0, ecx = 0, edx = 0;
+    if (max_basic_level >= 1)
+    {
+        __get_cpuid(1, &eax, &ebx, &ecx, &edx);
+
+        //si.sse        = (edx & (1 << 25)) != 0; // Not needed
+        si.sse2       = (edx & (1 << 26)) != 0;
+        //si.sse3       = (ecx & (1 << 0 )) != 0;
+        //si.fma        = (ecx & (1 << 12)) != 0;
+        //si.sse4_1     = (ecx & (1 << 19)) != 0;
+        //si.sse4_2     = (ecx & (1 << 20)) != 0;
+        //si.osxsave    = (ecx & (1 << 27)) != 0; // XSAVE enabled by OS (Important!)
+        si.avx        = (ecx & (1 << 28)) != 0;
+
+        /*
+        std::cout << "sse: " << si.sse << std::endl;
+        std::cout << "sse2: " << si.sse2 << std::endl;
+        std::cout << "sse3: " << si.sse3 << std::endl;
+        std::cout << "fma: " << si.fma << std::endl;
+        std::cout << "sse4_1: " << si.sse4_1 << std::endl;
+        std::cout << "sse4_2: " << si.sse4_2 << std::endl;
+        std::cout << "avx: " << si.avx << std::endl;
+        std::cout << "osxsave: " << si.osxsave << std::endl;
+        */
+    }
+
+    if (max_basic_level >= 7)
+    {
+        __get_cpuid(7, &eax, &ebx, &ecx, &edx);
+
+        //si.avx2       = (ebx & (1 << 5)) != 0;
+        si.avx512f    = (ebx & (1 << 16)) != 0;
+        //si.avx512ifma = (ebx & (1 << 21)) != 0;
+
+        /*
+        std::cout << "avx2 " << si.avx2 << std::endl;
+        std::cout << "avx512f: " << si.avx512f << std::endl;
+        std::cout << "avx512ifma: " << si.avx512ifma << std::endl;'
+        */
+    }
+
+ #endif
+
+    return si;
 }

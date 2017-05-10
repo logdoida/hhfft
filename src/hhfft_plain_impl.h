@@ -27,6 +27,7 @@
 #include <cmath>
 #include <assert.h>
 #include <complex>
+#include <stdexcept>
 
 #define COMPLEX_TYPE std::complex<TYPE>
 
@@ -180,7 +181,7 @@ std::vector<uint32_t> HHFFT_CLASS_NAME::calculate_bit_reverse_table(size_t n, si
     return table;
 }
 
-// Performs fft column-wise for all columns
+// Performs fft columnwise for all columns
 template<int FORWARD> inline void fft_columns(MatrixComplex &data, size_t s, const TYPE *factor_table)
 {
     size_t n = data.n;
@@ -294,7 +295,7 @@ template<int FORWARD> inline void fft_row(COMPLEX_TYPE *data, size_t n, size_t s
 
 //
 
-// It is possible to do the converions in place
+// It is possible to do the conversions in place
 // FORWARD = 1 (forward) or -1 (inverse)
 template<int FORWARD> inline void fft_complex_to_complex_packed(MatrixComplex &in, MatrixComplex &out, const TYPE *packing_table)
 {

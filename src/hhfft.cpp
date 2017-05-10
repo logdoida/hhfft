@@ -34,8 +34,10 @@ HHFFT_D::HHFFT_D(size_t n, size_t m)
     // Select version based on what the compiled library and what the system actully supports
     hhfft = nullptr;
 
+    hhfft::CPUID_info info = hhfft::get_supported_instructions();
+
 #ifdef HHFFT_COMPILED_WITH_AVX512F
-    if (avx512f_supported() && !hhfft)
+    if (info.avx512f && !hhfft)
     {
         hhfft = new HHFFT_Plain_AVX512F_D(n,m);
     }
@@ -43,7 +45,7 @@ HHFFT_D::HHFFT_D(size_t n, size_t m)
 
 
 #ifdef HHFFT_COMPILED_WITH_AVX
-    if (avx_supported() && !hhfft)
+    if (info.avx && !hhfft)
     {
         hhfft = new HHFFT_Plain_AVX_D(n,m);
     }
@@ -79,7 +81,8 @@ void HHFFT_D::convolution_real(const double *in1, const double *in2, double *out
 bool HHFFT_D::avx_support_on()
 {
 #ifdef HHFFT_COMPILED_WITH_AVX
-    return avx_supported();
+    hhfft::CPUID_info info = hhfft::get_supported_instructions();
+    return info.avx;
 #else
     return false;
 #endif
@@ -88,7 +91,8 @@ bool HHFFT_D::avx_support_on()
 bool HHFFT_D::avx512f_support_on()
 {
 #ifdef HHFFT_COMPILED_WITH_AVX512F
-    return avx512f_supported();
+    hhfft::CPUID_info info = hhfft::get_supported_instructions();
+    return info.avx512f;
 #else
     return false;
 #endif
