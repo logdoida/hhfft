@@ -25,7 +25,7 @@ hhfft::CPUID_info hhfft::get_supported_instructions()
 {
     // TODO this function checks what CPU supports, but in addition there must also be OS support!
 
-    hhfft::CPUID_info si;
+    hhfft::CPUID_info si = {};
 
 // Currently support only for gcc
 #ifdef __GNUC__

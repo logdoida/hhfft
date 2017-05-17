@@ -132,6 +132,8 @@ HHFFT_CLASS_NAME::HHFFT_CLASS_NAME(size_t n, size_t m)
 
     this->bit_reverse_table_1 = calculate_bit_reverse_table(n, n_bits);
     this->bit_reverse_table_2 = calculate_bit_reverse_table(m, m_bits);
+
+    this->bit_reverse_table_2_inplace = calculate_bit_reverse_table_inplace(this->bit_reverse_table_2);
 }
 
 std::vector<TYPE> HHFFT_CLASS_NAME::calculate_factor_table(size_t n)
@@ -178,6 +180,22 @@ std::vector<uint32_t> HHFFT_CLASS_NAME::calculate_bit_reverse_table(size_t n, si
             table[i] |= ((i >> j) & 1) << (n_bits - j - 1);
         }
     }
+    return table;
+}
+
+std::vector<std::array<uint32_t,2>> HHFFT_CLASS_NAME::calculate_bit_reverse_table_inplace(std::vector<uint32_t> &table_in)
+{
+    size_t n = table_in.size();
+
+    std::vector<std::array<uint32_t,2>> table;
+    for (uint32_t i=0; i < n; i++)
+    {
+        if (table_in[i] > i)
+        {
+            table.push_back(std::array<uint32_t,2>({i,table_in[i]}));
+        }
+    }
+
     return table;
 }
 
@@ -244,6 +262,7 @@ template<int FORWARD> inline void fft_columns(MatrixComplex &data, size_t s, con
 
 // Performs a fft for single a row
 // FORWARD = 1 (forward) or -1 (inverse)
+#ifndef DISABLE_FFT_ROW
 template<int FORWARD> inline void fft_row(COMPLEX_TYPE *data, size_t n, size_t s, const TYPE *factor_table)
 {
     for (size_t i = 0; i < n; i+=s)
@@ -291,6 +310,7 @@ template<int FORWARD> inline void fft_row(COMPLEX_TYPE *data, size_t n, size_t s
         }
     }
 }
+#endif
 
 
 //
@@ -357,35 +377,28 @@ template<int FORWARD> inline void fft_complex_to_complex_packed(MatrixComplex &i
     }
 }
 
-// Changes data from [a b c d; e f g h] to [a e b f c g d h] and re-orders rows
-inline void reorder_1(MatrixRealConst &m_in, MatrixComplex &m_out, std::vector<uint32_t> &bit_reverse_table_1)
-{
-    size_t n = m_in.n;
-    size_t m = m_in.m;
-    for (size_t i = 0; i < n/2; i++)
-    {
-        size_t i2 = bit_reverse_table_1[i*2];
-        for (size_t j = 0; j < m; j++)
-        {
-            m_out(i,j) = std::complex<TYPE>(m_in(i2*2,j), m_in(i2*2 + 1,j));
-        }
-    }
-}
-
-inline void fft_columnwise(MatrixComplex &m_out, std::vector<TYPE> &factor_table_1)
+inline void fft_columnwise(MatrixRealConst &m_in, MatrixComplex &m_out, std::vector<uint32_t> &bit_reverse_table_1, std::vector<TYPE> &factor_table_1)
 {
     size_t n = m_out.n*2;
     size_t m = m_out.m;
 
-    // Start with level N = 2, if that is needed (if n=2, n/2 = 1 -> no FFT needed)
-    if (n > 2)
+    // Changes data from [a b c d; e f g h] to [a e b f c g d h], re-order rows and does N = 2 FFT if needed
+    if (n == 2)
+    {
+        for (size_t j = 0; j < m; j++)
+        {
+            m_out(0,j) = std::complex<TYPE>(m_in(0,j), m_in(1,j));
+        }
+    } else
     {
         for (size_t i = 0; i < n/2; i+=2)
         {
+            size_t i2 = bit_reverse_table_1[i*2];
+            size_t i3 = bit_reverse_table_1[i*2 + 2];
             for (size_t j = 0; j < m; j++)
             {
-                std::complex<TYPE> val1 = m_out(i,j);
-                std::complex<TYPE> val2 = m_out(i+1,j);
+                std::complex<TYPE> val1 = std::complex<TYPE>(m_in(i2*2,j), m_in(i2*2 + 1,j));
+                std::complex<TYPE> val2 = std::complex<TYPE>(m_in(i3*2,j), m_in(i3*2 + 1,j));
                 m_out(i,j) = std::complex<TYPE>(val1.real() + val2.real(), val1.imag() + val2.imag());
                 m_out(i+1,j) = std::complex<TYPE>(val1.real() - val2.real(), val1.imag() - val2.imag());
             }
@@ -404,25 +417,22 @@ inline void fft_columnwise(MatrixComplex &m_out, std::vector<TYPE> &factor_table
     }
 }
 
-inline void fft_rowwise(MatrixComplex &m_out_packed, std::vector<TYPE> &factor_table_2, std::vector<uint32_t> &bit_reverse_table_2)
+#ifndef DISABLE_FFT_ROWWISE
+inline void fft_rowwise(MatrixComplex &m_out_packed, std::vector<double> &factor_table_2, std::vector<std::array<uint32_t,2>> &bit_reverse_table_2_inplace)
 {
     size_t n = (m_out_packed.n-1)*2;
     size_t m = m_out_packed.m;
 
+    // Re-order data (must be done in-place!)
     for (size_t i = 0; i < n/2 + 1; i++)
     {
-        // Re-order data (must be done in-place!)
-        for (size_t j = 0; j < m; j++)
+        // Change only ones that actually need changing
+        for (size_t k = 0; k < bit_reverse_table_2_inplace.size(); k++)
         {
-            size_t j2 = bit_reverse_table_2[j];
-
-            // TODO there should be some more efficient way to do this (this if-clause is false ̃ 50% of the time!)
-            if (j2 > j)
-            {
-                std::complex<TYPE> temp = m_out_packed(i,j);
-                m_out_packed(i,j) = m_out_packed(i,j2);
-                m_out_packed(i,j2) = temp;
-            }
+            std::array<uint32_t,2> j = bit_reverse_table_2_inplace[k];
+            std::complex<TYPE> temp =  m_out_packed(i,j[0]);
+            m_out_packed(i,j[0]) = m_out_packed(i,j[1]);
+            m_out_packed(i,j[1]) = temp;
         }
 
         // Start with level N = 2
@@ -444,7 +454,9 @@ inline void fft_rowwise(MatrixComplex &m_out_packed, std::vector<TYPE> &factor_t
         }
     }
 }
+#endif
 
+#ifndef DISABLE_FFT_REAL
 void HHFFT_CLASS_NAME::fft_real(const TYPE *in, TYPE *out)
 {    
     //std::cout << std::endl << "Data in: " << std::endl; print_real_matrix(in, n, m); // TESTING
@@ -453,22 +465,22 @@ void HHFFT_CLASS_NAME::fft_real(const TYPE *in, TYPE *out)
     MatrixComplex m_out(n/2, m, out);
     MatrixComplex m_out_packed(n/2 + 1, m, out);
 
-    // Reorder data so that complex FFT can be performed column-wise    
-    reorder_1(m_in, m_out, bit_reverse_table_1);
-
+    // Reorder data so that complex FFT can be performed column-wise
     // Perform FFT column-wise. There are now only n/2 rows!
-    fft_columnwise(m_out, factor_table_1);
+    fft_columnwise(m_in, m_out, bit_reverse_table_1, factor_table_1);
 
     // "Pack data" so that the output is half of matrix that would be output of FFT perfomed on actual real data
     // After this step there is one extra row in the data!    
     fft_complex_to_complex_packed<1>(m_out, m_out_packed, packing_table.data());
 
     // Reorder data and do FFT row-wise, i.e. for each row separately
-    fft_rowwise(m_out_packed, factor_table_2, bit_reverse_table_2);
+    fft_rowwise(m_out_packed, factor_table_2, bit_reverse_table_2_inplace);
 
     //std::cout << std::endl << "fft output:" << std::endl; print_complex_matrix(out, n/2 + 1, m); // TESTING
 }
+#endif
 
+#ifndef DISABLE_IFFT_ROWWISE
 inline void ifft_rowwise(MatrixComplexConst &m_in, MatrixComplex &m_out_packed, std::vector<TYPE> &factor_table_2, std::vector<uint32_t> &bit_reverse_table_2)
 {
     size_t n = (m_in.n-1)*2;
@@ -476,19 +488,12 @@ inline void ifft_rowwise(MatrixComplexConst &m_in, MatrixComplex &m_out_packed, 
 
     for (size_t i = 0; i < n/2 + 1; i++)
     {
-        // Re-order data is done out of place
+        // Re-order data and do level N = 2 FFT
         // TODO check if in == out and do this in-place if so!
-        for (size_t j = 0; j < m; j++)
-        {
-            size_t j2 = bit_reverse_table_2[j];
-            m_out_packed(i,j2) = m_in(i,j);
-        }
-
-        // Start with level N = 2
         for (size_t j = 0; j < m; j+=2)
         {
-            std::complex<TYPE> val1 = m_out_packed(i,j);
-            std::complex<TYPE> val2 = m_out_packed(i,j+1);
+            std::complex<TYPE> val1 = m_in(i,bit_reverse_table_2[j]);
+            std::complex<TYPE> val2 = m_in(i,bit_reverse_table_2[j+1]);
             m_out_packed(i,j) = std::complex<TYPE>(val1.real() + val2.real(), val1.imag() + val2.imag());
             m_out_packed(i,j+1) = std::complex<TYPE>(val1.real() - val2.real(), val1.imag() - val2.imag());
         }
@@ -503,6 +508,7 @@ inline void ifft_rowwise(MatrixComplexConst &m_in, MatrixComplex &m_out_packed, 
         }
     }
 }
+#endif
 
 inline void reorder_2(MatrixComplex &m_out, std::vector<uint32_t> &bit_reverse_table_1)
 {
@@ -580,6 +586,7 @@ inline void reorder_3(MatrixReal &m_out_real, MatrixComplex &m_out_packed)
     }
 }
 
+#ifndef DISABLE_IFFT_REAL
 void HHFFT_CLASS_NAME::ifft_real(const TYPE *in, TYPE *out)
 {
     MatrixComplexConst m_in(n/2 + 1, m, in);
@@ -604,6 +611,7 @@ void HHFFT_CLASS_NAME::ifft_real(const TYPE *in, TYPE *out)
 
     //std::cout << std::endl << "Final output:" << std::endl;  print_real_matrix(out, n, m); // TESTING
 }
+#endif
 
 // All arrays are complex with dimensions (n/2 + 1) x m
 void HHFFT_CLASS_NAME::convolution_real(const TYPE *in1, const TYPE *in2, TYPE *out)

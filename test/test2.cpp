@@ -70,7 +70,7 @@ void measure_perfomance_one_size(size_t n, size_t m)
     // Choose the number of repeats so that each test takes time in the order of one second
     size_t repeats = (size_t) (100e6/(n*m*log2(n*m))) + 10;
 
-    // Do first some worm-up (it takes some time for the SIMD-unit on a CPU start)
+    // Do first some warm-up (it takes some time for the SIMD-unit on a CPU start)
     for (size_t i = 0; i < repeats*10; i++)
     {
         hhfft.fft_real(x.data(),x_fft.data());

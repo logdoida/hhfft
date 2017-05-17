@@ -21,11 +21,49 @@
 #define HHFFT_AVX_D_H
 
 #include "architecture.h"
+#include <vector>
+#include <array>
 
 // Note that this class is only compiled with AVX support
 
-#include "hhfft_plain_avx_d.h"
+#include "hhfft_base.h"
 
-// TODO
+namespace hhfft
+{
+
+// This class is can be used when there is AVX support. Some hand optimizations
+
+class HHFFT_AVX_D : public HHFFT_Base<double>
+{
+public:
+    HHFFT_AVX_D(size_t n, size_t m);
+
+    virtual void fft_real(const double *in, double *out);
+    virtual void ifft_real(const double *in, double *out);
+    virtual void convolution_real(const double *in1, const double *in2, double *out);
+
+    static void print_real_matrix(const double *matrix, size_t n, size_t m);
+    static void print_complex_matrix(const double *matrix, size_t n, size_t m);
+
+private:
+
+    std::vector<double> calculate_packing_table(size_t n);
+    std::vector<double> calculate_factor_table(size_t n);
+    std::vector<uint32_t> calculate_bit_reverse_table(size_t n, size_t n_bits);
+    std::vector<std::array<uint32_t,2>> calculate_bit_reverse_table_inplace(std::vector<uint32_t> &table_in);
+
+    // Dimensions of the matrix
+    size_t n, m;
+
+    // Look-up tables for both dimensions
+    std::vector<double> packing_table;
+    std::vector<double> factor_table_1;
+    std::vector<double> factor_table_2;
+    std::vector<uint32_t> bit_reverse_table_1;
+    std::vector<uint32_t> bit_reverse_table_2;
+    std::vector<std::array<uint32_t,2>>  bit_reverse_table_2_inplace;
+
+};
+}
 
 #endif // HHFFT_AVX_D_H

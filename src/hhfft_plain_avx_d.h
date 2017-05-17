@@ -22,6 +22,7 @@
 
 #include "architecture.h"
 #include <vector>
+#include <array>
 
 #include "hhfft_base.h"
 
@@ -47,6 +48,7 @@ private:
     std::vector<double> calculate_packing_table(size_t n);
     std::vector<double> calculate_factor_table(size_t n);
     std::vector<uint32_t> calculate_bit_reverse_table(size_t n, size_t n_bits);
+    std::vector<std::array<uint32_t,2>> calculate_bit_reverse_table_inplace(std::vector<uint32_t> &table_in);
 
     // Dimensions of the matrix
     size_t n, m;
@@ -57,6 +59,7 @@ private:
     std::vector<double> factor_table_2;
     std::vector<uint32_t> bit_reverse_table_1;
     std::vector<uint32_t> bit_reverse_table_2;
+    std::vector<std::array<uint32_t,2>>  bit_reverse_table_2_inplace;
 
 };
 }

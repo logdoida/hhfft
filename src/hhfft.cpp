@@ -46,8 +46,8 @@ HHFFT_D::HHFFT_D(size_t n, size_t m)
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (info.avx && !hhfft)
-    {
-        hhfft = new HHFFT_Plain_AVX_D(n,m);
+    {        
+        hhfft = new HHFFT_AVX_D(n,m); // Hand optimized version
     }
 #endif
 
