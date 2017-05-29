@@ -39,6 +39,7 @@ public:
     virtual void fft_real(const double *in, double *out);
     virtual void ifft_real(const double *in, double *out);
     virtual void convolution_real(const double *in1, const double *in2, double *out);
+    virtual void convolution_real_add(const double *in1, const double *in2, double *out);
 
     static void print_real_matrix(const double *matrix, size_t n, size_t m);
     static void print_complex_matrix(const double *matrix, size_t n, size_t m);

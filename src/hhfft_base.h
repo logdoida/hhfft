@@ -43,6 +43,7 @@ public:
     virtual void fft_real(const T *in, T *out) = 0;
     virtual void ifft_real(const T *in, T *out) = 0;
     virtual void convolution_real(const T *in1, const T *in2, T *out) = 0;
+    virtual void convolution_real_add(const T *in1, const T *in2, T *out) = 0;
 
 private:
 

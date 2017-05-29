@@ -32,6 +32,7 @@ using hhfft::HHFFT_AVX_D;
 #define DISABLE_IFFT_ROWWISE
 #define DISABLE_IFFT_REAL
 //#define DISABLE_FFT_ROW
+#define DISABLE_CONVOLUTION_REAL
 
 #define HHFFT_CLASS_NAME HHFFT_AVX_D
 #define TYPE double
@@ -262,4 +263,66 @@ void HHFFT_AVX_D::ifft_real(const double *in, double *out)
     reorder_3(m_out_real, m_out_packed);
 
     //std::cout << std::endl << "Final output:" << std::endl;  print_real_matrix(out, n, m); // TESTING
+}
+
+
+const double temp_const_conv[4] = {1.0, -1.0, 1.0, -1.0};
+void HHFFT_AVX_D::convolution_real(const double *in1, const double *in2, double *out)
+{
+    // Total number of doubles in the array
+    size_t n_tot = (n + 2)*m;
+
+    __m256d temp_const = _mm256_loadu_pd(temp_const_conv);
+
+    // NOTE it is assumed that there must be 2*n complex number i.e. 4*n doubles
+    for (size_t i = 0; i < n_tot; i+=4)
+    {
+        __m256d in_1 = _mm256_loadu_pd(in1 + i);
+        __m256d in_2 = _mm256_loadu_pd(in2 + i);
+
+        // calculate [r1*r2, -i1*i2, r3*r4, -i3*i4]
+        __m256d temp1 = _mm256_mul_pd(in_1, in_2);
+        temp1 = _mm256_mul_pd(temp1, temp_const);
+
+        // calculate [r1*i2, i1*r2, r3*i4, i3*r4]
+        __m256d temp2 = _mm256_permute_pd(in_2, 1 + 4);
+        temp2 = _mm256_mul_pd(in_1, temp2);
+
+        // Calculate output
+        __m256d out_ = _mm256_hadd_pd(temp1, temp2);
+
+        // Store output
+        _mm256_storeu_pd(out + i, out_);
+    }
+}
+
+void HHFFT_AVX_D::convolution_real_add(const double *in1, const double *in2, double *out)
+{
+    // Total number of doubles in the array
+    size_t n_tot = (n + 2)*m;
+
+    __m256d temp_const = _mm256_loadu_pd(temp_const_conv);
+
+    // NOTE it is assumed that there must be 2*n complex number i.e. 4*n doubles
+    for (size_t i = 0; i < n_tot; i+=4)
+    {
+        __m256d in_1 = _mm256_loadu_pd(in1 + i);
+        __m256d in_2 = _mm256_loadu_pd(in2 + i);
+
+        // calculate [r1*r2, -i1*i2, r3*r4, -i3*i4]
+        __m256d temp1 = _mm256_mul_pd(in_1, in_2);
+        temp1 = _mm256_mul_pd(temp1, temp_const);
+
+        // calculate [r1*i2, i1*r2, r3*i4, i3*r4]
+        __m256d temp2 = _mm256_permute_pd(in_2, 1 + 4);
+        temp2 = _mm256_mul_pd(in_1, temp2);
+
+        // Calculate output and add it to previuous value
+        __m256d out_in = _mm256_loadu_pd(out + i);
+        __m256d out_ = _mm256_hadd_pd(temp1, temp2);
+        out_ = _mm256_add_pd(out_in, out_);
+
+        // Store output
+        _mm256_storeu_pd(out + i, out_);
+    }
 }

@@ -614,6 +614,7 @@ void HHFFT_CLASS_NAME::ifft_real(const TYPE *in, TYPE *out)
 #endif
 
 // All arrays are complex with dimensions (n/2 + 1) x m
+#ifndef DISABLE_CONVOLUTION_REAL
 void HHFFT_CLASS_NAME::convolution_real(const TYPE *in1, const TYPE *in2, TYPE *out)
 {
     MatrixComplexConst m_in1(n/2 + 1, m, in1);
@@ -633,6 +634,27 @@ void HHFFT_CLASS_NAME::convolution_real(const TYPE *in1, const TYPE *in2, TYPE *
         }
     }
 }
+
+void HHFFT_CLASS_NAME::convolution_real_add(const TYPE *in1, const TYPE *in2, TYPE *out)
+{
+    MatrixComplexConst m_in1(n/2 + 1, m, in1);
+    MatrixComplexConst m_in2(n/2 + 1, m, in2);
+    MatrixComplex m_out(n/2 + 1, m, out);
+
+    for (size_t i = 0; i < n/2 + 1; i++)
+    {
+        for (size_t j = 0; j < m; j++)
+        {
+            TYPE r1 = m_in1(i,j).real();
+            TYPE i1 = m_in1(i,j).imag();
+            TYPE r2 = m_in2(i,j).real();
+            TYPE i2 = m_in2(i,j).imag();
+
+            m_out(i,j) += std::complex<TYPE>(r1*r2 - i1*i2, r1*i2 + r2*i1);
+        }
+    }
+}
+#endif
 
 // These are for testing purposes
 void HHFFT_CLASS_NAME::print_real_matrix(const TYPE *data, size_t n, size_t m)
