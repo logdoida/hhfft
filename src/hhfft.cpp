@@ -78,6 +78,11 @@ void HHFFT_D::convolution_real(const double *in1, const double *in2, double *out
     hhfft->convolution_real(in1, in2, out);
 }
 
+void HHFFT_D::convolution_real_add(const double *in1, const double *in2, double *out)
+{
+    hhfft->convolution_real_add(in1, in2, out);
+}
+
 bool HHFFT_D::avx_support_on()
 {
 #ifdef HHFFT_COMPILED_WITH_AVX

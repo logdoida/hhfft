@@ -49,6 +49,9 @@ public:
     // Convolute two Fourier transformed real arrays. Both inputs and output shall contain (n+2)*m doubles
     void convolution_real(const double *in1, const double *in2, double *out);
 
+    // Convolute two Fourier transformed real arrays and add them to output. Both inputs and output shall contain (n+2)*m doubles
+    void convolution_real_add(const double *in1, const double *in2, double *out);
+
 
     // These methods are provide information what architecture is supported
     static bool avx_support_on();
