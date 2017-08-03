@@ -22,6 +22,7 @@
 
 #include "architecture.h"
 #include "step_info.h"
+#include "aligned_arrays.h"
 
 #include <vector>
 #include <array>
@@ -39,7 +40,17 @@ public:
     HHFFT_1D_D(const HHFFT_1D_D &other) = delete;
     HHFFT_1D_D& operator=(const HHFFT_1D_D &other) = delete;
 
+    // FFT with complex inputs and outputs
     void fft(const double *in, double *out);
+
+    // IFFT with complex inputs and outputs
+    void ifft(const double *in, double *out);
+
+    // Allocate aligned array that contains enough space for the complex input and output data
+    double* allocate_memory();
+
+    // Free memory
+    static void free_memory(double *data);
 
     static void print_complex_vector(const double *data, size_t n);
 
@@ -49,7 +60,7 @@ private:
     size_t n;
 
     // Twiddle factors for each level
-    std::vector<std::vector<double>> twiddle_factors;
+    std::vector<AlignedVector<double>> twiddle_factors;
 
     // Table that is used in the beginning to reorder the data.
     std::vector<uint32_t> reorder_table;
@@ -58,7 +69,8 @@ private:
     size_t temp_data_size = 0;
 
     // The actual fft plan is a sequence of individual steps
-    std::vector<StepInfoD> steps;
+    std::vector<StepInfoD> forward_steps;
+    std::vector<StepInfoD> inverse_steps;
 };
 
 }

@@ -74,7 +74,7 @@ std::vector<uint32_t> calculate_reorder_table(const std::vector<size_t> &N)
 }
 
 // Calculates twiddle factors for a given level
-std::vector<double> calculate_twiddle_factors(size_t level, const std::vector<size_t> &N)
+AlignedVector<double> calculate_twiddle_factors(size_t level, const std::vector<size_t> &N)
 {
     size_t n_dim = N.size();
 
@@ -84,7 +84,7 @@ std::vector<double> calculate_twiddle_factors(size_t level, const std::vector<si
     {
         num = num*N[n_dim - i - 1];
     }
-    std::vector<double> w(num*2);
+    AlignedVector<double> w(num*2);
 
     // calculate a vector that contains [1 N1 N1*N2 N1*N2*N3...]
     std::vector<uint32_t> temp1(n_dim+1);
@@ -181,11 +181,21 @@ void HHFFT_1D_set_function(StepInfoD &step_info)
     HHFFT_1D_Plain_set_function(step_info);
 }
 
+double* HHFFT_1D_D::allocate_memory()
+{
+    return (double *) allocate_aligned_memory(2*n*sizeof(double));
+}
 
+void HHFFT_1D_D::free_memory(double *data)
+{
+    free(data);
+}
 
 // Does the planning step
 HHFFT_1D_D::HHFFT_1D_D(size_t n)
 {
+    this->n = n;
+
     // This limitation comes from using uint32 in reorder table
     if (n >= (1ul << 32ul))
     {
@@ -209,11 +219,11 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
 
     // Calculate twiddle factors
     // NOTE that a portion of these are always one and they could be removed to decrease memory requirements.
-    twiddle_factors.push_back(std::vector<double>()); // No twiddle factors are needed before the first fft-level
+    twiddle_factors.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level
     for (size_t i = 1; i < N.size(); i++)
     {
         // TODO allocating aligned memory for these could be beneficial
-        std::vector<double> w = calculate_twiddle_factors(i, N);
+        AlignedVector<double> w = calculate_twiddle_factors(i, N);
         twiddle_factors.push_back(w);
         //print_complex_vector(w.data(), w.size()/2);
     }
@@ -225,8 +235,9 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
     step1.data_type_out = hhfft::StepDataType::data_out;
     step1.reorder_table = reorder_table.data();
     step1.repeats = reorder_table.size();
+    step1.norm_factor = 1.0/(double(n));
     HHFFT_1D_set_function(step1);
-    steps.push_back(step1);
+    forward_steps.push_back(step1);
 
     // Put first fft step
     hhfft::StepInfoD step2;
@@ -236,13 +247,13 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
     step2.data_type_in = hhfft::StepDataType::data_out;
     step2.data_type_out = hhfft::StepDataType::data_out;    
     HHFFT_1D_set_function(step2);
-    steps.push_back(step2);
+    forward_steps.push_back(step2);
 
     // then put rest fft steps combined with twiddle factor
     for (size_t i = 1; i < N.size(); i++)
     {
         hhfft::StepInfoD step;
-        hhfft::StepInfoD &step_prev = steps.back();
+        hhfft::StepInfoD &step_prev = forward_steps.back();
         step.radix = N[N.size() - i - 1];
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;
@@ -250,7 +261,15 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
         step.data_type_out = hhfft::StepDataType::data_out;        
         step.twiddle_factors = twiddle_factors[i].data();
         HHFFT_1D_set_function(step);
-        steps.push_back(step);
+        forward_steps.push_back(step);
+    }
+
+    // Make the inverse steps. They are otherwise the same, but different version of function is called
+    for (auto step: forward_steps)
+    {
+        step.forward = false;
+        HHFFT_1D_set_function(step);
+        inverse_steps.push_back(step);
     }    
 }
 
@@ -263,7 +282,22 @@ void HHFFT_1D_D::fft(const double *in, double *out)
     const double *data_in[3] = {in, out, temp_data.data()};
     double *data_out[3] = {nullptr, out, temp_data.data()};
 
-    for (auto &step: steps)
+    for (auto &step: forward_steps)
+    {
+        step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
+    }
+}
+
+void HHFFT_1D_D::ifft(const double *in, double *out)
+{
+    // Allocate some extra space if needed
+    std::vector<double> temp_data(temp_data_size);
+
+    // Put all possible input/output data sources here
+    const double *data_in[3] = {in, out, temp_data.data()};
+    double *data_out[3] = {nullptr, out, temp_data.data()};
+
+    for (auto &step: inverse_steps)
     {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
     }

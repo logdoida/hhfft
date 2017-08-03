@@ -22,40 +22,63 @@
 
 using namespace hhfft;
 
+template<bool forward> void set_fft_1d_one_level(StepInfoD &step_info)
+{
+    size_t radix = step_info.radix;
+
+    if (radix == 2)
+        step_info.step_function = fft_1d_one_level<double,2,0,forward>;
+    if (radix == 3)
+        step_info.step_function = fft_1d_one_level<double,3,0,forward>;
+    if (radix == 4)
+        step_info.step_function = fft_1d_one_level<double,4,0,forward>;
+    if (radix == 5)
+        step_info.step_function = fft_1d_one_level<double,5,0,forward>;
+    if (radix == 7)
+        step_info.step_function = fft_1d_one_level<double,7,0,forward>;
+}
+
+template<bool forward> void set_fft_1d_one_level_twiddle(StepInfoD &step_info)
+{
+    size_t radix = step_info.radix;
+
+    if (radix == 2)
+        step_info.step_function = fft_1d_one_level_twiddle<double,2,0,forward>;
+    if (radix == 3)
+        step_info.step_function = fft_1d_one_level_twiddle<double,3,0,forward>;
+    if (radix == 4)
+        step_info.step_function = fft_1d_one_level_twiddle<double,4,0,forward>;
+    if (radix == 5)
+        step_info.step_function = fft_1d_one_level_twiddle<double,5,0,forward>;
+    if (radix == 7)
+        step_info.step_function = fft_1d_one_level_twiddle<double,7,0,forward>;
+}
+
 void hhfft::HHFFT_1D_Plain_set_function(StepInfoD &step_info)
 {
     step_info.step_function = nullptr;
 
     if (step_info.reorder_table != nullptr)
     {
-        step_info.step_function = fft_1d_reorder<double>;        
+        if (step_info.forward)
+            step_info.step_function = fft_1d_reorder<double,0,true>;
+        else
+            step_info.step_function = fft_1d_reorder<double,0,false>;
+        return;
     }
 
-    size_t radix = step_info.radix;
     if (step_info.twiddle_factors == nullptr)
     {
-        if (radix == 2)
-            step_info.step_function = fft_1d_one_level<double,2,0>;
-        if (radix == 3)
-            step_info.step_function = fft_1d_one_level<double,3,0>;
-        if (radix == 4)
-            step_info.step_function = fft_1d_one_level<double,4,0>;
-        if (radix == 5)
-            step_info.step_function = fft_1d_one_level<double,5,0>;
-        if (radix == 7)
-            step_info.step_function = fft_1d_one_level<double,7,0>;
+        if (step_info.forward)
+            set_fft_1d_one_level<true>(step_info);
+        else
+            set_fft_1d_one_level<false>(step_info);
     } else
     {
-        if (radix == 2)
-            step_info.step_function = fft_1d_one_level_twiddle<double,2,0>;
-        if (radix == 3)
-            step_info.step_function = fft_1d_one_level_twiddle<double,3,0>;
-        if (radix == 4)
-            step_info.step_function = fft_1d_one_level_twiddle<double,4,0>;
-        if (radix == 5)
-            step_info.step_function = fft_1d_one_level_twiddle<double,5,0>;
-        if (radix == 7)
-            step_info.step_function = fft_1d_one_level_twiddle<double,7,0>;
+        if (step_info.forward)
+            set_fft_1d_one_level_twiddle<true>(step_info);
+        else
+            set_fft_1d_one_level_twiddle<false>(step_info);
     }
 
     if (step_info.step_function == nullptr)
