@@ -53,6 +53,9 @@ public:
     // Direct access
     T* data();
 
+    // Length of the vector
+    size_t size();
+
 private:
     size_t n;
 

@@ -28,6 +28,8 @@ namespace hhfft
 // This set pointer to correct fft functions based on radix and stride
 void HHFFT_1D_AVX_set_function(StepInfoD &step_info);
 
+void HHFFT_1D_AVX_set_function_DIF(StepInfoD &step_info);
+
 }
 
 #endif // HHFFT_1D_AVX_D_H

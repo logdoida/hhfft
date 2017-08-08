@@ -104,6 +104,11 @@ template<typename T> T* AlignedVector<T>::data()
     return array;
 }
 
+template<typename T> size_t AlignedVector<T>::size()
+{
+    return n;
+}
+
 // Specialization only for float and double currently supported
 template class hhfft::AlignedVector<float>;
 template class hhfft::AlignedVector<double>;

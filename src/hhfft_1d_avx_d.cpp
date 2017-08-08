@@ -293,10 +293,66 @@ template<bool forward> void fft_1d_one_level_radix4_stride1(const double *data_i
     */
 }
 
+//
+template<bool forward> void fft_1d_one_level_radix2_repeats1(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    assert (step_info.radix == 2);
+    assert (step_info.repeats == 1);
+    assert (step_info.stride > 1);
+    assert (step_info.twiddle_factors == nullptr);
+
+    const size_t stride = step_info.stride;
+
+    size_t i;
+    for (i = 0; i < (stride-1); i+=2)
+    {
+        ComplexD2 x_in_1 = load(data_in + 2*i);
+        ComplexD2 x_in_2 = load(data_in + 2*i + 2*stride);
+
+        // Perform the calculations
+        ComplexD2 x_out_1 = x_in_1 + x_in_2;
+        ComplexD2 x_out_2 = x_in_1 - x_in_2;
+
+        // Save the output
+        store(x_out_1, data_out + 2*i);
+        store(x_out_2, data_out + 2*i + 2*stride);
+    }
+
+    // If stride is uneven, there is one to go
+    if (i < stride)
+    {
+        double x1_r = data_in[2*i            + 0];
+        double x1_i = data_in[2*i            + 1];
+        double x2_r = data_in[2*i + 2*stride + 0];
+        double x2_i = data_in[2*i + 2*stride + 1];
+
+        data_out[2*i + 0]            = x1_r + x2_r;
+        data_out[2*i + 1]            = x1_i + x2_i;
+        data_out[2*i + 2*stride + 0] = x1_r - x2_r;
+        data_out[2*i + 2*stride + 1] = x1_i - x2_i;
+    }
+
+    /*
+    for (size_t i = 0; i < stride; i++)
+    {
+        double x1_r = data_in[2*i            + 0];
+        double x1_i = data_in[2*i            + 1];
+        double x2_r = data_in[2*i + 2*stride + 0];
+        double x2_i = data_in[2*i + 2*stride + 1];
+
+        data_out[2*i + 0]            = x1_r + x2_r;
+        data_out[2*i + 1]            = x1_i + x2_i;
+        data_out[2*i + 2*stride + 0] = x1_r - x2_r;
+        data_out[2*i + 2*stride + 1] = x1_i - x2_i;
+    }
+    */
+}
+
 template<bool forward> void fft_1d_one_level_radix2_stride1(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {    
     assert (step_info.radix == 2);
     assert (step_info.stride == 1);
+    assert (step_info.twiddle_factors == nullptr);
 
     const size_t repeats = step_info.repeats;
 
@@ -332,11 +388,132 @@ template<bool forward> void fft_1d_one_level_radix2_stride1(const double *data_i
     */
 }
 
+template<bool forward> void fft_1d_one_level_twiddle_radix2_stride1_DIF(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    assert (step_info.radix == 2);
+    assert (step_info.stride == 1);
+
+    size_t repeats = step_info.repeats;
+
+    const ComplexD2 const2 = load(0.0, 0.0, -0.0, -0.0);
+
+    // TODO it might a bit more efficient to load two complex numbers at time (+ one extra if repeats is uneven)
+    for (size_t i = 0; i < repeats; i++)
+    {
+        // Load values
+        ComplexD2 x_in_1 = broadcast128(data_in + 4*i + 0);
+        ComplexD2 x_in_2 = broadcast128(data_in + 4*i + 2);
+
+        // Multiply with twiddle factors (It is assumed that first twiddle factors are always 1 + 0i)
+        ComplexD2 w = broadcast128(step_info.twiddle_factors + 4*i + 2);
+        ComplexD2 temp = mul_w<forward>(w, x_in_2);
+
+        // Do the calculations
+        ComplexD2 x_2 = change_sign(const2, temp);
+        ComplexD2 x_out = x_in_1 + x_2;
+
+        // Save the output
+        store(x_out, data_out + 4*i);
+    }
+
+    /*
+    for (size_t i = 0; i < repeats; i++)
+    {
+        // It is assumed that first twiddle factors are always (1 + 0i)
+        double x_in1_r = data_in[4*i + 0];
+        double x_in1_i = data_in[4*i + 1];
+        double x_in2_r = data_in[4*i + 2];
+        double x_in2_i = data_in[4*i + 3];
+
+        double w_r = step_info.twiddle_factors[2*(i*2 + 1) + 0];
+        double w_i = step_info.twiddle_factors[2*(i*2 + 1) + 1];
+
+        double x2_r, x2_i;
+        if (forward == 1)
+        {
+            x2_r = w_r*x_in2_r - w_i*x_in2_i;
+            x2_i = w_i*x_in2_r + w_r*x_in2_i;
+        } else
+        {
+            x2_r =  w_r*x_in2_r + w_i*x_in2_i;
+            x2_i = -w_i*x_in2_r + w_r*x_in2_i;
+        }
+
+        data_out[4*i + 0] = x_in1_r + x2_r;
+        data_out[4*i + 1] = x_in1_i + x2_i;
+        data_out[4*i + 2] = x_in1_r - x2_r;
+        data_out[4*i + 3] = x_in1_i - x2_i;
+    }
+    */
+}
+
+template<bool forward> void fft_1d_one_level_twiddle_radix2_stridemod2_0_DIF(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    assert (step_info.radix == 2);
+    assert (step_info.stride%2 == 0);
+
+    size_t stride = step_info.stride;
+    size_t repeats = step_info.repeats;
+
+    for (size_t i = 0; i < repeats; i++)
+    {
+        ComplexD2 w = broadcast128(step_info.twiddle_factors + 4*i + 2);
+
+        for (size_t k = 0; k < stride; k+=2)
+        {
+            // It is assumed that first twiddle factors are always (1 + 0i)
+            // Load values
+            ComplexD2 x_in_1 = load(data_in + 4*i*stride + 2*k);
+            ComplexD2 x_in_2 = load(data_in + 4*i*stride + 2*stride + 2*k);
+
+            // Perform the calculations
+            ComplexD2 x_2 = mul_w<forward>(w, x_in_2);
+            ComplexD2 x_out_1 = x_in_1 + x_2;
+            ComplexD2 x_out_2 = x_in_1 - x_2;
+
+            // Save the output
+            store(x_out_1, data_out + 4*i*stride + 2*k);
+            store(x_out_2, data_out + 4*i*stride + 2*stride + 2*k);
+        }
+
+
+        /*
+        double w_r = step_info.twiddle_factors[4*i + 2 + 0];
+        double w_i = step_info.twiddle_factors[4*i + 2 + 1];
+
+        for (size_t k = 0; k < stride; k++)
+        {
+            // It is assumed that first twiddle factors are always (1 + 0i)
+            double x_in1_r = data_in[4*i*stride + 2*k + 0];
+            double x_in1_i = data_in[4*i*stride + 2*k + 1];
+            double x_in2_r = data_in[4*i*stride + 2*stride + 2*k + 0];
+            double x_in2_i = data_in[4*i*stride + 2*stride + 2*k + 1];
+
+            double x2_r, x2_i;
+            if (forward == 1)
+            {
+                x2_r = w_r*x_in2_r - w_i*x_in2_i;
+                x2_i = w_i*x_in2_r + w_r*x_in2_i;
+            } else
+            {
+                x2_r =  w_r*x_in2_r + w_i*x_in2_i;
+                x2_i = -w_i*x_in2_r + w_r*x_in2_i;
+            }
+
+            data_out[4*i*stride + 2*k + 0]              = x_in1_r + x2_r;
+            data_out[4*i*stride + 2*k + 1]              = x_in1_i + x2_i;
+            data_out[4*i*stride + 2*stride + 2*k + 0]   = x_in1_r - x2_r;
+            data_out[4*i*stride + 2*stride + 2*k + 1]   = x_in1_i - x2_i;
+        }
+        */
+    }
+}
+
 // TODO it might be possible to make this also compatible with stride%2 == 1, but is it ever needed (radix 2 and 4 are always done first)?
 template<bool forward> void fft_1d_one_level_twiddle_radix2_stridemod2_0(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     assert (step_info.radix == 2);
-    assert (step_info.stride%2 == 0);
+    assert (step_info.stride%2 == 0);    
 
     size_t stride = step_info.stride;
     size_t repeats = step_info.repeats;
@@ -378,7 +555,7 @@ template<bool forward> void fft_1d_one_level_twiddle_radix2_stridemod2_0(const d
             data_out[4*i*stride + 2*k + 0]              = x_in1_r + x2_r;
             data_out[4*i*stride + 2*k + 1]              = x_in1_i + x2_i;
             data_out[4*i*stride + 2*stride + 2*k + 0]   = x_in1_r - x2_r;
-            data_out[4*i*stride + 2*stride + 2*k + 1]   = x_in2_i - x2_i;
+            data_out[4*i*stride + 2*stride + 2*k + 1]   = x_in1_i - x2_i;
         }
         */
     }
@@ -388,22 +565,25 @@ template<bool forward> void set_fft_1d_one_level(StepInfoD &step_info)
 {
     size_t radix = step_info.radix;
     size_t stride = step_info.stride;
+    size_t repeats = step_info.repeats;
 
     if (radix == 2)
     {
         if (stride == 1)
-            step_info.step_function = fft_1d_one_level_radix2_stride1<forward>;
+            step_info.step_function = fft_1d_one_level_radix2_stride1<forward>;  // Needed for first step in DIT
+        else if (repeats == 1)
+            step_info.step_function = fft_1d_one_level_radix2_repeats1<forward>;  //Needed for first step in DIF
         else
-            step_info.step_function = fft_1d_one_level<double,2,1,forward>;  // Not needed unless DIF is used?
+            step_info.step_function = fft_1d_one_level<double,2,1,forward>; // TODO should be error
     }
     if (radix == 3)
         step_info.step_function = fft_1d_one_level<double,3,1,forward>;
     if (radix == 4)
     {
         if (stride == 1)
-            step_info.step_function = fft_1d_one_level_radix4_stride1<forward>;
+            step_info.step_function = fft_1d_one_level_radix4_stride1<forward>; // Needed for first step in DIT
         else
-            step_info.step_function = fft_1d_one_level<double,4,1,forward>; // Not needed unless DIF is used?
+            step_info.step_function = fft_1d_one_level<double,4,1,forward>; //Needed for first step in DIF. TODO optimize
     }
     if (radix == 5)
         step_info.step_function = fft_1d_one_level<double,5,1,forward>;
@@ -438,12 +618,39 @@ template<bool forward> void set_fft_1d_one_level_twiddle(StepInfoD &step_info)
         step_info.step_function = fft_1d_one_level_twiddle<double,7,1,forward>;
 }
 
+template<bool forward> void set_fft_1d_one_level_twiddle_DIF(StepInfoD &step_info)
+{
+    size_t radix = step_info.radix;
+    size_t stride = step_info.stride;
+
+    if (radix == 2)
+    {
+        if (stride%2 == 0)
+            step_info.step_function = fft_1d_one_level_twiddle_radix2_stridemod2_0_DIF<forward>;
+        else if (stride == 1)
+            step_info.step_function = fft_1d_one_level_twiddle_radix2_stride1_DIF<forward>; // Needed for the last step in DIF
+        else
+            step_info.step_function = fft_1d_one_level_twiddle_DIF<double,2,1,forward>; // Not ever needed?
+    }
+    if (radix == 3)
+        step_info.step_function = fft_1d_one_level_twiddle_DIF<double,3,1,forward>;
+    if (radix == 4)
+    {
+        // TODO implement faster radix 4 (stridemod4_0 and stride1)
+        step_info.step_function = fft_1d_one_level_twiddle_DIF<double,4,1,forward>;
+    }
+    if (radix == 5)
+        step_info.step_function = fft_1d_one_level_twiddle_DIF<double,5,1,forward>;
+    if (radix == 7)
+        step_info.step_function = fft_1d_one_level_twiddle_DIF<double,7,1,forward>;
+}
+
 void hhfft::HHFFT_1D_AVX_set_function(StepInfoD &step_info)
 {
     step_info.step_function = nullptr;
 
     if (step_info.reorder_table != nullptr)
-    {        
+    {
         if (step_info.forward)
             step_info.step_function = fft_1d_reorder<double,1,true>;
         else
@@ -469,9 +676,52 @@ void hhfft::HHFFT_1D_AVX_set_function(StepInfoD &step_info)
     {
         throw(std::runtime_error("HHFFT error: Unable to set a function!"));
     }
-
-    //std::cout << "radix = " << radix << ", stride = " << stride << std::endl;
 }
+
+void hhfft::HHFFT_1D_AVX_set_function_DIF(StepInfoD &step_info)
+{
+    step_info.step_function = nullptr;
+
+    if (step_info.reorder_table != nullptr)
+    {
+        if (step_info.data_type_in == step_info.data_type_out)
+        {
+            // In-place
+            if (step_info.forward)
+                step_info.step_function = fft_1d_reorder_in_place<double,1,true>;
+            else
+                step_info.step_function = fft_1d_reorder_in_place<double,1,false>;
+        } else
+        {
+            // Out-of-place
+            if (step_info.forward)
+                step_info.step_function = fft_1d_reorder<double,1,true>;
+            else
+                step_info.step_function = fft_1d_reorder<double,1,false>;
+        }
+        return;
+    }
+
+    if (step_info.twiddle_factors == nullptr)
+    {
+        if (step_info.forward)
+            set_fft_1d_one_level<true>(step_info);
+        else
+            set_fft_1d_one_level<false>(step_info);
+    } else
+    {
+        if (step_info.forward)
+            set_fft_1d_one_level_twiddle_DIF<true>(step_info);
+        else
+            set_fft_1d_one_level_twiddle_DIF<false>(step_info);
+    }
+
+    if (step_info.step_function == nullptr)
+    {
+        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+    }
+}
+
 
 
 

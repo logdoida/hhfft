@@ -20,6 +20,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
+#include <assert.h>
 
 #include "architecture.h"
 #include "hhfft_1d_d.h"
@@ -28,6 +29,9 @@
 
 using namespace hhfft;
 using hhfft::HHFFT_1D_D;
+
+// Comment out if DIT should be used
+#define USE_DIF
 
 std::vector<size_t> index_to_n(size_t i, const std::vector<size_t> &N)
 {
@@ -73,8 +77,73 @@ std::vector<uint32_t> calculate_reorder_table(const std::vector<size_t> &N)
     return reorder;
 }
 
-// Calculates twiddle factors for a given level
-AlignedVector<double> calculate_twiddle_factors(size_t level, const std::vector<size_t> &N)
+std::vector<uint32_t> calculate_reorder_table_in_place(const std::vector<uint32_t> &reorder)
+{
+    // Reordering by swapping
+    size_t N_tot = reorder.size();
+    std::vector<uint32_t> reorder_in_place;
+
+    std::vector<uint32_t> indices(N_tot); // Current status of the indices
+    for (size_t i = 0; i < N_tot; i++)
+    {
+        indices[i] = i;
+    }
+
+    // TODO this could be done more efficiently with the help of another table pointing where each index can be found
+    for (size_t i = 1; i < N_tot - 1; i++)
+    {
+        size_t i2 = std::find(indices.begin(), indices.end(), reorder[i]) - indices.begin();
+        reorder_in_place.push_back(i2);
+        std::swap(indices[i],indices[i2]);
+    }
+
+    // Last ones can be removed if there is no actual swapping needed
+    size_t n_remove = 0;
+    size_t n = reorder_in_place.size();
+    while (n_remove < n && reorder_in_place[n - n_remove - 1] == n - n_remove)
+        n_remove++;
+
+    reorder_in_place.resize(n-n_remove);
+
+    return reorder_in_place;
+
+    // Reordering in a "cycle"
+    /*
+    size_t N_tot = reorder.size();
+    std::vector<uint32_t> reorder_in_place;
+    std::vector<bool> covered(N_tot, false); // True for all indices that have been reordered
+
+    size_t ind = 0;
+    while (ind < N_tot)
+    {
+       // Skip indices that have already been covered and that do not need any reordering
+       if (!covered[ind] && reorder[ind] != ind)
+       {
+           size_t ind1 = ind;
+           reorder_in_place.push_back(0);  // First place is used as a temporary variable to store the one that is overwritten
+           do {
+               reorder_in_place.push_back(ind);
+               covered[ind] = true;
+               ind = reorder[ind];
+           } while (ind != ind1);
+       } else
+       {
+           ind++;
+       }
+    }
+
+    // Also the last one is temporary variable
+    if (reorder_in_place.size() > 0)
+    {
+        reorder_in_place.push_back(0);
+    }
+
+    return reorder_in_place;
+    */
+}
+
+// Calculates twiddle factors for a given level for DIT
+AlignedVector<double> calculate_twiddle_factors_DIT(size_t level, const std::vector<size_t> &N)
 {
     size_t n_dim = N.size();
 
@@ -119,14 +188,49 @@ AlignedVector<double> calculate_twiddle_factors(size_t level, const std::vector<
     return w;
 }
 
+// Calculates twiddle factors for a given level for DIF
+AlignedVector<double> calculate_twiddle_factors_DIF(size_t level, const std::vector<size_t> &N)
+{
+    size_t n_dim = N.size();
+
+    AlignedVector<double> w_temp = calculate_twiddle_factors_DIT(level, N);
+
+    // Re-order twiddle factors
+    std::vector<size_t> N_temp(level+1);
+    for(size_t i = 0; i <= level; i++)
+    {
+        N_temp[i] = N[n_dim - i - 1];
+    }
+
+    std::vector<uint32_t> reorder = calculate_reorder_table(N_temp);
+
+    size_t num = reorder.size();
+    assert (2*num == w_temp.size());
+
+    AlignedVector<double> w(2*num);
+    for (size_t i = 0; i < num; i++)
+    {
+        size_t i2 = reorder[i];
+        w[2*i + 0] = w_temp[2*i2 + 0];
+        w[2*i + 1] = w_temp[2*i2 + 1];
+    }
+
+    return w;
+}
+
 // Finds an efficient factorization (not necassery a prime factorization)
 std::vector<size_t> calculate_factorization(size_t n)
 {
     std::vector<size_t> factors;
 
+#ifdef USE_DIF
+    //std::array<size_t, 5> radices = {7, 5, 3, 4, 2}; // DIF
+    std::array<size_t, 5> radices = {7, 5, 3, 2}; // DIF: TESTING use 2 instead of 4
+#else
     // This list is the supported factorizations in order of preference
-    std::array<size_t, 5> radices = {4, 2, 3, 5, 7};
-    //std::array<size_t, 5> radices = {2, 4, 3, 5, 7}; // TESTING use 2 instead of 4
+    //std::array<size_t, 5> radices = {4, 2, 3, 5, 7}; // DIT
+    std::array<size_t, 5> radices = {2, 3, 5, 7}; // DIT: TESTING use 2 instead of 4    
+#endif
 
     while(n > 1)
     {
@@ -148,15 +252,14 @@ std::vector<size_t> calculate_factorization(size_t n)
         }
     }
 
-    // Reverse the order as last radix in the vector is actually used first
-    // NOTE for DIF the order should not be reversed!
+    // Reverse the order as last radix in the vector is actually used first    
     std::reverse(factors.begin(),factors.end());
 
     return factors;
 }
 
 
-void HHFFT_1D_set_function(StepInfoD &step_info)
+void HHFFT_1D_set_function(StepInfoD &step_info, bool DIF)
 {
     // TODO this should be done only once
     hhfft::CPUID_info info = hhfft::get_supported_instructions();
@@ -164,21 +267,42 @@ void HHFFT_1D_set_function(StepInfoD &step_info)
 #ifdef HHFFT_COMPILED_WITH_AVX512F
     if (info.avx512f)
     {
-        // TODO add support for avx512f
-        //HHFFT_1D_AVX512F_set_function(step_info);
-        // return;
+        if (DIF)
+        {
+            // TODO add support for avx512f
+            // HHFFT_1D_AVX512F_set_function_DIF(step_info);
+            // return;
+        } else
+        {
+            // TODO add support for avx512f
+            // HHFFT_1D_AVX512F_set_function(step_info);
+            // return;
+        }
     }
 #endif
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (info.avx)
     {
-        HHFFT_1D_AVX_set_function(step_info);
-        return;
+        if (DIF)
+        {            
+            HHFFT_1D_AVX_set_function_DIF(step_info);
+            return;
+        } else
+        {
+            HHFFT_1D_AVX_set_function(step_info);
+            return;
+        }
     }
 #endif
 
-    HHFFT_1D_Plain_set_function(step_info);
+    if (DIF)
+    {
+        HHFFT_1D_Plain_set_function_DIF(step_info);
+    } else
+    {
+        HHFFT_1D_Plain_set_function(step_info);
+    }
 }
 
 double* HHFFT_1D_D::allocate_memory()
@@ -217,26 +341,82 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
     // First calculate the reorder table
     reorder_table = calculate_reorder_table(N);
 
+    // Then in-place version of the reorder table
+    reorder_table_in_place = calculate_reorder_table_in_place(reorder_table);
+
+    // TESTING print reorder tables
+    //std::cout << "reorder = " << std::endl;
+    //for (auto r: reorder_table)  { std::cout << r << " ";} std::cout << std::endl;
+    //std::cout << "reorder_table_in_place = " << std::endl;
+    //for (auto r: reorder_table_in_place)  { std::cout << r << " ";} std::cout << std::endl;
+
+
     // Calculate twiddle factors
     // NOTE that a portion of these are always one and they could be removed to decrease memory requirements.
     twiddle_factors.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level
     for (size_t i = 1; i < N.size(); i++)
-    {
-        // TODO allocating aligned memory for these could be beneficial
-        AlignedVector<double> w = calculate_twiddle_factors(i, N);
+    {     
+
+#ifdef USE_DIF
+        // DIF
+        AlignedVector<double> w = calculate_twiddle_factors_DIF(i, N);
+#else
+        // DIT
+        AlignedVector<double> w = calculate_twiddle_factors_DIT(i, N);
+#endif
         twiddle_factors.push_back(w);
+
         //print_complex_vector(w.data(), w.size()/2);
     }
 
+#ifdef USE_DIF
+    // DIF
+    // Put first fft step
+    hhfft::StepInfoD step1;
+    step1.radix = N[N.size() - 1];
+    step1.stride = n / step1.radix;
+    step1.repeats = 1;
+    step1.data_type_in = hhfft::StepDataType::data_in;
+    step1.data_type_out = hhfft::StepDataType::data_out;
+    HHFFT_1D_set_function(step1, true);
+    forward_steps.push_back(step1);
 
-    // Put reordering step    
+    // then put rest fft steps combined with twiddle factor
+    for (size_t i = 1; i < N.size(); i++)
+    {
+        hhfft::StepInfoD step;
+        hhfft::StepInfoD &step_prev = forward_steps.back();
+        step.radix = N[N.size() - i - 1];
+        step.stride = step_prev.stride / step.radix;
+        step.repeats = step_prev.repeats * step_prev.radix;
+        step.data_type_in = hhfft::StepDataType::data_out;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        step.twiddle_factors = twiddle_factors[i].data();
+        HHFFT_1D_set_function(step, true);
+        forward_steps.push_back(step);
+    }
+
+    // Last put reordering step (in-place)
+    hhfft::StepInfoD step2;
+    step2.data_type_in = hhfft::StepDataType::data_out;
+    step2.data_type_out = hhfft::StepDataType::data_out;
+    step2.reorder_table = reorder_table_in_place.data();
+    step2.repeats = reorder_table_in_place.size();
+    step2.stride = n;
+    step2.norm_factor = 1.0/(double(n));
+    HHFFT_1D_set_function(step2, true);
+    forward_steps.push_back(step2);
+
+#else
+    // DIT    
+    // Put reordering step
     hhfft::StepInfoD step1;
     step1.data_type_in = hhfft::StepDataType::data_in;
     step1.data_type_out = hhfft::StepDataType::data_out;
     step1.reorder_table = reorder_table.data();
     step1.repeats = reorder_table.size();
     step1.norm_factor = 1.0/(double(n));
-    HHFFT_1D_set_function(step1);
+    HHFFT_1D_set_function(step1, false);
     forward_steps.push_back(step1);
 
     // Put first fft step
@@ -245,8 +425,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
     step2.stride = 1;
     step2.repeats = n / step2.radix;
     step2.data_type_in = hhfft::StepDataType::data_out;
-    step2.data_type_out = hhfft::StepDataType::data_out;    
-    HHFFT_1D_set_function(step2);
+    step2.data_type_out = hhfft::StepDataType::data_out;
+    HHFFT_1D_set_function(step2, false);
     forward_steps.push_back(step2);
 
     // then put rest fft steps combined with twiddle factor
@@ -258,19 +438,25 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;
         step.data_type_in = hhfft::StepDataType::data_out;
-        step.data_type_out = hhfft::StepDataType::data_out;        
+        step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors[i].data();
-        HHFFT_1D_set_function(step);
+        HHFFT_1D_set_function(step, false);
         forward_steps.push_back(step);
     }
+#endif
 
-    // Make the inverse steps. They are otherwise the same, but different version of function is called
+
+    // Make the inverse steps. They are otherwise the same, but different version of function is called    
     for (auto step: forward_steps)
     {
         step.forward = false;
-        HHFFT_1D_set_function(step);
+#ifdef USE_DIF
+        HHFFT_1D_set_function(step,true); // DIF
+#else
+        HHFFT_1D_set_function(step,false); // DIT
+#endif
         inverse_steps.push_back(step);
-    }    
+    }
 }
 
 void HHFFT_1D_D::fft(const double *in, double *out)

@@ -54,12 +54,29 @@ template<bool forward> void set_fft_1d_one_level_twiddle(StepInfoD &step_info)
         step_info.step_function = fft_1d_one_level_twiddle<double,7,0,forward>;
 }
 
+template<bool forward> void set_fft_1d_one_level_twiddle_DIF(StepInfoD &step_info)
+{
+    size_t radix = step_info.radix;
+
+    if (radix == 2)
+        step_info.step_function = fft_1d_one_level_twiddle_DIF<double,2,0,forward>;
+    if (radix == 3)
+        step_info.step_function = fft_1d_one_level_twiddle_DIF<double,3,0,forward>;
+    if (radix == 4)
+        step_info.step_function = fft_1d_one_level_twiddle_DIF<double,4,0,forward>;
+    if (radix == 5)
+        step_info.step_function = fft_1d_one_level_twiddle_DIF<double,5,0,forward>;
+    if (radix == 7)
+        step_info.step_function = fft_1d_one_level_twiddle_DIF<double,7,0,forward>;
+}
+
 void hhfft::HHFFT_1D_Plain_set_function(StepInfoD &step_info)
 {
     step_info.step_function = nullptr;
 
     if (step_info.reorder_table != nullptr)
     {
+        // TODO how to use in-place if algorithm if input actually points to output?
         if (step_info.forward)
             step_info.step_function = fft_1d_reorder<double,0,true>;
         else
@@ -87,5 +104,47 @@ void hhfft::HHFFT_1D_Plain_set_function(StepInfoD &step_info)
     }
 }
 
+void hhfft::HHFFT_1D_Plain_set_function_DIF(StepInfoD &step_info)
+{
+    step_info.step_function = nullptr;
 
+    if (step_info.reorder_table != nullptr)
+    {
+        if (step_info.data_type_in == step_info.data_type_out)
+        {
+            // In-place
+            if (step_info.forward)
+                step_info.step_function = fft_1d_reorder_in_place<double,0,true>;
+            else
+                step_info.step_function = fft_1d_reorder_in_place<double,0,false>;
+        } else
+        {
+            // Out-of-place
+            if (step_info.forward)
+                step_info.step_function = fft_1d_reorder<double,0,true>;
+            else
+                step_info.step_function = fft_1d_reorder<double,0,false>;
+        }
+        return;        
+    }
+
+    if (step_info.twiddle_factors == nullptr)
+    {
+        if (step_info.forward)
+            set_fft_1d_one_level<true>(step_info);
+        else
+            set_fft_1d_one_level<false>(step_info);
+    } else
+    {
+        if (step_info.forward)
+            set_fft_1d_one_level_twiddle_DIF<true>(step_info);
+        else
+            set_fft_1d_one_level_twiddle_DIF<false>(step_info);
+    }
+
+    if (step_info.step_function == nullptr)
+    {
+        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+    }
+}
 
