@@ -224,12 +224,12 @@ std::vector<size_t> calculate_factorization(size_t n)
     std::vector<size_t> factors;
 
 #ifdef USE_DIF
-    //std::array<size_t, 5> radices = {7, 5, 3, 4, 2}; // DIF
-    std::array<size_t, 5> radices = {7, 5, 3, 2}; // DIF: TESTING use 2 instead of 4
+    std::array<size_t, 5> radices = {7, 5, 3, 4, 2}; // DIF
+    //std::array<size_t, 5> radices = {7, 5, 3, 2}; // DIF: TESTING use 2 instead of 4
 #else
     // This list is the supported factorizations in order of preference
-    //std::array<size_t, 5> radices = {4, 2, 3, 5, 7}; // DIT
-    std::array<size_t, 5> radices = {2, 3, 5, 7}; // DIT: TESTING use 2 instead of 4    
+    std::array<size_t, 5> radices = {4, 2, 3, 5, 7}; // DIT
+    //std::array<size_t, 5> radices = {2, 3, 5, 7}; // DIT: TESTING use 2 instead of 4
 #endif
 
     while(n > 1)
@@ -371,15 +371,15 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
 
 #ifdef USE_DIF
     // DIF
-    // Put first fft step
+    // Put first fft step    
     hhfft::StepInfoD step1;
     step1.radix = N[N.size() - 1];
     step1.stride = n / step1.radix;
     step1.repeats = 1;
     step1.data_type_in = hhfft::StepDataType::data_in;
-    step1.data_type_out = hhfft::StepDataType::data_out;
+    step1.data_type_out = hhfft::StepDataType::data_out;    
     HHFFT_1D_set_function(step1, true);
-    forward_steps.push_back(step1);
+    forward_steps.push_back(step1);    
 
     // then put rest fft steps combined with twiddle factor
     for (size_t i = 1; i < N.size(); i++)
@@ -405,10 +405,10 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
     step2.stride = n;
     step2.norm_factor = 1.0/(double(n));
     HHFFT_1D_set_function(step2, true);
-    forward_steps.push_back(step2);
+    forward_steps.push_back(step2);    
 
 #else
-    // DIT    
+    // DIT
     // Put reordering step
     hhfft::StepInfoD step1;
     step1.data_type_in = hhfft::StepDataType::data_in;
@@ -419,7 +419,7 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
     HHFFT_1D_set_function(step1, false);
     forward_steps.push_back(step1);
 
-    // Put first fft step
+    // Put first fft step    
     hhfft::StepInfoD step2;
     step2.radix = N[N.size() - 1];
     step2.stride = 1;

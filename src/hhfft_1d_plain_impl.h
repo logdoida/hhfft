@@ -26,6 +26,7 @@
 #include <array>
 #include <cmath>
 #include <assert.h>
+#include <immintrin.h>
 #include <iostream> // TESTING
 
 namespace hhfft
@@ -43,14 +44,15 @@ template<typename T, size_t arch, bool forward> void fft_1d_reorder(const T *dat
 
     for (size_t i = 0; i < n; i++)
     {
+        size_t i2 = reorder_table[i];
         if (forward)
-        {
-            data_out[2*i+0] = data_in[2*reorder_table[i]+0];
-            data_out[2*i+1] = data_in[2*reorder_table[i]+1];
+        {            
+            data_out[2*i+0] = data_in[2*i2+0];
+            data_out[2*i+1] = data_in[2*i2+1];
         } else
         {
-            data_out[2*i+0] = k*data_in[2*reorder_table[i]+0];
-            data_out[2*i+1] = k*data_in[2*reorder_table[i]+1];
+            data_out[2*i+0] = k*data_in[2*i2+0];
+            data_out[2*i+1] = k*data_in[2*i2+1];
         }
     }
 }
@@ -69,16 +71,27 @@ template<typename T, size_t arch, bool forward> void fft_1d_reorder_in_place(con
         size_t ind1 = i + 1; // First one has been omitted!
         size_t ind2 = reorder_table[i];
 
+        // Swap two doubles at a time
+        __m128d temp1 = _mm_loadu_pd(data_in + 2*ind1);
+        __m128d temp2 = _mm_loadu_pd(data_in + 2*ind2);
+        _mm_storeu_pd(data_out + 2*ind2, temp1);
+        _mm_storeu_pd(data_out + 2*ind1, temp2);
+
+        /*
+        // For some reason compiler is not able to optimse this to use sse2 commands!
         T r_temp = data_in[2*ind1+0];
         T c_temp = data_in[2*ind1+1];
         data_out[2*ind1+0] = data_out[2*ind2+0];
         data_out[2*ind1+1] = data_out[2*ind2+1];
         data_out[2*ind2+0] = r_temp;
         data_out[2*ind2+1] = c_temp;
+        */
     }
 
     // Scaling needs to be done as a separate step as some data might be copied twice or zero times
-    // TODO this is note very efficient. Is there some other way?
+    // TODO this is note very efficient. Scaling could be done at some other step (first/last)
+    // TESTING disabled
+    /*
     size_t n2 = step_info.stride;
     if (!forward)
     {
@@ -90,6 +103,7 @@ template<typename T, size_t arch, bool forward> void fft_1d_reorder_in_place(con
             data_out[i] *= k;
         }
     }
+    */
 }
 
 // In-place reordering "cycle"

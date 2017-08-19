@@ -209,6 +209,7 @@ template<bool forward> void fft_1d_one_level_twiddle_radix4_stridemod2_0(const d
             double x4_r = w4_r*x_in4_r - w4_i*x_in4_i;
             double x4_i = w4_i*x_in4_r + w4_r*x_in4_i;
 
+
             data_out[8*i*stride            + 2*k + 0] = x_in1_r + x2_r + x3_r + x4_r;
             data_out[8*i*stride            + 2*k + 1] = x_in1_i + x2_i + x3_i + x4_i;
             data_out[8*i*stride + 2*stride + 2*k + 0] = x_in1_r + x2_i - x3_r - x4_i;
@@ -220,6 +221,128 @@ template<bool forward> void fft_1d_one_level_twiddle_radix4_stridemod2_0(const d
         }
         */
     }
+}
+
+template<bool forward> void fft_1d_one_level_twiddle_radix4_stridemod2_0_DIF(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    assert (step_info.radix == 4);
+    assert (step_info.stride%2 == 0);
+
+    size_t stride = step_info.stride;
+    size_t repeats = step_info.repeats;
+
+    for (size_t i = 0; i < repeats; i++)
+    {
+        // Load twiddle factors
+        // It is assumed that first twiddle factors are always (1 + 0i)
+        ComplexD2 w_2 = broadcast128(step_info.twiddle_factors + 8*i + 2);
+        ComplexD2 w_3 = broadcast128(step_info.twiddle_factors + 8*i + 4);
+        ComplexD2 w_4 = broadcast128(step_info.twiddle_factors + 8*i + 6);
+
+        for (size_t k = 0; k < stride; k+=2)
+        {
+            // Load values
+            ComplexD2 x_in_1 = load(data_in + 8*i*stride            + 2*k);
+            ComplexD2 x_in_2 = load(data_in + 8*i*stride + 2*stride + 2*k);
+            ComplexD2 x_in_3 = load(data_in + 8*i*stride + 4*stride + 2*k);
+            ComplexD2 x_in_4 = load(data_in + 8*i*stride + 6*stride + 2*k);
+
+            // Multiply with twiddle factors
+            ComplexD2 x_2 = mul_w<forward>(w_2, x_in_2);
+            ComplexD2 x_3 = mul_w<forward>(w_3, x_in_3);
+            ComplexD2 x_4 = mul_w<forward>(w_4, x_in_4);
+
+            // Calculate some temporary variables
+            ComplexD2 t_1 = x_in_1 + x_3;
+            ComplexD2 t_2 = x_in_1 - x_3;
+            ComplexD2 t_3 = x_2 + x_4;
+            ComplexD2 t_4;
+            if (forward)
+                t_4 = mul_i(x_4 - x_2);
+            else
+                t_4 = mul_i(x_2 - x_4);
+
+            // Calculate outputs
+            ComplexD2 x_out_1 = t_1 + t_3;
+            ComplexD2 x_out_2 = t_2 + t_4;
+            ComplexD2 x_out_3 = t_1 - t_3;
+            ComplexD2 x_out_4 = t_2 - t_4;
+
+            // Save the output
+            store(x_out_1, data_out + 8*i*stride            + 2*k);
+            store(x_out_2, data_out + 8*i*stride + 2*stride + 2*k);
+            store(x_out_3, data_out + 8*i*stride + 4*stride + 2*k);
+            store(x_out_4, data_out + 8*i*stride + 6*stride + 2*k);
+        }
+    }
+
+    /*
+    for (size_t i = 0; i < repeats; i++)
+    {
+        double w2_r = step_info.twiddle_factors[8*i + 2 + 0];
+        double w2_i = step_info.twiddle_factors[8*i + 2 + 1];
+        double w3_r = step_info.twiddle_factors[8*i + 4 + 0];
+        double w3_i = step_info.twiddle_factors[8*i + 4 + 1];
+        double w4_r = step_info.twiddle_factors[8*i + 6 + 0];
+        double w4_i = step_info.twiddle_factors[8*i + 6 + 1];
+
+        for (size_t k = 0; k < stride; k++)
+        {
+            double x_in1_r = data_in[8*i*stride            + 2*k + 0];
+            double x_in1_i = data_in[8*i*stride            + 2*k + 1];
+            double x_in2_r = data_in[8*i*stride + 2*stride + 2*k + 0];
+            double x_in2_i = data_in[8*i*stride + 2*stride + 2*k + 1];
+            double x_in3_r = data_in[8*i*stride + 4*stride + 2*k + 0];
+            double x_in3_i = data_in[8*i*stride + 4*stride + 2*k + 1];
+            double x_in4_r = data_in[8*i*stride + 6*stride + 2*k + 0];
+            double x_in4_i = data_in[8*i*stride + 6*stride + 2*k + 1];
+
+            // Multiply with twiddle factors
+            double x2_r, x2_i, x3_r, x3_i, x4_r, x4_i;
+            if (forward)
+            {
+                x2_r = w2_r*x_in2_r - w2_i*x_in2_i;
+                x2_i = w2_i*x_in2_r + w2_r*x_in2_i;
+                x3_r = w3_r*x_in3_r - w3_i*x_in3_i;
+                x3_i = w3_i*x_in3_r + w3_r*x_in3_i;
+                x4_r = w4_r*x_in4_r - w4_i*x_in4_i;
+                x4_i = w4_i*x_in4_r + w4_r*x_in4_i;
+            }
+            else
+            {
+                x2_r =  w2_r*x_in2_r + w2_i*x_in2_i;
+                x2_i = -w2_i*x_in2_r + w2_r*x_in2_i;
+                x3_r =  w3_r*x_in3_r + w3_i*x_in3_i;
+                x3_i = -w3_i*x_in3_r + w3_r*x_in3_i;
+                x4_r =  w4_r*x_in4_r + w4_i*x_in4_i;
+                x4_i = -w4_i*x_in4_r + w4_r*x_in4_i;
+            }
+
+            if (forward)
+            {
+                data_out[8*i*stride            + 2*k + 0] = x_in1_r + x2_r + x3_r + x4_r;
+                data_out[8*i*stride            + 2*k + 1] = x_in1_i + x2_i + x3_i + x4_i;
+                data_out[8*i*stride + 2*stride + 2*k + 0] = x_in1_r + x2_i - x3_r - x4_i;
+                data_out[8*i*stride + 2*stride + 2*k + 1] = x_in1_i - x2_r - x3_i + x4_r;
+                data_out[8*i*stride + 4*stride + 2*k + 0] = x_in1_r - x2_r + x3_r - x4_r;
+                data_out[8*i*stride + 4*stride + 2*k + 1] = x_in1_i - x2_i + x3_i - x4_i;
+                data_out[8*i*stride + 6*stride + 2*k + 0] = x_in1_r - x2_i - x3_r + x4_i;
+                data_out[8*i*stride + 6*stride + 2*k + 1] = x_in1_i + x2_r - x3_i - x4_r;
+
+            } else
+            {
+                data_out[8*i*stride            + 2*k + 0] = x_in1_r + x2_r + x3_r + x4_r;
+                data_out[8*i*stride            + 2*k + 1] = x_in1_i + x2_i + x3_i + x4_i;
+                data_out[8*i*stride + 2*stride + 2*k + 0] = x_in1_r - x2_i - x3_r + x4_i;
+                data_out[8*i*stride + 2*stride + 2*k + 1] = x_in1_i + x2_r - x3_i - x4_r;
+                data_out[8*i*stride + 4*stride + 2*k + 0] = x_in1_r - x2_r + x3_r - x4_r;
+                data_out[8*i*stride + 4*stride + 2*k + 1] = x_in1_i - x2_i + x3_i - x4_i;
+                data_out[8*i*stride + 6*stride + 2*k + 0] = x_in1_r + x2_i - x3_r - x4_i;
+                data_out[8*i*stride + 6*stride + 2*k + 1] = x_in1_i - x2_r - x3_i + x4_r;
+            }
+        }
+    }
+    */
 }
 
 template<bool forward> void fft_1d_one_level_radix4_stride1(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
@@ -242,10 +365,10 @@ template<bool forward> void fft_1d_one_level_radix4_stride1(const double *data_i
         const4 = load(0.0, 0.0, -0.0, 0.0);
     }
 
+    // TODO this could be done a bit more efficiently (see fft_1d_one_level_twiddle_radix4_stride1_DIF)
     for (size_t i = 0; i < repeats; i++)
     {
-        // Load values and change some signs
-        // TODO do sign changing with xor!
+        // Load values and change some signs        
         ComplexD2 x_in_1 = broadcast128(data_in + 8*i + 0);
         ComplexD2 x_in_2 = broadcast128(data_in + 8*i + 2);
         ComplexD2 x_in_3 = broadcast128(data_in + 8*i + 4);
@@ -289,6 +412,121 @@ template<bool forward> void fft_1d_one_level_radix4_stride1(const double *data_i
         data_out[8*i + 5] = x1_i - x2_i + x3_i - x4_i;
         data_out[8*i + 6] = x1_r - x2_i - x3_r + x4_i;
         data_out[8*i + 7] = x1_i + x2_r - x3_i - x4_r;
+    }
+    */
+}
+
+template<bool forward> void fft_1d_one_level_radix4_repeats1(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{    
+    assert (step_info.radix == 4);
+    assert (step_info.repeats == 1);
+    assert (step_info.stride > 1);
+    assert (step_info.twiddle_factors == nullptr);
+
+    const size_t stride = step_info.stride;
+
+    size_t i;
+    for (i = 0; i < (stride-1); i+=2)
+    {
+        ComplexD2 x_in_1 = load(data_in + 2*i);
+        ComplexD2 x_in_2 = load(data_in + 2*i + 2*stride);
+        ComplexD2 x_in_3 = load(data_in + 2*i + 4*stride);
+        ComplexD2 x_in_4 = load(data_in + 2*i + 6*stride);
+
+        // Perform the calculations
+        ComplexD2 t_1 = x_in_1 + x_in_3;
+        ComplexD2 t_2 = x_in_1 - x_in_3;
+        ComplexD2 t_3 = x_in_2 + x_in_4;
+        ComplexD2 t_4;
+        if (forward)
+            t_4 = mul_i(x_in_4 - x_in_2);
+        else
+            t_4 = mul_i(x_in_2 - x_in_4);
+
+        // Calculate outputs
+        ComplexD2 x_out_1 = t_1 + t_3;
+        ComplexD2 x_out_2 = t_2 + t_4;
+        ComplexD2 x_out_3 = t_1 - t_3;
+        ComplexD2 x_out_4 = t_2 - t_4;
+
+        // Save the output
+        store(x_out_1, data_out + 2*i);
+        store(x_out_2, data_out + 2*i + 2*stride);
+        store(x_out_3, data_out + 2*i + 4*stride);
+        store(x_out_4, data_out + 2*i + 6*stride);
+    }
+
+    // If stride is uneven, there is one to go
+    if (i < stride)
+    {
+        double x1_r = data_in[2*i            + 0];
+        double x1_i = data_in[2*i            + 1];
+        double x2_r = data_in[2*i + 2*stride + 0];
+        double x2_i = data_in[2*i + 2*stride + 1];
+        double x3_r = data_in[2*i + 4*stride + 0];
+        double x3_i = data_in[2*i + 4*stride + 1];
+        double x4_r = data_in[2*i + 6*stride + 0];
+        double x4_i = data_in[2*i + 6*stride + 1];
+
+        if (forward)
+        {
+            data_out[2*i            + 0] = x1_r + x2_r + x3_r + x4_r;
+            data_out[2*i            + 1] = x1_i + x2_i + x3_i + x4_i;
+            data_out[2*i + 2*stride + 0] = x1_r + x2_i - x3_r - x4_i;
+            data_out[2*i + 2*stride + 1] = x1_i - x2_r - x3_i + x4_r;
+            data_out[2*i + 4*stride + 0] = x1_r - x2_r + x3_r - x4_r;
+            data_out[2*i + 4*stride + 1] = x1_i - x2_i + x3_i - x4_i;
+            data_out[2*i + 6*stride + 0] = x1_r - x2_i - x3_r + x4_i;
+            data_out[2*i + 6*stride + 1] = x1_i + x2_r - x3_i - x4_r;
+        } else
+        {
+
+            data_out[2*i            + 0] = x1_r + x2_r + x3_r + x4_r;
+            data_out[2*i            + 1] = x1_i + x2_i + x3_i + x4_i;
+            data_out[2*i + 2*stride + 0] = x1_r - x2_i - x3_r + x4_i;
+            data_out[2*i + 2*stride + 1] = x1_i + x2_r - x3_i - x4_r;
+            data_out[2*i + 4*stride + 0] = x1_r - x2_r + x3_r - x4_r;
+            data_out[2*i + 4*stride + 1] = x1_i - x2_i + x3_i - x4_i;
+            data_out[2*i + 6*stride + 0] = x1_r + x2_i - x3_r - x4_i;
+            data_out[2*i + 6*stride + 1] = x1_i - x2_r - x3_i + x4_r;
+        }
+
+    }
+
+    /*
+    for (size_t i = 0; i < stride; i++)
+    {
+        double x1_r = data_in[2*i            + 0];
+        double x1_i = data_in[2*i            + 1];
+        double x2_r = data_in[2*i + 2*stride + 0];
+        double x2_i = data_in[2*i + 2*stride + 1];
+        double x3_r = data_in[2*i + 4*stride + 0];
+        double x3_i = data_in[2*i + 4*stride + 1];
+        double x4_r = data_in[2*i + 6*stride + 0];
+        double x4_i = data_in[2*i + 6*stride + 1];
+
+        if (forward)
+        {
+            data_out[2*i            + 0] = x1_r + x2_r + x3_r + x4_r;
+            data_out[2*i            + 1] = x1_i + x2_i + x3_i + x4_i;
+            data_out[2*i + 2*stride + 0] = x1_r + x2_i - x3_r - x4_i;
+            data_out[2*i + 2*stride + 1] = x1_i - x2_r - x3_i + x4_r;
+            data_out[2*i + 4*stride + 0] = x1_r - x2_r + x3_r - x4_r;
+            data_out[2*i + 4*stride + 1] = x1_i - x2_i + x3_i - x4_i;
+            data_out[2*i + 6*stride + 0] = x1_r - x2_i - x3_r + x4_i;
+            data_out[2*i + 6*stride + 1] = x1_i + x2_r - x3_i - x4_r;
+        } else
+        {
+
+            data_out[2*i            + 0] = x1_r + x2_r + x3_r + x4_r;
+            data_out[2*i            + 1] = x1_i + x2_i + x3_i + x4_i;
+            data_out[2*i + 2*stride + 0] = x1_r - x2_i - x3_r + x4_i;
+            data_out[2*i + 2*stride + 1] = x1_i + x2_r - x3_i - x4_r;
+            data_out[2*i + 4*stride + 0] = x1_r - x2_r + x3_r - x4_r;
+            data_out[2*i + 4*stride + 1] = x1_i - x2_i + x3_i - x4_i;
+            data_out[2*i + 6*stride + 0] = x1_r + x2_i - x3_r - x4_i;
+            data_out[2*i + 6*stride + 1] = x1_i - x2_r - x3_i + x4_r;
+        }
     }
     */
 }
@@ -388,8 +626,173 @@ template<bool forward> void fft_1d_one_level_radix2_stride1(const double *data_i
     */
 }
 
-template<bool forward> void fft_1d_one_level_twiddle_radix2_stride1_DIF(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<bool forward> void fft_1d_one_level_twiddle_radix4_stride1_DIF(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
+    assert (step_info.radix == 4);
+    assert (step_info.stride == 1);
+
+    size_t repeats = step_info.repeats;
+
+    const ComplexD2 const1 = load(0.0, 0.0, 0.0, -0.0);
+    const ComplexD2 const2 = load(0.0, 0.0, -0.0, -0.0);
+    for (size_t i = 0; i < repeats; i++)
+    {
+        // Load data and multiply with twiddle factors
+        ComplexD2 x_in_1 = load(data_in + 8*i + 0);
+        ComplexD2 x_in_2 = load(data_in + 8*i + 4);
+        ComplexD2 w_1 = load(step_info.twiddle_factors + 8*i + 0);
+        ComplexD2 w_2 = load(step_info.twiddle_factors + 8*i + 4);
+        x_in_1 = mul_w<forward>(w_1, x_in_1);
+        x_in_2 = mul_w<forward>(w_2, x_in_2);
+
+        // Calculate some temporary variables
+        ComplexD2 t_1 = x_in_1 + x_in_2;
+        ComplexD2 t_2 = x_in_1 - x_in_2;
+        if (forward)
+        {
+            t_2 = change_sign(t_2, const1);
+        }
+        {
+            t_2 = change_sign(t_2, const2);
+        }
+        t_2 = _mm256_permute_pd(t_2, 2 + 4);
+
+        // Reorder
+        ComplexD2 t_3 = _mm256_permute2f128_pd(t_1, t_2, 0 + 2*16);
+        ComplexD2 t_4 = _mm256_permute2f128_pd(t_1, t_2, 1 + 3*16);
+
+        // Calculate and save the output
+        ComplexD2 x_out_1 = t_3 + t_4;
+        ComplexD2 x_out_2 = t_3 - t_4;
+        store(x_out_1, data_out + 8*i + 0);
+        store(x_out_2, data_out + 8*i + 4);
+    }
+
+
+    /*
+    // TODO this works, but not the most efficient way!
+    const ComplexD2 const2 = load(0.0, 0.0, -0.0, -0.0);
+    ComplexD2 const3, const4;
+    if (forward)
+    {
+        const3 = load(0.0, 0.0, -0.0, 0.0);
+        const4 = load(0.0, 0.0, 0.0, -0.0);
+    } else
+    {
+        const3 = load(0.0, 0.0, 0.0, -0.0);
+        const4 = load(0.0, 0.0, -0.0, 0.0);
+    }
+
+    for (size_t i = 0; i < repeats; i++)
+    {
+        // Load values and change some signs
+        ComplexD2 x_in_1 = broadcast128(data_in + 8*i + 0);
+        ComplexD2 x_in_2 = broadcast128(data_in + 8*i + 2);
+        ComplexD2 x_in_3 = broadcast128(data_in + 8*i + 4);
+        ComplexD2 x_in_4 = broadcast128(data_in + 8*i + 6);
+
+        ComplexD2 w_2 = broadcast128(step_info.twiddle_factors + 8*i + 2);
+        ComplexD2 w_3 = broadcast128(step_info.twiddle_factors + 8*i + 4);
+        ComplexD2 w_4 = broadcast128(step_info.twiddle_factors + 8*i + 6);
+
+        // Multiply with twiddle factors
+        x_in_2 = mul_w<forward>(w_2, x_in_2);
+        x_in_3 = mul_w<forward>(w_3, x_in_3);
+        x_in_4 = mul_w<forward>(w_4, x_in_4);
+
+        x_in_2 = change_sign(x_in_2, const3);
+        x_in_3 = change_sign(x_in_3, const2);
+        x_in_4 = change_sign(x_in_4, const4);
+
+        // Calculate some temporary variables
+        ComplexD2 temp_1 = x_in_1 + x_in_3;
+        ComplexD2 temp_2 = x_in_2 + x_in_4;
+        temp_2 = _mm256_permute_pd(temp_2, 2 + 4);
+
+        // Calculate output
+        ComplexD2 x_out_1 = temp_1 + temp_2;
+        ComplexD2 x_out_2 = temp_1 - temp_2;
+
+        // Save the output
+        store(x_out_1, data_out + 8*i + 0);
+        store(x_out_2, data_out + 8*i + 4);
+    }
+    */
+
+
+    /*
+    for (size_t i = 0; i < repeats; i++)
+    {
+        double w2_r = step_info.twiddle_factors[8*i + 2 + 0];
+        double w2_i = step_info.twiddle_factors[8*i + 2 + 1];
+        double w3_r = step_info.twiddle_factors[8*i + 4 + 0];
+        double w3_i = step_info.twiddle_factors[8*i + 4 + 1];
+        double w4_r = step_info.twiddle_factors[8*i + 6 + 0];
+        double w4_i = step_info.twiddle_factors[8*i + 6 + 1];
+
+        double x_in1_r = data_in[8*i     + 0];
+        double x_in1_i = data_in[8*i     + 1];
+        double x_in2_r = data_in[8*i + 2 + 0];
+        double x_in2_i = data_in[8*i + 2 + 1];
+        double x_in3_r = data_in[8*i + 4 + 0];
+        double x_in3_i = data_in[8*i + 4 + 1];
+        double x_in4_r = data_in[8*i + 6 + 0];
+        double x_in4_i = data_in[8*i + 6 + 1];
+
+        // Multiply with twiddle factors
+        double x2_r, x2_i, x3_r, x3_i, x4_r, x4_i;
+        if (forward)
+        {
+            x2_r = w2_r*x_in2_r - w2_i*x_in2_i;
+            x2_i = w2_i*x_in2_r + w2_r*x_in2_i;
+            x3_r = w3_r*x_in3_r - w3_i*x_in3_i;
+            x3_i = w3_i*x_in3_r + w3_r*x_in3_i;
+            x4_r = w4_r*x_in4_r - w4_i*x_in4_i;
+            x4_i = w4_i*x_in4_r + w4_r*x_in4_i;
+        }
+        else
+        {
+            x2_r =  w2_r*x_in2_r + w2_i*x_in2_i;
+            x2_i = -w2_i*x_in2_r + w2_r*x_in2_i;
+            x3_r =  w3_r*x_in3_r + w3_i*x_in3_i;
+            x3_i = -w3_i*x_in3_r + w3_r*x_in3_i;
+            x4_r =  w4_r*x_in4_r + w4_i*x_in4_i;
+            x4_i = -w4_i*x_in4_r + w4_r*x_in4_i;
+        }
+
+        // Calculate some temporary variables
+        double t1_r = x_in1_r + x3_r;
+        double t1_i = x_in1_i + x3_i;
+        double t2_r = x_in1_r - x3_r;
+        double t2_i = x_in1_i - x3_i;
+        double t3_r = x2_r + x4_r;
+        double t3_i = x2_i + x4_i;
+        double t4_r, t4_i;
+        if (forward)
+        {
+            t4_r = -(x4_i - x2_i);
+            t4_i = (x4_r - x2_r);
+        }
+        else
+        {
+            t4_r = -(x2_i - x4_i);
+            t4_i = (x2_r - x4_r);
+        }
+
+        data_out[8*i     + 0] = t1_r + t3_r;
+        data_out[8*i     + 1] = t1_i + t3_i;
+        data_out[8*i + 2 + 0] = t2_r + t4_r;
+        data_out[8*i + 2 + 1] = t2_i + t4_i;
+        data_out[8*i + 4 + 0] = t1_r - t3_r;
+        data_out[8*i + 4 + 1] = t1_i - t3_i;
+        data_out[8*i + 6 + 0] = t2_r - t4_r;
+        data_out[8*i + 6 + 1] = t2_i - t4_i;
+    }
+    */
+}
+
+template<bool forward> void fft_1d_one_level_twiddle_radix2_stride1_DIF(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{    
     assert (step_info.radix == 2);
     assert (step_info.stride == 1);
 
@@ -397,7 +800,7 @@ template<bool forward> void fft_1d_one_level_twiddle_radix2_stride1_DIF(const do
 
     const ComplexD2 const2 = load(0.0, 0.0, -0.0, -0.0);
 
-    // TODO it might a bit more efficient to load two complex numbers at time (+ one extra if repeats is uneven)
+    // TODO there is probably a more efficient way of doing this. Now all inputs are broadcasted in!
     for (size_t i = 0; i < repeats; i++)
     {
         // Load values
@@ -572,9 +975,9 @@ template<bool forward> void set_fft_1d_one_level(StepInfoD &step_info)
         if (stride == 1)
             step_info.step_function = fft_1d_one_level_radix2_stride1<forward>;  // Needed for first step in DIT
         else if (repeats == 1)
-            step_info.step_function = fft_1d_one_level_radix2_repeats1<forward>;  //Needed for first step in DIF
+            step_info.step_function = fft_1d_one_level_radix2_repeats1<forward>;  //Needed for first step in DIF (TODO it should not be necassery to require repeats to be 1)
         else
-            step_info.step_function = fft_1d_one_level<double,2,1,forward>; // TODO should be error
+            step_info.step_function = nullptr; //step_info.step_function = fft_1d_one_level<double,2,1,forward>; //Not ever needed!?
     }
     if (radix == 3)
         step_info.step_function = fft_1d_one_level<double,3,1,forward>;
@@ -582,8 +985,10 @@ template<bool forward> void set_fft_1d_one_level(StepInfoD &step_info)
     {
         if (stride == 1)
             step_info.step_function = fft_1d_one_level_radix4_stride1<forward>; // Needed for first step in DIT
+        else if (repeats == 1)
+            step_info.step_function = fft_1d_one_level_radix4_repeats1<forward>;  //Needed for first step in DIF (TODO it should not be necassery to require repeats to be 1)
         else
-            step_info.step_function = fft_1d_one_level<double,4,1,forward>; //Needed for first step in DIF. TODO optimize
+            step_info.step_function = nullptr; //step_info.step_function = fft_1d_one_level<double,4,1,forward>; //Not ever needed!?
     }
     if (radix == 5)
         step_info.step_function = fft_1d_one_level<double,5,1,forward>;
@@ -636,8 +1041,12 @@ template<bool forward> void set_fft_1d_one_level_twiddle_DIF(StepInfoD &step_inf
         step_info.step_function = fft_1d_one_level_twiddle_DIF<double,3,1,forward>;
     if (radix == 4)
     {
-        // TODO implement faster radix 4 (stridemod4_0 and stride1)
-        step_info.step_function = fft_1d_one_level_twiddle_DIF<double,4,1,forward>;
+        if (stride%2 == 0)
+            step_info.step_function = fft_1d_one_level_twiddle_radix4_stridemod2_0_DIF<forward>;
+        else if (stride == 1)
+            step_info.step_function = fft_1d_one_level_twiddle_radix4_stride1_DIF<forward>; // Needed for the last step in DIF
+        else
+            step_info.step_function = fft_1d_one_level_twiddle_DIF<double,4,1,forward>; // Not ever needed?
     }
     if (radix == 5)
         step_info.step_function = fft_1d_one_level_twiddle_DIF<double,5,1,forward>;
