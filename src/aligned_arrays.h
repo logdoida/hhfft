@@ -47,6 +47,9 @@ public:
     AlignedVector<T>& operator=(const AlignedVector<T>& other);
     AlignedVector<T>& operator=(AlignedVector<T>&& other);
 
+    // Resize
+    void resize(size_t new_n);
+
     // Assignment
     T& operator[](size_t index);
 

@@ -51,6 +51,22 @@ template<typename T> AlignedVector<T>::AlignedVector(size_t n)
     this->array = (T*) allocate_aligned_memory(n*sizeof(T));
 }
 
+template<typename T> void AlignedVector<T>::resize(size_t new_n)
+{
+    // Allocate new memory
+    T* new_array = (T*) allocate_aligned_memory(new_n*sizeof(T));
+
+    // Copy data from the old array to the new one
+    size_t n_to_copy = std::min(new_n, n);
+    for (size_t i = 0; i < n_to_copy; i++)
+        new_array[i] = this->array[i];
+
+    // Delete the old memory and set pointers
+    free(array);
+    array = new_array;
+    n = new_n;
+}
+
 template<typename T> AlignedVector<T>::~AlignedVector()
 {
     free(array);

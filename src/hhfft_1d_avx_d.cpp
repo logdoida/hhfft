@@ -120,7 +120,7 @@ inline ComplexD2 mul_i(ComplexD2 a)
 }
 
 // For testing
-std::ostream& operator<<(std::ostream& os, const ComplexD2 &x)
+inline std::ostream& operator<<(std::ostream& os, const ComplexD2 &x)
 {
     double v[4];
     store(x, v);
