@@ -28,6 +28,10 @@ namespace hhfft
 // This set pointer to correct fft functions based on radix and stride (DIT version)
 void HHFFT_1D_Plain_real_set_function(StepInfoRealD &step_info);
 
+// DIF version
+void HHFFT_1D_Plain_real_set_function_DIF(StepInfoRealD &step_info);
+
+
 }
 
 #endif // HHFFT_1D_PLAIN_REAL_D_H

@@ -75,8 +75,14 @@ template<typename T> AlignedVector<T>::~AlignedVector()
 template<typename T> AlignedVector<T>::AlignedVector(const AlignedVector<T>& other)
 {
     this->n = other.n;
-    this->array = (T*) allocate_aligned_memory(n*sizeof(T));
-    std::copy(other.array, other.array + n, this->array);
+    if (n == 0)
+    {
+        this->array = nullptr;
+    } else
+    {
+        this->array = (T*) allocate_aligned_memory(n*sizeof(T));
+        std::copy(other.array, other.array + n, this->array);
+    }
 }
 
 template<typename T> AlignedVector<T>::AlignedVector(AlignedVector<T>&& other)
@@ -91,8 +97,14 @@ template<typename T> AlignedVector<T>::AlignedVector(AlignedVector<T>&& other)
 template<typename T> AlignedVector<T>& AlignedVector<T>::operator=(const AlignedVector<T>& other)
 {
     this->n = other.n;
-    this->array = (T*) allocate_aligned_memory(n*sizeof(T));
-    std::copy(other.array, other.array + n, this->array);
+    if (n == 0)
+    {
+        this->array = nullptr;
+    } else
+    {
+        this->array = (T*) allocate_aligned_memory(n*sizeof(T));
+        std::copy(other.array, other.array + n, this->array);
+    }
 
     return *this;
 }

@@ -32,8 +32,7 @@ typedef __m256d RealD4;
 
 // Read four doubles
 inline RealD4 load(double r1, double r2, double r3, double r4)
-{
-    //return _mm256_set_pd(i2,r2,i1,r1); // Why this order?
+{    
     return _mm256_setr_pd(r1,r2,r3,r4); // Reversed. Why this order?
 }
 inline const RealD4 load(const double *v)
@@ -96,9 +95,7 @@ inline std::ostream& operator<<(std::ostream& os, const RealD4 &x)
     return os;
 }
 
-
-// TODO it might be a good idea to combine reordering (out-of-place) step with the first step
-void dht_1d_one_level_radix2_stride1(const double *data_in, double *data_out, hhfft::StepInfoReal<double> &step_info)
+template<bool reorder> void dht_1d_one_level_radix2_stride1(const double *data_in, double *data_out, hhfft::StepInfoReal<double> &step_info)
 {
     //std::cout << "dht_1d_one_level_radix2_stride1" << std::endl;
 
@@ -109,43 +106,48 @@ void dht_1d_one_level_radix2_stride1(const double *data_in, double *data_out, hh
 
     RealD4 const1 = load(0.0, -0.0, 0.0, -0.0);
 
-    size_t i = 0;
-    for (; i < repeats-1; i+=2)
+    if (reorder)
     {
-        RealD4 x_in = load(data_in + 2*i); // = [x0 x1 x2 x3]
-        RealD4 temp = change_sign(x_in, const1); // = [x0 -x1 x2 -x3]
+        uint32_t *reorder_table = step_info.reorder_table;
+        for (size_t i = 0; i < repeats; i++)
+        {
+            size_t i0 = reorder_table[2*i + 0];
+            size_t i1 = reorder_table[2*i + 1];
+            double x_in_0 = data_in[i0];
+            double x_in_1 = data_in[i1];
 
-        RealD4 x_out = _mm256_hadd_pd(x_in, temp); // = [x0 + x1, x0 - x1, x2 + x3, x2 - x3]
-        store(x_out, data_out + 2*i);
-    }
-
-    // There might be uneven number of repeats, so the last one is handeld separately
-    if (i < repeats)
+            data_out[2*i + 0] = x_in_0 + x_in_1;
+            data_out[2*i + 1] = x_in_0 - x_in_1;
+        }
+    } else
     {
-        double x_in_1 = data_in[2*i + 0];
-        double x_in_2 = data_in[2*i + 1];
 
-        double x_out_1 = x_in_1 + x_in_2;
-        double x_out_2 = x_in_1 - x_in_2;
+        size_t i = 0;
+        for (; i < repeats-1; i+=2)
+        {
+            RealD4 x_in = load(data_in + 2*i); // = [x0 x1 x2 x3]
+            RealD4 temp = change_sign(x_in, const1); // = [x0 -x1 x2 -x3]
 
-        data_out[2*i + 0] = x_out_1;
-        data_out[2*i + 1] = x_out_2;
+            RealD4 x_out = _mm256_hadd_pd(x_in, temp); // = [x0 + x1, x0 - x1, x2 + x3, x2 - x3]
+            store(x_out, data_out + 2*i);
+        }
+
+        // There might be uneven number of repeats, so the last one is handeld separately
+        if (i < repeats)
+        {
+            double x_in_1 = data_in[2*i + 0];
+            double x_in_2 = data_in[2*i + 1];
+
+            double x_out_1 = x_in_1 + x_in_2;
+            double x_out_2 = x_in_1 - x_in_2;
+
+            data_out[2*i + 0] = x_out_1;
+            data_out[2*i + 1] = x_out_2;
+        }
     }
-
-    /*
-    for (size_t i = 0; i < repeats; i++)
-    {
-        double x_in_0 = data_in[2*i + 0];
-        double x_in_1 = data_in[2*i + 1];
-
-        data_out[2*i + 0] = x_in_0 + x_in_1;
-        data_out[2*i + 1] = x_in_0 - x_in_1;
-    }
-    */
 }
 
-// TODO it might be a good idea to combine reordering (out-of-place) step with the first step
-void dht_1d_one_level_radix4_stride1(const double *data_in, double *data_out, hhfft::StepInfoReal<double> &step_info)
+template<bool reorder> void dht_1d_one_level_radix4_stride1(const double *data_in, double *data_out, hhfft::StepInfoReal<double> &step_info)
 {
     //std::cout << "dht_1d_one_level_radix4_stride1" << std::endl;
 
@@ -153,21 +155,31 @@ void dht_1d_one_level_radix4_stride1(const double *data_in, double *data_out, hh
     assert (step_info.stride == 1);
 
     size_t repeats = step_info.repeats;
+    uint32_t *reorder_table = step_info.reorder_table;
 
     RealD4 const1 = load(0.0, 0.0, 0.0, -0.0);
-    RealD4 const2 = load(-0.0, -0.0, -0.0, 0.0);
+    RealD4 const2 = load(0.0, -0.0, -0.0, 0.0);
 
     for (size_t i = 0; i < repeats; i++)
     {
-        // TODO is there a more efficient way of doing this?
-        RealD4 x_in_0 = broadcast128(data_in + 4*i + 0); // = [x0 x1 x0 x1]
-        RealD4 x_in_1 = broadcast128(data_in + 4*i + 2); // = [x2 x3 x2 x3]
-        RealD4 temp_0 = change_sign(x_in_0, const1); // = [x0 x1 x0 -x1]
-        RealD4 temp_1 = change_sign(x_in_1, const1); // = [x2 x3 x2 -x3]
-        RealD4 temp_2 = change_sign(x_in_1, const2); // = [-x2 -x3 -x2 x3]
-        RealD4 temp_3 = _mm256_hadd_pd(temp_0,temp_0); // [x0 + x1, x0 + x1, x0 - x1, x0 -x1]
-        RealD4 temp_4 = _mm256_hadd_pd(temp_1,temp_2); // [x2 + x3, -x2 - x3, x2 - x3, -x2 +x3]
-        RealD4 x_out = temp_3 + temp_4;
+        RealD4 x_in;
+        if (reorder)
+        {
+            size_t i0 = reorder_table[4*i + 0];
+            size_t i1 = reorder_table[4*i + 1];
+            size_t i2 = reorder_table[4*i + 2];
+            size_t i3 = reorder_table[4*i + 3];
+            x_in = load(data_in[i0], data_in[i1], data_in[i2], data_in[i3]);
+        } else
+        {
+            x_in = load(data_in + 4*i);                         // = [x0 x1 x2 x3]
+        }
+        RealD4 x_in_perm = _mm256_permute2f128_pd(x_in,x_in,1); // = [x2 x3 x0 x1]
+        x_in = change_sign(x_in, const1);                       // = [x0 x1 x2 -x3]
+        x_in_perm = change_sign(x_in_perm, const1);             // = [x2 x3 x0 -x1]
+        RealD4 temp_0 = _mm256_hadd_pd(x_in,x_in_perm);         // [x0 + x1,  x2 + x3,  x2 - x3, x0 -x1]
+        RealD4 temp_1 = change_sign(temp_0, const2);            // [x0 + x1, -x2 - x3, -x2 + x3, x0 -x1]
+        RealD4 x_out = _mm256_hadd_pd(temp_0, temp_1);
         store(x_out, data_out + 4*i);
     }
 
@@ -605,7 +617,7 @@ void dht_1d_one_level_twiddle_radix2_stridemod8_0(const double *data_in, double 
 }
 
 
-template<bool forward> void set_dht_1d_one_level(StepInfoRealD &step_info)
+template<bool forward, bool reorder> inline void set_dht_1d_one_level(StepInfoRealD &step_info)
 {
     size_t radix = step_info.radix;
     size_t stride = step_info.stride;    
@@ -613,54 +625,27 @@ template<bool forward> void set_dht_1d_one_level(StepInfoRealD &step_info)
     if (radix == 2)
     {
         if (stride == 1)
-            step_info.step_function = dht_1d_one_level_radix2_stride1;  // Needed for first step when radix = 2
+            step_info.step_function = dht_1d_one_level_radix2_stride1<reorder>;  // Needed for first step when radix = 2
         else
             step_info.step_function = nullptr; //step_info.step_function = dht_1d_one_level<double,2,1>; //Should not be ever needed
     }
     if (radix == 3)
-        step_info.step_function = dht_1d_one_level<double,3,1>;
+        step_info.step_function = dht_1d_one_level<double,3,1,reorder>;
     if (radix == 4)
     {
         if (stride == 1)
-            step_info.step_function = dht_1d_one_level_radix4_stride1;  // Needed for first step when radix = 2
+            step_info.step_function = dht_1d_one_level_radix4_stride1<reorder>;  // Needed for first step when radix = 2
         else
             step_info.step_function = nullptr; //step_info.step_function = dht_1d_one_level<double,4,1>; //Should not be ever needed
 
     }
     if (radix == 5)
-        step_info.step_function = dht_1d_one_level<double,5,1>;
+        step_info.step_function = dht_1d_one_level<double,5,1,reorder>;
     if (radix == 7)
-        step_info.step_function = dht_1d_one_level<double,7,1>;
-
-    /*
-    if (radix == 2)
-    {
-        if (stride == 1)
-            step_info.step_function = fft_1d_one_level_radix2_stride1<forward>;  // Needed for first step in DIT
-        else if (repeats == 1)
-            step_info.step_function = fft_1d_one_level_radix2_repeats1<forward>;  //Needed for first step in DIF (TODO it should not be necassery to require repeats to be 1)
-        else
-            step_info.step_function = nullptr; //step_info.step_function = fft_1d_one_level<double,2,1,forward>; //Not ever needed!?
-    }
-    if (radix == 3)
-        step_info.step_function = fft_1d_one_level<double,3,1,forward>;
-    if (radix == 4)
-    {
-        if (stride == 1)
-            step_info.step_function = fft_1d_one_level_radix4_stride1<forward>; // Needed for first step in DIT
-        else if (repeats == 1)
-            step_info.step_function = fft_1d_one_level_radix4_repeats1<forward>;  //Needed for first step in DIF (TODO it should not be necassery to require repeats to be 1)
-        else
-            step_info.step_function = nullptr; //step_info.step_function = fft_1d_one_level<double,4,1,forward>; //Not ever needed!?
-    }
-    if (radix == 5)
-        step_info.step_function = fft_1d_one_level<double,5,1,forward>;
-    if (radix == 7)
-        step_info.step_function = fft_1d_one_level<double,7,1,forward>;
-        */
+        step_info.step_function = dht_1d_one_level<double,7,1,reorder>;
 }
 
-template<bool forward> void set_dht_1d_one_level_twiddle(StepInfoRealD &step_info)
+template<bool forward> inline void set_dht_1d_one_level_twiddle(StepInfoRealD &step_info)
 {
     size_t radix = step_info.radix;
     size_t stride = step_info.stride;
@@ -690,52 +675,46 @@ template<bool forward> void set_dht_1d_one_level_twiddle(StepInfoRealD &step_inf
     if (radix == 5)
         step_info.step_function = dht_1d_one_level_twiddle<double,5,1>;
     if (radix == 7)
-        step_info.step_function = dht_1d_one_level_twiddle<double,7,1>;
-
-    /*
-    if (radix == 2)
-    {
-        if (stride%2 == 0)
-            step_info.step_function = fft_1d_one_level_twiddle_radix2_stridemod2_0<forward>;
-        else
-            step_info.step_function = fft_1d_one_level_twiddle<double,2,1,forward>; // Not ever needed if 2 and 4 radices are always done first
-    }
-    if (radix == 3)
-        step_info.step_function = fft_1d_one_level_twiddle<double,3,1,forward>;
-    if (radix == 4)
-    {
-        if (stride%2 == 0)
-            step_info.step_function = fft_1d_one_level_twiddle_radix4_stridemod2_0<forward>;
-        else
-            step_info.step_function = fft_1d_one_level_twiddle<double,4,1,forward>; // Not ever needed if 2 and 4 radices are always done first
-    }
-    if (radix == 5)
-        step_info.step_function = fft_1d_one_level_twiddle<double,5,1,forward>;
-    if (radix == 7)
-        step_info.step_function = fft_1d_one_level_twiddle<double,7,1,forward>;
-        */
+        step_info.step_function = dht_1d_one_level_twiddle<double,7,1>;   
 }
 
 void hhfft::HHFFT_1D_AVX_real_set_function(StepInfoRealD &step_info)
 {
     step_info.step_function = nullptr;
 
-    if (step_info.reorder_table != nullptr)
+    // If reordering is done as a separate step
+    if (step_info.reorder_table != nullptr && step_info.radix == 0)
     {
         // TODO how to use in-place if algorithm if input actually points to output?
         if (step_info.forward)
-            step_info.step_function = dht_1d_reorder<double,0,true>;
+            step_info.step_function = dht_1d_reorder<double,1,true>;
         else
-            step_info.step_function = dht_1d_reorder<double,0,false>;
+            step_info.step_function = dht_1d_reorder<double,1,false>;
+        return;
+    }
+
+    // A dht to fft conversion step
+    if (step_info.stride == 0 && step_info.radix == 1)
+    {
+        step_info.step_function = dht_1d_to_fft<double,1>;
         return;
     }
 
     if (step_info.cos_factors == nullptr)
     {
-        if (step_info.forward)
-            set_dht_1d_one_level<true>(step_info);
-        else
-            set_dht_1d_one_level<false>(step_info);
+        if (step_info.reorder_table != nullptr)
+        {
+            if (step_info.forward)
+                set_dht_1d_one_level<true,true>(step_info);
+            else
+                set_dht_1d_one_level<false,true>(step_info);
+        } else
+        {
+            if (step_info.forward)
+                set_dht_1d_one_level<true,false>(step_info);
+            else
+                set_dht_1d_one_level<false,false>(step_info);
+        }
     } else
     {
         if (step_info.forward)
