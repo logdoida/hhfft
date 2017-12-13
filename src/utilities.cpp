@@ -19,6 +19,83 @@
 
 #include "utilities.h"
 #include <algorithm>
+#include <assert.h>
+
+// Calculates twiddle factors for a given level for DIT
+hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, const std::vector<size_t> &N)
+{
+    size_t n_dim = N.size();
+
+    // calculate the number of twiddle factors on this level
+    size_t num = 1;
+    for(size_t i = 0; i <= level; i++)
+    {
+        num = num*N[n_dim - i - 1];
+    }
+    hhfft::AlignedVector<double> w(num*2);
+
+    // calculate a vector that contains [1 N1 N1*N2 N1*N2*N3...]
+    std::vector<uint32_t> temp1(n_dim+1);
+    temp1[0] = 1;
+    for (size_t i = 1; i < n_dim+1; i++)
+    {
+        temp1[i] = temp1[i-1]*N[i-1];
+    }
+
+    size_t N_tot = temp1.back(); // N1*N2*...
+
+    // calculate a vector that contains [1 N(k) N(k)*N(k-1) N(k)*N(k-1)*N(k-2) ...]
+    std::vector<uint32_t> temp2(n_dim);
+    temp2[0] = 1;
+    for (size_t i = 1; i < n_dim; i++)
+    {
+        temp2[i] = temp2[i-1]*N[n_dim-i];
+    }
+
+    for (size_t i = 0; i < num; i++)
+    {
+        auto n = hhfft::index_to_n(i,N);
+        double ww = 0;
+        for (size_t j = 0; j < level; j++)
+        {
+            ww = ww + n[n_dim-level-1]*temp1[n_dim-level-1]*n[n_dim-j-1]*temp2[j];
+        }
+        w[2*i]   = cos(-2.0*M_PI*ww/N_tot);
+        w[2*i+1] = sin(-2.0*M_PI*ww/N_tot);
+    }
+
+    return w;
+}
+
+// Calculates twiddle factors for a given level for DIF
+hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIF(size_t level, const std::vector<size_t> &N)
+{
+    size_t n_dim = N.size();
+
+    hhfft::AlignedVector<double> w_temp = calculate_twiddle_factors_DIT(level, N);
+
+    // Re-order twiddle factors
+    std::vector<size_t> N_temp(level+1);
+    for(size_t i = 0; i <= level; i++)
+    {
+        N_temp[i] = N[n_dim - i - 1];
+    }
+
+    std::vector<uint32_t> reorder = hhfft::calculate_reorder_table(N_temp);
+
+    size_t num = reorder.size();
+    assert (2*num == w_temp.size());
+
+    hhfft::AlignedVector<double> w(2*num);
+    for (size_t i = 0; i < num; i++)
+    {
+        size_t i2 = reorder[i];
+        w[2*i + 0] = w_temp[2*i2 + 0];
+        w[2*i + 1] = w_temp[2*i2 + 1];
+    }
+
+    return w;
+}
 
 std::vector<size_t> hhfft::index_to_n(size_t i, const std::vector<size_t> &N)
 {

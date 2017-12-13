@@ -22,125 +22,72 @@
 
 using namespace hhfft;
 
-template<bool reorder> inline void set_dht_1d_one_level(StepInfoRealD &step_info)
+inline void set_fft_real_1d_one_level(StepInfoRealD &step_info)
 {
     size_t radix = step_info.radix;
 
     if (radix == 2)
-        step_info.step_function = dht_1d_one_level<double,2,0,reorder>;
+        step_info.step_function = fft_real_1d_one_level<double,2,0>; 
     if (radix == 3)
-        step_info.step_function = dht_1d_one_level<double,3,0,reorder>;
+        step_info.step_function = fft_real_1d_one_level<double,3,0>;
     if (radix == 4)
-        step_info.step_function = dht_1d_one_level<double,4,0,reorder>;
+        step_info.step_function = fft_real_1d_one_level<double,4,0>;
     if (radix == 5)
-        step_info.step_function = dht_1d_one_level<double,5,0,reorder>;
+        step_info.step_function = fft_real_1d_one_level<double,5,0>;
     if (radix == 7)
-        step_info.step_function = dht_1d_one_level<double,7,0,reorder>;
+        step_info.step_function = fft_real_1d_one_level<double,7,0>;
 }
 
-inline void set_dht_1d_one_level_twiddle(StepInfoRealD &step_info)
+inline void set_fft_real_1d_one_level_twiddle(StepInfoRealD &step_info)
 {
     size_t radix = step_info.radix;
+    size_t stride = step_info.stride;
 
-    if (radix == 2)
-        step_info.step_function = dht_1d_one_level_twiddle<double,2,0>;
-    if (radix == 3)
-        step_info.step_function = dht_1d_one_level_twiddle<double,3,0>;
-    if (radix == 4)
-        step_info.step_function = dht_1d_one_level_twiddle<double,4,0>;
-    if (radix == 5)
-        step_info.step_function = dht_1d_one_level_twiddle<double,5,0>;
-    if (radix == 7)
-        step_info.step_function = dht_1d_one_level_twiddle<double,7,0>;
-}
-
-inline void set_dht_1d_one_level_DIF(StepInfoRealD &step_info)
-{
-    size_t radix = step_info.radix;
-
-    if (radix == 2)
-        step_info.step_function = dht_1d_one_level_DIF<double,2,0>;
-    if (radix == 3)
-        step_info.step_function = dht_1d_one_level_DIF<double,3,0>;
-    if (radix == 4)
-        step_info.step_function = dht_1d_one_level_DIF<double,4,0>;
-    if (radix == 5)
-        step_info.step_function = dht_1d_one_level_DIF<double,5,0>;
-    if (radix == 7)
-        step_info.step_function = dht_1d_one_level_DIF<double,7,0>;
-}
-
-inline void set_dht_1d_one_level_twiddle_DIF(StepInfoRealD &step_info)
-{
-    size_t radix = step_info.radix;
-
-    if (radix == 2)
-        step_info.step_function = dht_1d_one_level_twiddle_DIF<double,2,0>;
-    if (radix == 3)
-        step_info.step_function = dht_1d_one_level_twiddle_DIF<double,3,0>;
-    if (radix == 4)
-        step_info.step_function = dht_1d_one_level_twiddle_DIF<double,4,0>;
-    if (radix == 5)
-        step_info.step_function = dht_1d_one_level_twiddle_DIF<double,5,0>;
-    if (radix == 7)
-        step_info.step_function = dht_1d_one_level_twiddle_DIF<double,7,0>;
-}
-
-
-void hhfft::HHFFT_1D_Plain_real_set_function_DIF(StepInfoRealD &step_info)
-{
-    step_info.step_function = nullptr;
-
-    if (step_info.reorder_table != nullptr)
+    if (stride%2 == 0)
     {
-        if (step_info.forward)
-            step_info.step_function = dht_1d_reorder_dht_to_fft<double,0,true>;
-        else
-            step_info.step_function = dht_1d_reorder_dht_to_fft<double,0,false>;
-        return;
-    }
-
-    if (step_info.cos_factors == nullptr)
-    {
-        set_dht_1d_one_level_DIF(step_info);
+        if (radix == 2)
+            step_info.step_function = fft_real_1d_one_level_stride_even<double,2,0>;
+        if (radix == 3)
+            step_info.step_function = fft_real_1d_one_level_stride_even<double,3,0>;
+        if (radix == 4)
+            step_info.step_function = fft_real_1d_one_level_stride_even<double,4,0>;
+        if (radix == 5)
+            step_info.step_function = fft_real_1d_one_level_stride_even<double,5,0>;
+        if (radix == 7)
+            step_info.step_function = fft_real_1d_one_level_stride_even<double,7,0>;
     } else
     {
-        set_dht_1d_one_level_twiddle_DIF(step_info);
+        // TODO stride odd
     }
-
-    if (step_info.step_function == nullptr)
-    {
-        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
-    }
-
 }
+
 
 void hhfft::HHFFT_1D_Plain_real_set_function(StepInfoRealD &step_info)
 {
     step_info.step_function = nullptr;
 
-    if (step_info.reorder_table != nullptr && step_info.radix == 0)
+    if (step_info.reorder_table != nullptr)
     {
         // TODO how to use in-place if algorithm if input actually points to output?
         if (step_info.forward)
-            step_info.step_function = dht_1d_reorder<double,0,true>;
+            step_info.step_function = fft_real_1d_reorder<double,0,true>;
         else
-            step_info.step_function = dht_1d_reorder<double,0,false>;
+            step_info.step_function = fft_real_1d_reorder<double,0,false>;
         return;
     }
 
-    if (step_info.cos_factors == nullptr)
+    if (step_info.twiddle_factors == nullptr)
     {
-        if (step_info.reorder_table != nullptr)
-        {            
-            set_dht_1d_one_level<true>(step_info);
-        } else
-        {            
-            set_dht_1d_one_level<false>(step_info);
-        }
+        if (step_info.forward)
+            set_fft_real_1d_one_level(step_info);
+        //else
+        //    set_fft_real_1d_one_level<false>(step_info);
     } else
-    {        
-        set_dht_1d_one_level_twiddle(step_info);
+    {
+        if (step_info.forward)
+            set_fft_real_1d_one_level_twiddle(step_info);
+        //else
+        //    set_fft_real_1d_one_level_twiddle<false>(step_info);
     }
 
     if (step_info.step_function == nullptr)

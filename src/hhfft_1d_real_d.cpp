@@ -31,59 +31,14 @@
 using namespace hhfft;
 using hhfft::HHFFT_1D_REAL_D;
 
-// Calculates twiddle factors for a given level for DIT
-void calculate_sin_cos_factors(size_t level, const std::vector<size_t> &N, AlignedVector<double> &c, AlignedVector<double> &s)
-{
-    size_t n_dim = N.size();
-
-    // calculate the number of twiddle factors on this level
-    size_t num = 1;
-    for(size_t i = 0; i <= level; i++)
-    {
-        num = num*N[n_dim - i - 1];
-    }
-    c.resize(num);
-    s.resize(num);
-
-    // calculate a vector that contains [1 N1 N1*N2 N1*N2*N3...]
-    std::vector<uint32_t> temp1(n_dim+1);
-    temp1[0] = 1;
-    for (size_t i = 1; i < n_dim+1; i++)
-    {
-        temp1[i] = temp1[i-1]*N[i-1];
-    }
-
-    size_t N_tot = temp1.back(); // N1*N2*...
-
-    // calculate a vector that contains [1 N(k) N(k)*N(k-1) N(k)*N(k-1)*N(k-2) ...]
-    std::vector<uint32_t> temp2(n_dim);
-    temp2[0] = 1;
-    for (size_t i = 1; i < n_dim; i++)
-    {
-        temp2[i] = temp2[i-1]*N[n_dim-i];
-    }
-
-    for (size_t i = 0; i < num; i++)
-    {
-        auto n = index_to_n(i,N);
-        double ww = 0;
-        for (size_t j = 0; j < level; j++)
-        {
-            ww = ww + n[n_dim-level-1]*temp1[n_dim-level-1]*n[n_dim-j-1]*temp2[j];
-        }
-        c[i] = cos(2.0*M_PI*ww/N_tot);
-        s[i] = sin(2.0*M_PI*ww/N_tot);
-    }
-}
-
 // Finds an efficient factorization (not necassery a prime factorization)
 std::vector<size_t> calculate_factorization_real(size_t n)
 {
     std::vector<size_t> factors;
 
     // This list is the supported factorizations in order of preference
-    std::array<size_t, 5> radices = {4, 2, 3, 5, 7};
-    //std::array<size_t, 5> radices = {2, 3, 5, 7}; // TESTING use 2 instead of 4
+    //std::array<size_t, 5> radices = {4, 2, 3, 5, 7};
+    std::array<size_t, 5> radices = {2, 3, 5, 7}; // TESTING use 2 instead of 4
 
     while(n > 1)
     {
@@ -109,6 +64,44 @@ std::vector<size_t> calculate_factorization_real(size_t n)
     std::reverse(factors.begin(),factors.end());
 
     return factors;
+}
+
+std::vector<std::vector<int8_t>> calculate_directions(const std::vector<size_t> &N_all)
+{
+    size_t n_dim = N_all.size();
+    std::vector<std::vector<int8_t>> directions(n_dim);
+    directions[0] = {1}; // Last one is always going down. Order same as with Ns
+
+    size_t repeats = 1;
+    for (size_t level = 1; level < n_dim; level++)
+    {
+        size_t i = 0;
+        size_t N = N_all[level];  // Start from the first N as it is used in the last step
+        directions[level].resize(N*repeats);
+        for (size_t j = 0; j < repeats; j++)
+        {
+            for (size_t k = 0; k < N; k++)
+            {
+                directions[level][i] =  directions[level - 1][j]^(k&1);
+                i++;
+            }
+        }
+        repeats = repeats*N;
+    }
+
+    /*
+    for (size_t i = 0; i < directions.size(); i++)
+    {
+        std::cout << "directions[" << i << "] = ";
+        for (size_t j = 0; j < directions[i].size(); j++)
+        {
+            std::cout << (int) directions[i][j] << " ";
+        }
+        std::cout << std::endl;
+    }
+    */
+
+    return directions;
 }
 
 
@@ -139,6 +132,7 @@ void HHFFT_1D_Real_set_function(StepInfoRealD &step_info)
 }
 
 
+// TODO it might be that DIF is not even supported for FFT Real...
 void HHFFT_1D_Real_set_function_DIF(StepInfoRealD &step_info)
 {
     // TODO this should be done only once
@@ -162,7 +156,7 @@ void HHFFT_1D_Real_set_function_DIF(StepInfoRealD &step_info)
     }
 #endif
 
-    HHFFT_1D_Plain_real_set_function_DIF(step_info);
+    //HHFFT_1D_Plain_real_set_function_DIF(step_info);
 }
 
 double* HHFFT_1D_REAL_D::allocate_memory()
@@ -198,7 +192,11 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n)
     // TESTING print factorization
     for (size_t i = 0; i < N.size(); i++)  { std::cout << N[N.size() - i - 1] << " ";} std::cout << std::endl;
 
-    // First calculate the reorder table
+    // Calculate direction table
+    directions = calculate_directions(N);
+
+    // Calculate the reorder table
+    // TODO direction should be taken into account when calculating the reorder table when N1 > 2 and inplace reordering is to be supported?
     reorder_table = calculate_reorder_table(N);
 
     // TESTING print reorder tables
@@ -209,74 +207,37 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n)
 
 
     // Calculate twiddle factors
-    // NOTE that a portion of these are always one and they could be removed to decrease memory requirements.
-    cos_factors.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level
-    sin_factors.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level    
+    twiddle_factors.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level
     for (size_t i = 1; i < N.size(); i++)
-    {     
-        AlignedVector<double> c;
-        AlignedVector<double> s;
-        calculate_sin_cos_factors(i, N, c, s);
-        cos_factors.push_back(c);
-        sin_factors.push_back(s);
-
-        //std::cout << "c_" << i << " = "; print_real_vector(c.data(), c.size());
-        //std::cout << "s_" << i << " = "; print_real_vector(s.data(), s.size());
-    }
-
-    // Forward FFT shall use DIF
-    /*
-    // Forward steps need temporary variable (NOTE inverse steps do not?)
-    this->temp_data_size = n;
-    size_t stride = n;
-    size_t repeats = 1;
-
-    // Put in the
-    for (size_t i = 0; i < N.size(); i++)
     {
-        hhfft::StepInfoRealD step;
-        step.radix = N[i];
-        step.stride = stride = stride / step.radix;
-        step.repeats = repeats;
-        step.cos_factors = cos_factors[N.size() - i - 1].data();
-        step.sin_factors = sin_factors[N.size() - i - 1].data();
-        step.data_type_in = hhfft::StepDataType::temp_data;
-        step.data_type_out = hhfft::StepDataType::temp_data;
-        HHFFT_1D_Real_set_function_DIF(step);
-        forward_steps.push_back(step);
-        repeats = repeats * step.radix;
+        // DIT
+        AlignedVector<double> w = calculate_twiddle_factors_DIT(i, N);
+        twiddle_factors.push_back(w);
+        //print_complex_vector(w.data(), w.size()/2);
     }
 
-    // First step uses data in!
-    forward_steps[0].data_type_in = hhfft::StepDataType::data_in;
 
-    // Put a reordering/fft conversion step as the last step
-    hhfft::StepInfoRealD step;
-    step.repeats = n;
-    step.reorder_table = reorder_table.data();
-    step.data_type_in = hhfft::StepDataType::temp_data;
-    step.data_type_out = hhfft::StepDataType::data_out;
-    HHFFT_1D_Real_set_function_DIF(step);
-    forward_steps.push_back(step);
+    // DIT
+    // Put first a reordering step
+    // Put reordering step
+    hhfft::StepInfoRealD step1;
+    step1.data_type_in = hhfft::StepDataType::data_in;
+    step1.data_type_out = hhfft::StepDataType::data_out;
+    step1.reorder_table = reorder_table.data();
+    step1.repeats = reorder_table.size();
+    step1.norm_factor = 1.0/(double(n));
+    HHFFT_1D_Real_set_function(step1);
+    forward_steps.push_back(step1);
 
-
-    // Inverse FFT should use DIT
-    // TODO all steps in a reversed order and DIT instead of DIF!
-
-    */
-
-    //*
-    // Forward steps need temporary variable (FIXME inverse steps do not?)
-    this->temp_data_size = n;
-
-    // Put first a dht step. This will also do the reordering
+    // Put the first fft real step.    
     hhfft::StepInfoRealD step2;
     step2.radix = N[N.size() - 1];
     step2.stride = 1;
     step2.repeats = n / step2.radix;
-    step2.reorder_table = reorder_table.data();
-    step2.data_type_in = hhfft::StepDataType::data_in;
-    step2.data_type_out = hhfft::StepDataType::temp_data;
+    //step2.reorder_table = reorder_table.data(); // TODO reorder in the first step!
+    step2.data_type_in = hhfft::StepDataType::data_out;
+    step2.data_type_out = hhfft::StepDataType::data_out;
+    step2.directions = directions[N.size() - 1].data();
     HHFFT_1D_Real_set_function(step2);
     forward_steps.push_back(step2);
 
@@ -288,33 +249,25 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n)
         step.radix = N[N.size() - i - 1];
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;
-        step.data_type_in = hhfft::StepDataType::temp_data;
-        step.data_type_out = hhfft::StepDataType::temp_data;
-        step.cos_factors = cos_factors[i].data();
-        step.sin_factors = sin_factors[i].data();
+        step.data_type_in = hhfft::StepDataType::data_out;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        step.twiddle_factors = twiddle_factors[i].data();        
+        step.directions = directions[N.size() - i - 1].data();
         HHFFT_1D_Real_set_function(step);
         forward_steps.push_back(step);
     }
 
-    // Put last a fft conversion step
-    hhfft::StepInfoRealD step3;
-    step3.radix = 1;
-    step3.stride = 0;
-    step3.repeats = n;
-    step3.reorder_table = nullptr;
-    step3.data_type_in = hhfft::StepDataType::temp_data;
-    step3.data_type_out = hhfft::StepDataType::data_out;
-    HHFFT_1D_Real_set_function(step3);
-    forward_steps.push_back(step3);
 
     // Make the inverse steps. They are otherwise the same, but different version of function might be called
+    // TODO
+    /*
     for (auto step: forward_steps)
     {
         step.forward = false;
         HHFFT_1D_Real_set_function(step);
         inverse_steps.push_back(step);
     }
-    //*/
+    */
 }
 
 void HHFFT_1D_REAL_D::fft(const double *in, double *out)

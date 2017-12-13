@@ -61,15 +61,17 @@ private:
     // Dimension of the vector (Number of complex numbers)
     size_t n;
 
-    // Twiddle factors (cos and sin) for each level
-    std::vector<AlignedVector<double>> cos_factors;
-    std::vector<AlignedVector<double>> sin_factors;
+    // Twiddle factors for each level
+    std::vector<AlignedVector<double>> twiddle_factors;
 
     // Table that is used in the beginning to reorder the data.
     std::vector<uint32_t> reorder_table;
 
     // Table that is used to reorder the data in-place.
     //std::vector<uint32_t> reorder_table_in_place;
+
+    // Table that gives what if direction is positive (true) or inverted (false)
+    std::vector<std::vector<int8_t>> directions;
 
     // Some algorithms might need extra space that is allocated at the beginning
     size_t temp_data_size = 0;

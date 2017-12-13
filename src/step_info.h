@@ -65,16 +65,16 @@ template<typename T> struct StepInfoReal
     size_t stride = 1;
     size_t repeats = 1;
 
-    // True if forward dht is done, false if inverse dht
+    // True if forward fft is done, false if inverse fft
     bool forward = true;
 
-    // Used in some step in inverse . Equal to 1/N
+    // Used in some step in inverse. Equal to 1/N
     T norm_factor = 1.0;
 
-    // cos and sin factors or reorder table might be used in function
-    T *cos_factors = nullptr;
-    T *sin_factors = nullptr;
+    // Twiddle factors or reorder table might be used in function
+    T *twiddle_factors = nullptr;
     uint32_t *reorder_table = nullptr;
+    int8_t *directions = nullptr;
 
     // These tell what data is used and where does it start
     size_t start_index_in = 0;
