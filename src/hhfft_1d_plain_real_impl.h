@@ -134,6 +134,44 @@ template<typename T, size_t radix> void multiply_coeff_real(const T *x_in, T *x_
     }
 }
 
+template<typename T, size_t radix> void multiply_coeff_real2(const T *x_in, T *x_out)
+{
+    if (radix == 2)
+    {
+        x_out[0] = x_in[0] + x_in[2];
+        x_out[1] = x_in[1] + x_in[3];
+        x_out[2] = x_in[0] - x_in[2];
+        x_out[3] = -x_in[1] + x_in[3];
+    }
+
+    if (radix == 3)
+    {
+        // TODO
+    }
+
+    if (radix == 4)
+    {
+            x_out[0] = x_in[0] + x_in[2] + x_in[4] + x_in[6];
+            x_out[1] = x_in[1] + x_in[3] + x_in[5] + x_in[7];
+            x_out[2] = x_in[0] - x_in[3] - x_in[4] + x_in[7];
+            x_out[3] = -x_in[1] - x_in[2] + x_in[5] + x_in[6];
+            x_out[4] = x_in[0] + x_in[3] - x_in[4] - x_in[7];
+            x_out[5] = x_in[1] - x_in[2] - x_in[5] + x_in[6];
+            x_out[6] = x_in[0] - x_in[2] + x_in[4] - x_in[6];
+            x_out[7] = -x_in[1] + x_in[3] - x_in[5] + x_in[7];
+    }
+
+    if (radix == 5)
+    {
+        // TODO
+    }
+
+    if (radix == 7)
+    {
+       // TODO
+    }
+}
+
 // This function can be used on the first level of fft real, when there are no twiddle factors
 template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level(const T *data_in, T *data_out, hhfft::StepInfoReal<T> &step_info)
 {
@@ -231,20 +269,20 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
             data_out[index] = x0_temp_out[0];
 
             // only half is written
-            for (size_t j = 1; j < radix-1; j+=2)
-            {
-                // TODO is this correct?
-                data_out[index + stride + 2*j*stride + 0] = x0_temp_out[2*j + 0];
-                data_out[index + stride + 2*j*stride + 1] = x0_temp_out[2*j + 1];
+            // TODO should direction be taken into account?
+            for (size_t j = 1; j < radix/2; j++)
+            {                
+                data_out[index + 2*j*stride + 0] = x0_temp_out[2*j + 0];
+                data_out[index + 2*j*stride + 1] = x0_temp_out[2*j + 1];
             }
 
-            // Real part from last
-            data_out[index + 1] = x0_temp_out[2*radix - 2];
+            // Real part from half way + 1
+            data_out[index + 1] = x0_temp_out[radix];
 
             // only half is written
-            for (size_t j = 0; j < radix; j+=2)
-            {
-                // TODO is this correct?
+            // TODO should direction be taken into account?
+            for (size_t j = 0; j < radix/2; j++)
+            {             
                 data_out[index + stride + 2*j*stride + 0] = x1_temp_out[2*j + 0];
                 data_out[index + stride + 2*j*stride + 1] = x1_temp_out[2*j + 1];
             }
@@ -284,14 +322,7 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
                 dir_in = dir_in^1;
             }
 
-            multiply_coeff_real<T,radix>(x_temp_in, x_temp_out);
-
-            // some of the outputs need to be converted into complex conjugates
-            // TODO this could be done already in multiply_coeff
-            for (size_t j = 1; j < radix; j+=2)
-            {
-                x_temp_out[2*j + 1] = -x_temp_out[2*j + 1];
-            }
+            multiply_coeff_real2<T,radix>(x_temp_in, x_temp_out);
 
             // reverse the output order if required
             // TODO this could be done already in multiply_coeff
