@@ -55,6 +55,7 @@ public:
 
     static void print_real_vector(const double *data, size_t n);
     static void print_complex_vector(const double *data, size_t n);
+    static void print_complex_packed_vector(const double *data, size_t n);
 
 private:
 
@@ -69,9 +70,6 @@ private:
 
     // Table that is used to reorder the data in-place.
     //std::vector<uint32_t> reorder_table_in_place;
-
-    // Table that gives what if direction is positive (true) or inverted (false)
-    std::vector<std::vector<int8_t>> directions;
 
     // Some algorithms might need extra space that is allocated at the beginning
     size_t temp_data_size = 0;

@@ -66,45 +66,6 @@ std::vector<size_t> calculate_factorization_real(size_t n)
     return factors;
 }
 
-std::vector<std::vector<int8_t>> calculate_directions(const std::vector<size_t> &N_all)
-{
-    size_t n_dim = N_all.size();
-    std::vector<std::vector<int8_t>> directions(n_dim);
-    directions[0] = {1}; // Last one is always going down. Order same as with Ns
-
-    size_t repeats = 1;
-    for (size_t level = 1; level < n_dim; level++)
-    {
-        size_t i = 0;
-        size_t N = N_all[level];  // Start from the first N as it is used in the last step
-        directions[level].resize(N*repeats);
-        for (size_t j = 0; j < repeats; j++)
-        {
-            for (size_t k = 0; k < N; k++)
-            {
-                directions[level][i] =  directions[level - 1][j]^(k&1);
-                i++;
-            }
-        }
-        repeats = repeats*N;
-    }
-
-    /*
-    for (size_t i = 0; i < directions.size(); i++)
-    {
-        std::cout << "directions[" << i << "] = ";
-        for (size_t j = 0; j < directions[i].size(); j++)
-        {
-            std::cout << (int) directions[i][j] << " ";
-        }
-        std::cout << std::endl;
-    }
-    */
-
-    return directions;
-}
-
-
 void HHFFT_1D_Real_set_function(StepInfoRealD &step_info)
 {
     // TODO this should be done only once
@@ -192,11 +153,8 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n)
     // TESTING print factorization
     for (size_t i = 0; i < N.size(); i++)  { std::cout << N[N.size() - i - 1] << " ";} std::cout << std::endl;
 
-    // Calculate direction table
-    directions = calculate_directions(N);
-
     // Calculate the reorder table
-    // TODO direction should be taken into account when calculating the reorder table when N1 > 2 and inplace reordering is to be supported?
+    // TODO inplace reordering is to be supported
     reorder_table = calculate_reorder_table(N);
 
     // TESTING print reorder tables
@@ -215,7 +173,6 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n)
         twiddle_factors.push_back(w);
         //print_complex_vector(w.data(), w.size()/2);
     }
-
 
     // DIT
     // Put first a reordering step
@@ -236,8 +193,7 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n)
     step2.repeats = n / step2.radix;
     //step2.reorder_table = reorder_table.data(); // TODO reorder in the first step!
     step2.data_type_in = hhfft::StepDataType::data_out;
-    step2.data_type_out = hhfft::StepDataType::data_out;
-    step2.directions = directions[N.size() - 1].data();
+    step2.data_type_out = hhfft::StepDataType::data_out;    
     HHFFT_1D_Real_set_function(step2);
     forward_steps.push_back(step2);
 
@@ -251,8 +207,7 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n)
         step.repeats = step_prev.repeats / step.radix;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
-        step.twiddle_factors = twiddle_factors[i].data();        
-        step.directions = directions[N.size() - i - 1].data();
+        step.twiddle_factors = twiddle_factors[i].data();
         HHFFT_1D_Real_set_function(step);
         forward_steps.push_back(step);
     }
@@ -284,7 +239,13 @@ void HHFFT_1D_REAL_D::fft(const double *in, double *out)
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
         // TESTING print the result of the step
-        print_real_vector(data_out[step.data_type_out], this->n);
+        for (size_t i = 0; i < step.repeats; i++)
+        {
+            std::cout << "[";
+            print_complex_packed_vector(data_out[step.data_type_out] + i*this->n/step.repeats, this->n/step.repeats);
+            std::cout << "] ";
+        }
+        std::cout << std::endl;
     }
 }
 
@@ -312,6 +273,31 @@ void HHFFT_1D_REAL_D::print_real_vector(const double *data, size_t n)
     }
 
     std::cout << std::endl;
+}
+
+// Prints contents of a 1d-vector that contains packed complex numbers (n doubles)
+void HHFFT_1D_REAL_D::print_complex_packed_vector(const double *data, size_t n)
+{
+    size_t i1 = 1;
+    if (n%2 == 0)
+    {
+        i1 = 2;
+    }
+    std::cout << data[0];
+    for (size_t i = i1; i < n; i+=2)
+    {
+        double real = data[i];
+        double imag = data[i+1];
+        if (imag < 0.0)
+            std::cout << " " << real << imag << "i";
+        else
+            std::cout << " " << real << "+" << imag << "i";
+    }
+    if (n%2 == 0)
+    {
+        std::cout << " " << data[1];
+    }
+
 }
 
 // Prints contents of a 1d-vector that has n complex numbers (2*n doubles)

@@ -234,10 +234,10 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
     size_t stride = step_info.stride;
     size_t repeats = step_info.repeats;
 
+    int dir_out = 1;
     for (size_t i = 0; i < repeats; i++)
     {
         size_t index = i*radix*stride;
-        int dir_out = step_info.directions[i];
 
         // The first two values in each stride are real, and must be taken into account together
         {
@@ -293,7 +293,7 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
         {            
             T x_temp_in[2*radix];
             T x_temp_out[2*radix];
-            int dir_in = dir_out;
+            int dir_in = (i*radix + 1)&1;
 
             // Read in the values used in this step and multiply them with twiddle factors
             for (size_t j = 0; j < radix; j++)
@@ -336,7 +336,7 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
             }
 
             // save output taking the directions into account
-            dir_in = dir_out;
+            dir_in = (i*radix + 1)&1;
             for (size_t j = 0; j < radix; j++)
             {                                
                 T x_r = x_temp_out[2*j + 0];
@@ -355,6 +355,7 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
                 dir_in = dir_in^1;
             }
         }
+        dir_out = dir_out^1;
     }
 }
 
