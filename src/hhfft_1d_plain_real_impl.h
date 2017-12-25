@@ -268,23 +268,35 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
             // Real part from first
             data_out[index] = x0_temp_out[0];
 
-            // only half is written
-            // TODO should direction be taken into account?
+            // only half is written            
             for (size_t j = 1; j < radix/2; j++)
             {                
-                data_out[index + 2*j*stride + 0] = x0_temp_out[2*j + 0];
-                data_out[index + 2*j*stride + 1] = x0_temp_out[2*j + 1];
+                if (dir_out)
+                {
+                    data_out[index + 2*j*stride + 0] = x0_temp_out[2*j + 0];
+                    data_out[index + 2*j*stride + 1] = x0_temp_out[2*j + 1];
+                } else
+                {
+                    data_out[index + 2*j*stride + 0] = x0_temp_out[2*(radix/2 - j) + 0];
+                    data_out[index + 2*j*stride + 1] = x0_temp_out[2*(radix/2 - j) + 1];
+                }
             }
 
             // Real part from half way + 1
             data_out[index + 1] = x0_temp_out[radix];
 
-            // only half is written
-            // TODO should direction be taken into account?
+            // only half is written            
             for (size_t j = 0; j < radix/2; j++)
-            {             
-                data_out[index + stride + 2*j*stride + 0] = x1_temp_out[2*j + 0];
-                data_out[index + stride + 2*j*stride + 1] = x1_temp_out[2*j + 1];
+            {
+                if (dir_out)
+                {
+                    data_out[index + stride + 2*j*stride + 0] = x1_temp_out[2*j + 0];
+                    data_out[index + stride + 2*j*stride + 1] = x1_temp_out[2*j + 1];
+                } else
+                {
+                    data_out[index + stride + 2*j*stride + 0] = x1_temp_out[2*(radix/2 - j - 1) + 0];
+                    data_out[index + stride + 2*j*stride + 1] = x1_temp_out[2*(radix/2 - j - 1) + 1];
+                }
             }
         }
 
