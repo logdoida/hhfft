@@ -71,8 +71,9 @@ void hhfft::HHFFT_1D_Plain_real_set_function(StepInfoRealD &step_info)
         // TODO how to use in-place if algorithm if input actually points to output?
         if (step_info.forward)
             step_info.step_function = fft_real_1d_reorder<double,0,true>;
-        else
-            step_info.step_function = fft_real_1d_reorder<double,0,false>;
+        //else
+        // TODO ifft should use in-place reordering!
+        // step_info.step_function = fft_real_1d_reorder<double,0,false>;
         return;
     }
 
@@ -81,13 +82,13 @@ void hhfft::HHFFT_1D_Plain_real_set_function(StepInfoRealD &step_info)
         if (step_info.forward)
             set_fft_real_1d_one_level(step_info);
         //else
-        //    set_fft_real_1d_one_level<false>(step_info);
+        //   TODO ifft should actually be DIF
     } else
     {
         if (step_info.forward)
             set_fft_real_1d_one_level_twiddle(step_info);
         //else
-        //    set_fft_real_1d_one_level_twiddle<false>(step_info);
+        //   TODO ifft should actually be DIF
     }
 
     if (step_info.step_function == nullptr)

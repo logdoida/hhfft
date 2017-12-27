@@ -37,8 +37,8 @@ std::vector<size_t> calculate_factorization_real(size_t n)
     std::vector<size_t> factors;
 
     // This list is the supported factorizations in order of preference
-    std::array<size_t, 5> radices = {4, 2, 3, 5, 7};
-    //std::array<size_t, 5> radices = {2, 3, 5, 7}; // TESTING use 2 instead of 4
+    //std::array<size_t, 5> radices = {4, 2, 3, 5, 7};
+    std::array<size_t, 5> radices = {2, 3, 5, 7}; // TESTING use 2 instead of 4
 
     while(n > 1)
     {
@@ -82,10 +82,9 @@ void HHFFT_1D_Real_set_function(StepInfoRealD &step_info)
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (info.avx)
-    {
-        // Disabled for TESTING
-        //HHFFT_1D_AVX_real_set_function(step_info);
-        //return;
+    {        
+        HHFFT_1D_AVX_real_set_function(step_info);
+        return;
     }
 #endif
 
