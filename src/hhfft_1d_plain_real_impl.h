@@ -147,6 +147,12 @@ template<typename T, size_t radix> void multiply_coeff_real2(const T *x_in, T *x
     if (radix == 3)
     {
         // TODO
+        x_out[0] = 0;
+        x_out[1] = 0;
+        x_out[2] = 0;
+        x_out[3] = 0;
+        x_out[4] = 0;
+        x_out[5] = 0;
     }
 
     if (radix == 4)
@@ -176,16 +182,16 @@ template<typename T, size_t radix> void multiply_coeff_real2(const T *x_in, T *x
 template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level(const T *data_in, T *data_out, hhfft::StepInfoReal<T> &step_info)
 {
     // Must be the first level of DIT
-    assert (step.info.stride == 1);
+    assert (step_info.stride == 1);
     size_t repeats = step_info.repeats;
 
     T x_temp_in[2*radix];
     T x_temp_out[2*radix];
 
+    int dir_out = 1;
     for (size_t i = 0; i < repeats; i++)
     {
         size_t index = i*radix;
-        auto dir = step_info.directions[i];
 
         // Read in the values used in this step
         for (size_t j = 0; j < radix; j++)
@@ -213,10 +219,10 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level(const
 
             for (size_t j = 1; j < radix; j+=2)
             {
-                if (dir) // direction normal
+                if (dir_out) // direction normal
                 {
-                    data_out[index + j + 0] = x_temp_out[j + 0];
-                    data_out[index + j + 1] = x_temp_out[j + 1];
+                    data_out[index + j + 0] = x_temp_out[j + 1];
+                    data_out[index + j + 1] = x_temp_out[j + 2];
                 } else // direction inverted
                 {
                     data_out[index + j + 0] = x_temp_out[radix - j];
@@ -224,6 +230,7 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level(const
                 }
             }
         }
+        dir_out = dir_out^1;
     }
 }
 
@@ -234,6 +241,7 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
     size_t stride = step_info.stride;
     size_t repeats = step_info.repeats;
 
+    bool radix_even = (radix%2) == 0;
     int dir_out = 1;
     for (size_t i = 0; i < repeats; i++)
     {
@@ -268,26 +276,35 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
             // Real part from first
             data_out[index] = x0_temp_out[0];
 
+            if (radix_even)
+            {
+                // Real part from half way + 1
+                data_out[index + 1] = x0_temp_out[radix];
+            } else
+            {
+                // Real part from half way
+                data_out[index + 1] = x1_temp_out[radix-1];
+            }
+
             // only half is written            
-            for (size_t j = 1; j < radix/2; j++)
-            {                
-                if (dir_out)
+            for (size_t j = 1; j < (radix+1)/2; j++)
+            {
                 {
-                    data_out[index + 2*j*stride + 0] = x0_temp_out[2*j + 0];
-                    data_out[index + 2*j*stride + 1] = x0_temp_out[2*j + 1];
-                } else
-                {
-                    data_out[index + 2*j*stride + 0] = x0_temp_out[2*(radix/2 - j) + 0];
-                    data_out[index + 2*j*stride + 1] = x0_temp_out[2*(radix/2 - j) + 1];
+                    if (dir_out)
+                    {
+                        data_out[index + 2*j*stride + 0] = x0_temp_out[2*j + 0];
+                        data_out[index + 2*j*stride + 1] = x0_temp_out[2*j + 1];
+                    } else
+                    {
+                        data_out[index + 2*j*stride + 0] = x0_temp_out[2*(radix/2 - j) + 0];
+                        data_out[index + 2*j*stride + 1] = x0_temp_out[2*(radix/2 - j) + 1];
+                    }
                 }
             }
 
-            // Real part from half way + 1
-            data_out[index + 1] = x0_temp_out[radix];
-
             // only half is written            
             for (size_t j = 0; j < radix/2; j++)
-            {
+            {                
                 if (dir_out)
                 {
                     data_out[index + stride + 2*j*stride + 0] = x1_temp_out[2*j + 0];
@@ -298,6 +315,13 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
                     data_out[index + stride + 2*j*stride + 1] = x1_temp_out[2*(radix/2 - j - 1) + 1];
                 }
             }
+
+            /*
+            std::cout << "x0_temp_in = " << x0_temp_in[0] << ", " << x0_temp_in[1] << ", " << x0_temp_in[2] << ", " << x0_temp_in[3] << ", " << x0_temp_in[4] << ", " << x0_temp_in[5] << std::endl;
+            std::cout << "x1_temp_in = " << x1_temp_in[0] << ", " << x1_temp_in[1] << ", " << x1_temp_in[2] << ", " << x1_temp_in[3] << ", " << x1_temp_in[4] << ", " << x1_temp_in[5] << std::endl;
+            std::cout << "x0_temp_out = " << x0_temp_out[0] << ", " << x0_temp_out[1] << ", " << x0_temp_out[2] << ", " << x0_temp_out[3] << ", " << x0_temp_out[4] << ", " << x0_temp_out[5] << std::endl;
+            std::cout << "x1_temp_out = " << x1_temp_out[0] << ", " << x1_temp_out[1] << ", " << x1_temp_out[2] << ", " << x1_temp_out[3] << ", " << x1_temp_out[4] << ", " << x1_temp_out[5] << std::endl;
+            */
         }
 
         // Rest of the values represent complex numbers

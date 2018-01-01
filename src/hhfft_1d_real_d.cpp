@@ -37,8 +37,8 @@ std::vector<size_t> calculate_factorization_real(size_t n)
     std::vector<size_t> factors;
 
     // This list is the supported factorizations in order of preference
-    //std::array<size_t, 5> radices = {4, 2, 3, 5, 7};
-    std::array<size_t, 5> radices = {2, 3, 5, 7}; // TESTING use 2 instead of 4
+    std::array<size_t, 5> radices = {4, 2, 3, 5, 7};
+    //std::array<size_t, 5> radices = {2, 3, 5, 7}; // TESTING use 2 instead of 4
 
     while(n > 1)
     {
@@ -89,34 +89,6 @@ void HHFFT_1D_Real_set_function(StepInfoRealD &step_info)
 #endif
 
     HHFFT_1D_Plain_real_set_function(step_info);
-}
-
-
-// TODO it might be that DIF is not even supported for FFT Real...
-void HHFFT_1D_Real_set_function_DIF(StepInfoRealD &step_info)
-{
-    // TODO this should be done only once
-    hhfft::CPUID_info info = hhfft::get_supported_instructions();
-
-#ifdef HHFFT_COMPILED_WITH_AVX512F
-    if (info.avx512f)
-    {
-       // TODO add support for avx512f
-       // HHFFT_1D_AVX512F_REAL_set_function(step_info);
-       // return;
-    }
-#endif
-
-#ifdef HHFFT_COMPILED_WITH_AVX
-    if (info.avx)
-    {
-        // TODO
-        //HHFFT_1D_AVX_real_set_function_DIF(step_info);
-        //return;
-    }
-#endif
-
-    //HHFFT_1D_Plain_real_set_function_DIF(step_info);
 }
 
 double* HHFFT_1D_REAL_D::allocate_memory()
@@ -237,6 +209,7 @@ void HHFFT_1D_REAL_D::fft(const double *in, double *out)
     {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
+        /*
         // TESTING print the result of the step
         for (size_t i = 0; i < step.repeats; i++)
         {
@@ -245,6 +218,7 @@ void HHFFT_1D_REAL_D::fft(const double *in, double *out)
             std::cout << "] ";
         }
         std::cout << std::endl;
+        */
     }
 }
 
