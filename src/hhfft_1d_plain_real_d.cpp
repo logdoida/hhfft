@@ -55,9 +55,15 @@ inline void set_fft_real_1d_one_level_twiddle(StepInfoRealD &step_info)
             step_info.step_function = fft_real_1d_one_level_stride_even<double,5,0>;
         if (radix == 7)
             step_info.step_function = fft_real_1d_one_level_stride_even<double,7,0>;
-    } else
+    } else        
     {
-        // TODO stride odd
+        // Odd stride is only possible for odd radices
+        if (radix == 3)
+            step_info.step_function = fft_real_1d_one_level_stride_odd<double,3,0>;
+        if (radix == 5)
+            step_info.step_function = fft_real_1d_one_level_stride_odd<double,5,0>;
+        if (radix == 7)
+            step_info.step_function = fft_real_1d_one_level_stride_odd<double,7,0>;
     }
 }
 

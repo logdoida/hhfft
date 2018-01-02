@@ -146,13 +146,14 @@ template<typename T, size_t radix> void multiply_coeff_real2(const T *x_in, T *x
 
     if (radix == 3)
     {
-        // TODO
-        x_out[0] = 0;
-        x_out[1] = 0;
-        x_out[2] = 0;
-        x_out[3] = 0;
-        x_out[4] = 0;
-        x_out[5] = 0;
+        T k1 = (T) 0.5;
+        T k2 = (T) 0.5*sqrt(3);
+        x_out[0] = x_in[0] + x_in[2] + x_in[4];
+        x_out[1] = x_in[1] + x_in[3] + x_in[5];
+        x_out[2] = x_in[0] - k1*x_in[2] - k2*x_in[3] - k1*x_in[4] + k2*x_in[5];
+        x_out[3] = -x_in[1] - k2*x_in[2] + k1*x_in[3] + k2*x_in[4] + k1*x_in[5];
+        x_out[4] = x_in[0] - k1*x_in[2] + k2*x_in[3] - k1*x_in[4] - k2*x_in[5];
+        x_out[5] = x_in[1] - k2*x_in[2] - k1*x_in[3] + k2*x_in[4] - k1*x_in[5];
     }
 
     if (radix == 4)
@@ -169,12 +170,45 @@ template<typename T, size_t radix> void multiply_coeff_real2(const T *x_in, T *x
 
     if (radix == 5)
     {
-        // TODO
+        T k1 = cos(2*M_PI*1.0/5.0);
+        T k2 = sin(2*M_PI*1.0/5.0);
+        T k3 =-cos(2*M_PI*2.0/5.0);
+        T k4 = sin(2*M_PI*2.0/5.0);
+
+        x_out[0] = x_in[0] + x_in[2] + x_in[4] + x_in[6] + x_in[8];
+        x_out[1] = x_in[1] + x_in[3] + x_in[5] + x_in[7] + x_in[9];
+        x_out[2] = x_in[0] + k1*x_in[2] - k2*x_in[3] - k3*x_in[4] - k4*x_in[5] - k3*x_in[6] + k4*x_in[7] + k1*x_in[8] + k2*x_in[9];
+        x_out[3] = -(x_in[1] + k2*x_in[2] + k1*x_in[3] + k4*x_in[4] - k3*x_in[5] - k4*x_in[6] - k3*x_in[7] - k2*x_in[8] + k1*x_in[9]);
+        x_out[4] = x_in[0] + k1*x_in[2] + k2*x_in[3] - k3*x_in[4] + k4*x_in[5] - k3*x_in[6] - k4*x_in[7] + k1*x_in[8] - k2*x_in[9];
+        x_out[5] = x_in[1] - k2*x_in[2] + k1*x_in[3] - k4*x_in[4] - k3*x_in[5] + k4*x_in[6] - k3*x_in[7] + k2*x_in[8] + k1*x_in[9];
+        x_out[6] = x_in[0] - k3*x_in[2] - k4*x_in[3] + k1*x_in[4] + k2*x_in[5] + k1*x_in[6] - k2*x_in[7] - k3*x_in[8] + k4*x_in[9];
+        x_out[7] = -(x_in[1] + k4*x_in[2] - k3*x_in[3] - k2*x_in[4] + k1*x_in[5] + k2*x_in[6] + k1*x_in[7] - k4*x_in[8] - k3*x_in[9]);
+        x_out[8] = x_in[0] - k3*x_in[2] + k4*x_in[3] + k1*x_in[4] - k2*x_in[5] + k1*x_in[6] + k2*x_in[7] - k3*x_in[8] - k4*x_in[9];
+        x_out[9] = x_in[1] - k4*x_in[2] - k3*x_in[3] + k2*x_in[4] + k1*x_in[5] - k2*x_in[6] + k1*x_in[7] + k4*x_in[8] - k3*x_in[9];
     }
 
     if (radix == 7)
     {
-       // TODO
+        T k1 = cos(2*M_PI*1.0/7.0);
+        T k2 = sin(2*M_PI*1.0/7.0);
+        T k3 =-cos(2*M_PI*2.0/7.0);
+        T k4 = sin(2*M_PI*2.0/7.0);
+        T k5 =-cos(2*M_PI*3.0/7.0);
+        T k6 = sin(2*M_PI*3.0/7.0);
+        x_out[0] = x_in[0] + x_in[2] + x_in[4] + x_in[6] + x_in[8] + x_in[10] + x_in[12];
+        x_out[1] = x_in[1] + x_in[3] + x_in[5] + x_in[7] + x_in[9] + x_in[11] + x_in[13];
+        x_out[2] = x_in[0] + k1*x_in[2] - k2*x_in[3] - k3*x_in[4] - k4*x_in[5] - k5*x_in[6] - k6*x_in[7] - k5*x_in[8] + k6*x_in[9] - k3*x_in[10] + k4*x_in[11] + k1*x_in[12] + k2*x_in[13];
+        x_out[3] = -(x_in[1] + k2*x_in[2] + k1*x_in[3] + k4*x_in[4] - k3*x_in[5] + k6*x_in[6] - k5*x_in[7] - k6*x_in[8] - k5*x_in[9] - k4*x_in[10] - k3*x_in[11] - k2*x_in[12] + k1*x_in[13]);
+        x_out[4] = x_in[0] + k1*x_in[2] + k2*x_in[3] - k3*x_in[4] + k4*x_in[5] - k5*x_in[6] + k6*x_in[7] - k5*x_in[8] - k6*x_in[9] - k3*x_in[10] - k4*x_in[11] + k1*x_in[12] - k2*x_in[13];
+        x_out[5] = x_in[1] - k2*x_in[2] + k1*x_in[3] - k4*x_in[4] - k3*x_in[5] - k6*x_in[6] - k5*x_in[7] + k6*x_in[8] - k5*x_in[9] + k4*x_in[10] - k3*x_in[11] + k2*x_in[12] + k1*x_in[13];
+        x_out[6] = x_in[0] - k3*x_in[2] - k4*x_in[3] - k5*x_in[4] + k6*x_in[5] + k1*x_in[6] + k2*x_in[7] + k1*x_in[8] - k2*x_in[9] - k5*x_in[10] - k6*x_in[11] - k3*x_in[12] + k4*x_in[13];
+        x_out[7] = -(x_in[1] + k4*x_in[2] - k3*x_in[3] - k6*x_in[4] - k5*x_in[5] - k2*x_in[6] + k1*x_in[7] + k2*x_in[8] + k1*x_in[9] + k6*x_in[10] - k5*x_in[11] - k4*x_in[12] - k3*x_in[13]);
+        x_out[8] = x_in[0] - k3*x_in[2] + k4*x_in[3] - k5*x_in[4] - k6*x_in[5] + k1*x_in[6] - k2*x_in[7] + k1*x_in[8] + k2*x_in[9] - k5*x_in[10] + k6*x_in[11] - k3*x_in[12] - k4*x_in[13];
+        x_out[9] = x_in[1] - k4*x_in[2] - k3*x_in[3] + k6*x_in[4] - k5*x_in[5] + k2*x_in[6] + k1*x_in[7] - k2*x_in[8] + k1*x_in[9] - k6*x_in[10] - k5*x_in[11] + k4*x_in[12] - k3*x_in[13];
+        x_out[10] = x_in[0] - k5*x_in[2] - k6*x_in[3] + k1*x_in[4] + k2*x_in[5] - k3*x_in[6] - k4*x_in[7] - k3*x_in[8] + k4*x_in[9] + k1*x_in[10] - k2*x_in[11] - k5*x_in[12] + k6*x_in[13];
+        x_out[11] = -(x_in[1] + k6*x_in[2] - k5*x_in[3] - k2*x_in[4] + k1*x_in[5] + k4*x_in[6] - k3*x_in[7] - k4*x_in[8] - k3*x_in[9] + k2*x_in[10] + k1*x_in[11] - k6*x_in[12] - k5*x_in[13]);
+        x_out[12] = x_in[0] - k5*x_in[2] + k6*x_in[3] + k1*x_in[4] - k2*x_in[5] - k3*x_in[6] + k4*x_in[7] - k3*x_in[8] - k4*x_in[9] + k1*x_in[10] + k2*x_in[11] - k5*x_in[12] - k6*x_in[13];
+        x_out[13] = x_in[1] - k6*x_in[2] - k5*x_in[3] + k2*x_in[4] + k1*x_in[5] - k4*x_in[6] - k3*x_in[7] + k4*x_in[8] - k3*x_in[9] - k2*x_in[10] + k1*x_in[11] + k6*x_in[12] - k5*x_in[13];
     }
 }
 
@@ -215,18 +249,28 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level(const
             }
         } else // radix is odd
         {
-            data_out[index + 0] = x_temp_out[0]; // First one is real
-
-            for (size_t j = 1; j < radix; j+=2)
+            // First/ last one is real
+            if (dir_out) // direction normal
             {
-                if (dir_out) // direction normal
+                data_out[index + 0] = x_temp_out[0];
+            } else
+            {
+                data_out[index + radix - 1] = x_temp_out[0];
+            }
+
+            if (dir_out) // direction normal
+            {
+                for (size_t j = 1; j < radix; j+=2)
                 {
                     data_out[index + j + 0] = x_temp_out[j + 1];
                     data_out[index + j + 1] = x_temp_out[j + 2];
-                } else // direction inverted
+                }
+            } else // direction inverted
+            {
+                for (size_t j = 0; j < radix - 1; j+=2)
                 {
-                    data_out[index + j + 0] = x_temp_out[radix - j];
-                    data_out[index + j + 1] = x_temp_out[radix + 2 - j];
+                    data_out[index + j + 0] = x_temp_out[radix - 1 - j];
+                    data_out[index + j + 1] = x_temp_out[radix + 0 - j];
                 }
             }
         }
@@ -234,12 +278,22 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level(const
     }
 }
 
+inline size_t index_dir_stride_even(size_t dir_in, size_t stride, size_t k)
+{
+    return dir_in*(4*k - stride) + stride - 2*k;
+}
+
+inline size_t index_dir_stride_odd(size_t dir_in, size_t stride, size_t k)
+{
+    return dir_in*(4*k - stride) + stride - 2*k - 1;
+}
 
 // This function can be used when stride is even i.e. there are two real numbers in the beginning of a stride
 template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_stride_even(const T *data_in, T *data_out, hhfft::StepInfoReal<T> &step_info)
 {
     size_t stride = step_info.stride;
     size_t repeats = step_info.repeats;
+    assert(stride%2 == 0);
 
     bool radix_even = (radix%2) == 0;
     int dir_out = 1;
@@ -288,16 +342,21 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
 
             // only half is written            
             for (size_t j = 1; j < (radix+1)/2; j++)
-            {
+            {                
+                if (dir_out)
                 {
-                    if (dir_out)
-                    {
-                        data_out[index + 2*j*stride + 0] = x0_temp_out[2*j + 0];
-                        data_out[index + 2*j*stride + 1] = x0_temp_out[2*j + 1];
-                    } else
+                    data_out[index + 2*j*stride + 0] = x0_temp_out[2*j + 0];
+                    data_out[index + 2*j*stride + 1] = x0_temp_out[2*j + 1];
+                } else
+                {
+                    if (radix_even)
                     {
                         data_out[index + 2*j*stride + 0] = x0_temp_out[2*(radix/2 - j) + 0];
                         data_out[index + 2*j*stride + 1] = x0_temp_out[2*(radix/2 - j) + 1];
+                    } else
+                    {
+                        data_out[index - stride + 2*j*stride + 0] = x0_temp_out[2*((radix+1)/2 - j) + 0];
+                        data_out[index - stride + 2*j*stride + 1] = x0_temp_out[2*((radix+1)/2 - j) + 1];
                     }
                 }
             }
@@ -311,17 +370,22 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
                     data_out[index + stride + 2*j*stride + 1] = x1_temp_out[2*j + 1];
                 } else
                 {
-                    data_out[index + stride + 2*j*stride + 0] = x1_temp_out[2*(radix/2 - j - 1) + 0];
-                    data_out[index + stride + 2*j*stride + 1] = x1_temp_out[2*(radix/2 - j - 1) + 1];
+                    if (radix_even)
+                    {
+                        data_out[index + stride + 2*j*stride + 0] = x1_temp_out[2*(radix/2 - j - 1) + 0];
+                        data_out[index + stride + 2*j*stride + 1] = x1_temp_out[2*(radix/2 - j - 1) + 1];
+                    } else
+                    {
+                        data_out[index + 2*stride + 2*j*stride + 0] = x1_temp_out[2*(radix/2 - j - 1) + 0];
+                        data_out[index + 2*stride + 2*j*stride + 1] = x1_temp_out[2*(radix/2 - j - 1) + 1];
+                    }
                 }
             }
 
-            /*
-            std::cout << "x0_temp_in = " << x0_temp_in[0] << ", " << x0_temp_in[1] << ", " << x0_temp_in[2] << ", " << x0_temp_in[3] << ", " << x0_temp_in[4] << ", " << x0_temp_in[5] << std::endl;
-            std::cout << "x1_temp_in = " << x1_temp_in[0] << ", " << x1_temp_in[1] << ", " << x1_temp_in[2] << ", " << x1_temp_in[3] << ", " << x1_temp_in[4] << ", " << x1_temp_in[5] << std::endl;
-            std::cout << "x0_temp_out = " << x0_temp_out[0] << ", " << x0_temp_out[1] << ", " << x0_temp_out[2] << ", " << x0_temp_out[3] << ", " << x0_temp_out[4] << ", " << x0_temp_out[5] << std::endl;
-            std::cout << "x1_temp_out = " << x1_temp_out[0] << ", " << x1_temp_out[1] << ", " << x1_temp_out[2] << ", " << x1_temp_out[3] << ", " << x1_temp_out[4] << ", " << x1_temp_out[5] << std::endl;
-            */
+            //std::cout << "x0_temp_in = " << x0_temp_in[0] << ", " << x0_temp_in[1] << ", " << x0_temp_in[2] << ", " << x0_temp_in[3] << ", " << x0_temp_in[4] << ", " << x0_temp_in[5] << std::endl;
+            //std::cout << "x1_temp_in = " << x1_temp_in[0] << ", " << x1_temp_in[1] << ", " << x1_temp_in[2] << ", " << x1_temp_in[3] << ", " << x1_temp_in[4] << ", " << x1_temp_in[5] << std::endl;
+            //std::cout << "x0_temp_out = " << x0_temp_out[0] << ", " << x0_temp_out[1] << ", " << x0_temp_out[2] << ", " << x0_temp_out[3] << ", " << x0_temp_out[4] << ", " << x0_temp_out[5] << std::endl;
+            //std::cout << "x1_temp_out = " << x1_temp_out[0] << ", " << x1_temp_out[1] << ", " << x1_temp_out[2] << ", " << x1_temp_out[3] << ", " << x1_temp_out[4] << ", " << x1_temp_out[5] << std::endl;
         }
 
         // Rest of the values represent complex numbers
@@ -329,22 +393,16 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
         {            
             T x_temp_in[2*radix];
             T x_temp_out[2*radix];
-            int dir_in = (i*radix + 1)&1;
+            size_t dir_in = (i*radix + 1)&1;
 
             // Read in the values used in this step and multiply them with twiddle factors
             for (size_t j = 0; j < radix; j++)
             {
                 // direction affects in which direction the inputs are read
-                T x_r, x_i;
-                if (dir_in)
-                {
-                    x_r = data_in[index + 2*k + j*stride + 0];
-                    x_i = data_in[index + 2*k + j*stride + 1];
-                } else
-                {
-                    x_r = data_in[index + 2*(stride/2 - k) + j*stride + 0];
-                    x_i = data_in[index + 2*(stride/2 - k) + j*stride + 1];
-                }
+                size_t index2 = index_dir_stride_even(dir_in, stride, k);
+
+                T x_r = data_in[index + j*stride + index2 + 0];
+                T x_i = data_in[index + j*stride + index2 + 1];
 
                 T w_r = step_info.twiddle_factors[2*(j*stride + k) + 0];
                 T w_i = step_info.twiddle_factors[2*(j*stride + k) + 1];
@@ -375,22 +433,130 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
             dir_in = (i*radix + 1)&1;
             for (size_t j = 0; j < radix; j++)
             {                                
-                T x_r = x_temp_out[2*j + 0];
-                T x_i = x_temp_out[2*j + 1];
+                // direction affects in which direction the inputs are read
+                size_t index2 = index_dir_stride_even(dir_in, stride, k);
 
-                if (dir_in)
-                {
-                    data_out[index + 2*k + j*stride + 0] = x_r;
-                    data_out[index + 2*k + j*stride + 1] = x_i;
-                } else
-                {
-                    data_out[index + 2*(stride/2 - k) + j*stride + 0] = x_r;
-                    data_out[index + 2*(stride/2 - k) + j*stride + 1] = x_i;
-                }
-
+                data_out[index + j*stride + index2 + 0] = x_temp_out[2*j + 0];
+                data_out[index + j*stride + index2 + 1] = x_temp_out[2*j + 1];
                 dir_in = dir_in^1;
             }
         }
+        dir_out = dir_out^1;
+    }
+}
+
+// This function can be used when stride is odd i.e. there is one real number in the beginning or end of a stride
+template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_stride_odd(const T *data_in, T *data_out, hhfft::StepInfoReal<T> &step_info)
+{
+    size_t stride = step_info.stride;
+    size_t repeats = step_info.repeats;
+    assert(stride%2 == 1);
+
+    size_t dir_out = 1;
+    for (size_t i = 0; i < repeats; i++)
+    {
+        size_t index = i*radix*stride;
+
+        // The first/last value in each stride is real
+        {
+            T x0_temp_in[2*radix];
+            T x0_temp_out[2*radix];
+
+            size_t dir_in = dir_out;
+            for (size_t j = 0; j < radix; j++)
+            {
+                if (dir_in)
+                {
+                    x0_temp_in[2*j + 0] = data_in[index + j*stride + 0];
+                } else
+                {
+                    x0_temp_in[2*j + 0] = data_in[index + j*stride + stride - 1];
+                }
+                x0_temp_in[2*j + 1] = 0;
+
+                dir_in = dir_in^1;
+            }
+
+            multiply_coeff_real<T,radix>(x0_temp_in, x0_temp_out);
+
+            // Real part from first
+            if (dir_out)
+            {
+                data_out[index] = x0_temp_out[0];
+            } else
+            {
+                data_out[index + radix*stride - 1] = x0_temp_out[0];
+            }
+
+            // only half is written
+            for (size_t j = 1; j < (radix+1)/2; j++)
+            {
+                if (dir_out)
+                {
+                    data_out[index + j*(2*stride-1) + 0] = x0_temp_out[2*j + 0];
+                    data_out[index + j*(2*stride-1) + 1] = x0_temp_out[2*j + 1];
+                } else
+                {
+                    data_out[index + j*(2*stride-1) - stride + 0] = x0_temp_out[2*((radix+1)/2 - j) + 0];
+                    data_out[index + j*(2*stride-1) - stride + 1] = x0_temp_out[2*((radix+1)/2 - j) + 1];
+                }
+            }
+
+            //std::cout << "stride = " << stride << std::endl;
+            //std::cout << "x0_temp_in = " << x0_temp_in[0] << ", " << x0_temp_in[1] << ", " << x0_temp_in[2] << ", " << x0_temp_in[3] << ", " << x0_temp_in[4] << ", " << x0_temp_in[5] << std::endl;
+            //std::cout << "x0_temp_out = " << x0_temp_out[0] << ", " << x0_temp_out[1] << ", " << x0_temp_out[2] << ", " << x0_temp_out[3] << ", " << x0_temp_out[4] << ", " << x0_temp_out[5] << std::endl;
+        }
+
+        // Rest of the values represent complex numbers
+        for (size_t k = 1; k < (stride+1)/2; k++)
+        {
+            T x_temp_in[2*radix];
+            T x_temp_out[2*radix];
+            size_t dir_in = dir_out;
+
+            // Read in the values used in this step and multiply them with twiddle factors
+            for (size_t j = 0; j < radix; j++)
+            {
+                // direction affects in which direction the inputs are read
+                size_t index2 = index_dir_stride_odd(dir_in, stride, k);
+                T x_r = data_in[index + j*stride + index2 + 0];
+                T x_i = data_in[index + j*stride + index2 + 1];
+
+                T w_r = step_info.twiddle_factors[2*(j*stride + k) + 0];
+                T w_i = step_info.twiddle_factors[2*(j*stride + k) + 1];
+
+                x_temp_in[2*j + 0] = w_r*x_r - w_i*x_i;
+                x_temp_in[2*j + 1] = w_i*x_r + w_r*x_i;
+
+                // TESTING
+                //std::cout << "k = " << k << ", j = " << j << ", index2 = " << index2 << ", x_in = " << x_r << ", " << x_i << ", w = " << w_r << ", " << w_i << ", x_temp = " << x_temp_in[2*j + 0] << ", " << x_temp_in[2*j + 1] << std::endl;
+
+                dir_in = dir_in^1;
+            }
+
+            multiply_coeff_real2<T,radix>(x_temp_in, x_temp_out);
+
+            // reverse the output order if required
+            // TODO this could be done already in multiply_coeff
+            if (!dir_out)
+            {
+                for (size_t j = 0; j < radix/2; j++)
+                {
+                    T x_r = x_temp_out[2*j + 0]; x_temp_out[2*j + 0] = x_temp_out[2*(radix - j - 1) + 0]; x_temp_out[2*(radix - j - 1) + 0] = x_r;
+                    T x_i = x_temp_out[2*j + 1]; x_temp_out[2*j + 1] = x_temp_out[2*(radix - j - 1) + 1]; x_temp_out[2*(radix - j - 1) + 1] = x_i;
+                }
+            }
+
+            // save output taking the directions into account
+            dir_in = dir_out;
+            for (size_t j = 0; j < radix; j++)
+            {
+                size_t index2 = index_dir_stride_odd(dir_in, stride, k);
+                data_out[index + j*stride + index2 + 0] = x_temp_out[2*j + 0];
+                data_out[index + j*stride + index2 + 1] = x_temp_out[2*j + 1];
+                dir_in = dir_in^1;
+            }            
+        }        
         dir_out = dir_out^1;
     }
 }
