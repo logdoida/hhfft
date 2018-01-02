@@ -493,18 +493,18 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
             {
                 if (dir_out)
                 {
-                    data_out[index + j*(2*stride-1) + 0] = x0_temp_out[2*j + 0];
-                    data_out[index + j*(2*stride-1) + 1] = x0_temp_out[2*j + 1];
+                    data_out[index + 2*j*stride - 1] = x0_temp_out[2*j + 0];
+                    data_out[index + 2*j*stride + 0] = x0_temp_out[2*j + 1];
                 } else
                 {
-                    data_out[index + j*(2*stride-1) - stride + 0] = x0_temp_out[2*((radix+1)/2 - j) + 0];
-                    data_out[index + j*(2*stride-1) - stride + 1] = x0_temp_out[2*((radix+1)/2 - j) + 1];
+                    data_out[index + 2*j*stride - stride - 1] = x0_temp_out[2*((radix+1)/2 - j) + 0];
+                    data_out[index + 2*j*stride - stride + 0] = x0_temp_out[2*((radix+1)/2 - j) + 1];
                 }
             }
 
             //std::cout << "stride = " << stride << std::endl;
-            //std::cout << "x0_temp_in = " << x0_temp_in[0] << ", " << x0_temp_in[1] << ", " << x0_temp_in[2] << ", " << x0_temp_in[3] << ", " << x0_temp_in[4] << ", " << x0_temp_in[5] << std::endl;
-            //std::cout << "x0_temp_out = " << x0_temp_out[0] << ", " << x0_temp_out[1] << ", " << x0_temp_out[2] << ", " << x0_temp_out[3] << ", " << x0_temp_out[4] << ", " << x0_temp_out[5] << std::endl;
+            //std::cout << "x0_temp_in = " << x0_temp_in[0] << ", " << x0_temp_in[1] << ", " << x0_temp_in[2] << ", " << x0_temp_in[3] << ", " << x0_temp_in[4] << ", " << x0_temp_in[5] << ", " << x0_temp_in[6] << ", " << x0_temp_in[7] << ", " << x0_temp_in[8] << ", " << x0_temp_in[9] << std::endl;
+            //std::cout << "x0_temp_out = " << x0_temp_out[0] << ", " << x0_temp_out[1] << ", " << x0_temp_out[2] << ", " << x0_temp_out[3] << ", " << x0_temp_out[4] << ", " << x0_temp_out[5] << ", " << x0_temp_out[6] << ", " << x0_temp_out[7] << ", " << x0_temp_out[8] << ", " << x0_temp_out[9] << std::endl;
         }
 
         // Rest of the values represent complex numbers
@@ -554,6 +554,7 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
                 size_t index2 = index_dir_stride_odd(dir_in, stride, k);
                 data_out[index + j*stride + index2 + 0] = x_temp_out[2*j + 0];
                 data_out[index + j*stride + index2 + 1] = x_temp_out[2*j + 1];
+                //std::cout << "j = " << j << ", dir_in = " << dir_in << ", index2 = " << index2 << ", x_temp_out = " << x_temp_out[2*j + 0] << ", " << x_temp_out[2*j + 1] << std::endl;
                 dir_in = dir_in^1;
             }            
         }        
