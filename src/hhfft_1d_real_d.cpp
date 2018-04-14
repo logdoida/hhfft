@@ -31,14 +31,17 @@
 using namespace hhfft;
 using hhfft::HHFFT_1D_REAL_D;
 
+// TODO this should be a parameter not a constant, if DIF is used in some cases and DIT in others
+#define USE_REAL_DIF
+
 // Finds an efficient factorization (not necassery a prime factorization)
 std::vector<size_t> calculate_factorization_real(size_t n)
 {
     std::vector<size_t> factors;
 
     // This list is the supported factorizations in order of preference
-    std::array<size_t, 5> radices = {4, 2, 3, 5, 7};
-    //std::array<size_t, 5> radices = {2, 3, 5, 7}; // TESTING use 2 instead of 4
+    //std::array<size_t, 5> radices = {4, 2, 3, 5, 7};
+    std::array<size_t, 5> radices = {2, 3, 5, 7}; // TESTING use 2 instead of 4
 
     while(n > 1)
     {
@@ -60,13 +63,15 @@ std::vector<size_t> calculate_factorization_real(size_t n)
         }
     }
 
-    // Reverse the order as last radix in the vector is actually used first    
+#ifndef USE_REAL_DIF
+    // Reverse the order as last radix in the vector is actually used first
     std::reverse(factors.begin(),factors.end());
+#endif
 
     return factors;
 }
 
-void HHFFT_1D_Real_set_function(StepInfoRealD &step_info)
+void HHFFT_1D_Real_set_function(StepInfoRealD &step_info, bool DIF)
 {
     // TODO this should be done only once
     hhfft::CPUID_info info = hhfft::get_supported_instructions();
@@ -82,13 +87,29 @@ void HHFFT_1D_Real_set_function(StepInfoRealD &step_info)
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (info.avx)
-    {        
-        HHFFT_1D_AVX_real_set_function(step_info);
-        return;
+    {
+        if (DIF)
+        {
+            //HHFFT_1D_AVX_real_set_function_DIF(step_info);
+            //return;
+        } else
+        {
+            HHFFT_1D_AVX_real_set_function(step_info);
+            return;
+        }
     }
 #endif
 
-    HHFFT_1D_Plain_real_set_function(step_info);
+    if (DIF)
+    {
+        HHFFT_1D_Plain_real_set_function_DIF(step_info);
+        return;
+    } else
+    {
+        HHFFT_1D_Plain_real_set_function(step_info);
+        return;
+    }
+
 }
 
 double* HHFFT_1D_REAL_D::allocate_memory()
@@ -134,17 +155,52 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n)
     //std::cout << "reorder_table_in_place = " << std::endl;
     //for (auto r: reorder_table_in_place)  { std::cout << r << " ";} std::cout << std::endl;
 
-
     // Calculate twiddle factors
     twiddle_factors.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level
     for (size_t i = 1; i < N.size(); i++)
     {
+#ifdef USE_REAL_DIF
+        // DIF
+        AlignedVector<double> w = calculate_twiddle_factors_DIF(i, N);
+#else
         // DIT
         AlignedVector<double> w = calculate_twiddle_factors_DIT(i, N);
+#endif
         twiddle_factors.push_back(w);
-        //print_complex_vector(w.data(), w.size()/2);
+        std::cout << "i = " << i << ", w = "; print_complex_vector(w.data(), w.size()/2);
     }
 
+
+#ifdef USE_REAL_DIF
+    // DIF
+
+    // Put first fft step
+    hhfft::StepInfoRealD step1;
+    step1.radix = N[N.size() - 1];
+    step1.stride = n / step1.radix;
+    step1.repeats = 1;
+    step1.data_type_in = hhfft::StepDataType::data_in;
+    step1.data_type_out = hhfft::StepDataType::data_out;
+    HHFFT_1D_Real_set_function(step1, true);
+    forward_steps.push_back(step1);
+
+    // then put rest fft steps combined with twiddle factor
+    for (size_t i = 1; i < N.size(); i++)
+    {
+        hhfft::StepInfoRealD step;
+        hhfft::StepInfoRealD &step_prev = forward_steps.back();
+        step.radix = N[N.size() - i - 1];
+        step.stride = step_prev.stride / step.radix;
+        step.repeats = (n/step.stride/step.radix)/2 + 1;
+        step.data_type_in = hhfft::StepDataType::data_out;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        step.twiddle_factors = twiddle_factors[i].data();
+        HHFFT_1D_Real_set_function(step, true);
+        forward_steps.push_back(step);
+    }
+
+
+#else
     // DIT
     // Put first a reordering step
     // Put reordering step
@@ -154,7 +210,7 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n)
     step1.reorder_table = reorder_table.data();
     step1.repeats = reorder_table.size();
     step1.norm_factor = 1.0/(double(n));
-    HHFFT_1D_Real_set_function(step1);
+    HHFFT_1D_Real_set_function(step1, false);
     forward_steps.push_back(step1);
 
     // Put the first fft real step.    
@@ -165,7 +221,7 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n)
     //step2.reorder_table = reorder_table.data(); // TODO reorder in the first step!
     step2.data_type_in = hhfft::StepDataType::data_out;
     step2.data_type_out = hhfft::StepDataType::data_out;    
-    HHFFT_1D_Real_set_function(step2);
+    HHFFT_1D_Real_set_function(step2, false);
     forward_steps.push_back(step2);
 
     // then put rest dht steps combined with twiddle factor
@@ -179,9 +235,10 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n)
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors[i].data();
-        HHFFT_1D_Real_set_function(step);
+        HHFFT_1D_Real_set_function(step, false);
         forward_steps.push_back(step);
     }
+#endif
 
 
     // Make the inverse steps. They are otherwise the same, but different version of function might be called
@@ -209,8 +266,9 @@ void HHFFT_1D_REAL_D::fft(const double *in, double *out)
     {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
-        /*
         // TESTING print the result of the step
+        print_real_vector(data_out[step.data_type_out], this->n);
+        /*
         for (size_t i = 0; i < step.repeats; i++)
         {
             std::cout << "[";

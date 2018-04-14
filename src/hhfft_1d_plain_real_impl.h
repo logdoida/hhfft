@@ -562,6 +562,76 @@ template<typename T, size_t radix, size_t arch> void fft_real_1d_one_level_strid
     }
 }
 
+
+template<typename T, size_t arch> void fft_real_1d_radix2_DIF(const T *data_in, T *data_out, hhfft::StepInfoReal<T> &step_info)
+{
+    size_t stride = step_info.stride;
+    size_t repeats = step_info.repeats;
+    assert(step_info.radix == 2);
+
+    std::cout << "fft_real_1d_radix2_DIF, repeats = " << repeats << ", stride = " << stride << std::endl;
+
+    size_t i = 0; // repeat
+
+    // i = 0
+    for (size_t k = 0; k < stride; k++)
+    {
+        T x0 = data_in[k];
+        T x1 = data_in[k + stride];
+
+        data_out[k] = x0 + x1;
+        data_out[k + stride] = x0 - x1;
+    }
+    i++;
+
+    // i = 1
+    if (i < repeats)
+    {
+        for (size_t k = 0; k < stride; k++)
+        {
+            T x0 = data_in[k + 2*stride];
+            T x1 = data_in[k + 3*stride];
+
+            data_out[k + 2*stride] = x0;
+            data_out[k + 3*stride] = -x1;
+        }
+    }
+    i++;
+
+    // i = 2
+    for (; i < repeats; i++)
+    {
+        // Only x1 needs to be multiplied with twiddle factor
+        T w1_r = step_info.twiddle_factors[4*i + 2];
+        T w1_i = step_info.twiddle_factors[4*i + 3];
+
+        for (size_t k = 0; k < stride; k++)
+        {
+            T x0_r = data_in[k + 4*i*stride + 0*stride - 4*stride];
+            T x0_i = data_in[k + 4*i*stride + 2*stride - 4*stride];
+            T x1_r = data_in[k + 4*i*stride + 1*stride - 4*stride];
+            T x1_i = data_in[k + 4*i*stride + 3*stride - 4*stride];
+
+            T x2_r = w1_r*x1_r - w1_i*x1_i;
+            T x2_i = w1_i*x1_r + w1_r*x1_i;
+
+            T x0_out_r = x0_r + x2_r;
+            T x0_out_i = x0_i + x2_i;
+            T x1_out_r = x0_r - x2_r;
+            T x1_out_i = -(x0_i - x2_i); // complex conjugate!
+
+            data_out[k + 4*i*stride + 0*stride - 4*stride] = x0_out_r;
+            data_out[k + 4*i*stride + 1*stride - 4*stride] = x0_out_i;
+            data_out[k + 4*i*stride + 2*stride - 4*stride] = x1_out_r;
+            data_out[k + 4*i*stride + 3*stride - 4*stride] = x1_out_i;
+
+            std::cout << "x0 = " << x0_r << ", " << x0_i << ", x1 = " << x1_r << ", " << x1_i << ", w = " << w1_r << ", " << w1_i << std::endl;
+            std::cout << "x0_out = " << x0_out_r << ", " << x0_out_i << ", " << "x1_out = " << x1_out_r << ", " << x1_out_i << ", " << std::endl;
+        }
+    }
+}
+
+
 }
 
 #endif // HHFFT_1D_PLAIN_REAL_IMPL_H

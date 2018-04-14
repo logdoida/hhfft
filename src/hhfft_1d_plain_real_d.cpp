@@ -68,6 +68,33 @@ inline void set_fft_real_1d_one_level_twiddle(StepInfoRealD &step_info)
 }
 
 
+void hhfft::HHFFT_1D_Plain_real_set_function_DIF(StepInfoRealD &step_info)
+{
+    step_info.step_function = nullptr;
+    size_t radix = step_info.radix;
+
+    if (step_info.reorder_table != nullptr)
+    {
+        // TODO
+        throw(std::runtime_error("HHFFT error: Unable to set reorder function!"));
+        return;
+    }
+
+    if (radix == 2)
+        step_info.step_function = fft_real_1d_radix2_DIF<double,0>;
+    /*
+    if (radix == 3)
+        step_info.step_function = fft_real_1d_one_level<double,3,0>;
+    if (radix == 4)
+        step_info.step_function = fft_real_1d_one_level<double,4,0>;
+    if (radix == 5)
+        step_info.step_function = fft_real_1d_one_level<double,5,0>;
+    if (radix == 7)
+        step_info.step_function = fft_real_1d_one_level<double,7,0>;
+    */
+
+}
+
 void hhfft::HHFFT_1D_Plain_real_set_function(StepInfoRealD &step_info)
 {
     step_info.step_function = nullptr;
