@@ -28,6 +28,11 @@ namespace hhfft
 
 enum StepDataType {data_in = 0, data_out = 1, temp_data = 2};
 
+// StrideX -> stride = X
+// StrideXN -> stride divisible by X
+// StrideN -> stride something else
+enum StrideType{Stride1, Stride2, Stride4, Stride2N, Stride4N, StrideN};
+
 template<typename T> struct StepInfo
 {
     // This is a pointer to a function that performs some operation to data
@@ -41,12 +46,16 @@ template<typename T> struct StepInfo
     // True if fft is done, false if ifft
     bool forward = true;
 
+    // True if DIF is done, false if DIT
+    bool dif = false;
+
     // Used in some step in ifft. Equal to 1/N
     T norm_factor = 1.0;
 
     // Twiddle factors or reorder table might be used in function
     T *twiddle_factors = nullptr;
     uint32_t *reorder_table = nullptr;
+    uint32_t *reorder_table_inplace = nullptr;
 
     // These tell what data is used and where does it start
     size_t start_index_in = 0;

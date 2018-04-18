@@ -24,9 +24,14 @@
 
 #include "architecture.h"
 #include "utilities.h"
+
+// OLD TODO remove when not needed
 #include "hhfft_1d_d.h"
 #include "hhfft_1d_plain_d.h"
 #include "hhfft_1d_avx_d.h"
+
+// NEW
+#include "1d_complex/hhfft_1d_complex_d.h"
 
 using namespace hhfft;
 using hhfft::HHFFT_1D_D;
@@ -77,6 +82,16 @@ std::vector<size_t> calculate_factorization(size_t n)
 
 void HHFFT_1D_set_function(StepInfoD &step_info, bool DIF)
 {
+    // NEW
+    // TODO this should be done only once
+    hhfft::InstructionSet instruction_set = hhfft::get_best_instruction_set();
+
+    step_info.dif = DIF;
+
+    HHFFT_1D_Complex_D_set_function(step_info, instruction_set);
+
+    // OLD
+    /*
     // TODO this should be done only once
     hhfft::CPUID_info info = hhfft::get_supported_instructions();
 
@@ -118,7 +133,8 @@ void HHFFT_1D_set_function(StepInfoD &step_info, bool DIF)
     } else
     {
         HHFFT_1D_Plain_set_function(step_info);
-    }
+    }    
+    */
 }
 
 double* HHFFT_1D_D::allocate_memory()
@@ -216,7 +232,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
     hhfft::StepInfoD step2;
     step2.data_type_in = hhfft::StepDataType::data_out;
     step2.data_type_out = hhfft::StepDataType::data_out;
-    step2.reorder_table = reorder_table_in_place.data();
+    step2.reorder_table = nullptr; // always in-place
+    step2.reorder_table_inplace = reorder_table_in_place.data();
     step2.repeats = reorder_table_in_place.size();
     step2.stride = n;
     step2.norm_factor = 1.0/(double(n));
@@ -230,7 +247,9 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
     step1.data_type_in = hhfft::StepDataType::data_in;
     step1.data_type_out = hhfft::StepDataType::data_out;
     step1.reorder_table = reorder_table.data();
-    step1.repeats = reorder_table.size();
+    step1.reorder_table_inplace = reorder_table_in_place.data(); // It is possible that data_in = data_out!
+    step1.repeats = reorder_table_in_place.size();
+    step1.stride = n;
     step1.norm_factor = 1.0/(double(n));
     HHFFT_1D_set_function(step1, false);
     forward_steps.push_back(step1);
@@ -287,6 +306,9 @@ void HHFFT_1D_D::fft(const double *in, double *out)
     for (auto &step: forward_steps)
     {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
+
+        // TESTING print
+        //print_complex_vector(data_out[step.data_type_out], n);
     }
 }
 
@@ -302,6 +324,9 @@ void HHFFT_1D_D::ifft(const double *in, double *out)
     for (auto &step: inverse_steps)
     {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
+
+        // TESTING print
+        //print_complex_vector(data_out[step.data_type_out], n);
     }
 }
 

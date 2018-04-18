@@ -74,7 +74,7 @@ void hhfft::HHFFT_1D_Plain_set_function(StepInfoD &step_info)
 {
     step_info.step_function = nullptr;
 
-    if (step_info.reorder_table != nullptr)
+    if (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr)
     {
         // TODO how to use in-place if algorithm if input actually points to output?
         if (step_info.forward)
@@ -108,7 +108,7 @@ void hhfft::HHFFT_1D_Plain_set_function_DIF(StepInfoD &step_info)
 {
     step_info.step_function = nullptr;
 
-    if (step_info.reorder_table != nullptr)
+    if (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr)
     {
         if (step_info.data_type_in == step_info.data_type_out)
         {

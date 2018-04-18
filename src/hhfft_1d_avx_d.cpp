@@ -1058,7 +1058,7 @@ void hhfft::HHFFT_1D_AVX_set_function(StepInfoD &step_info)
 {
     step_info.step_function = nullptr;
 
-    if (step_info.reorder_table != nullptr)
+    if (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr)
     {
         if (step_info.forward)
             step_info.step_function = fft_1d_reorder<double,1,true>;
@@ -1091,7 +1091,7 @@ void hhfft::HHFFT_1D_AVX_set_function_DIF(StepInfoD &step_info)
 {
     step_info.step_function = nullptr;
 
-    if (step_info.reorder_table != nullptr)
+    if (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr)
     {
         if (step_info.data_type_in == step_info.data_type_out)
         {

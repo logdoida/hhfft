@@ -77,3 +77,33 @@ hhfft::CPUID_info hhfft::get_supported_instructions()
 
     return si;
 }
+
+
+// Returns the best available instruction set for this CPU
+hhfft::InstructionSet hhfft::get_best_instruction_set()
+{
+
+    hhfft::CPUID_info info = hhfft::get_supported_instructions();
+
+#ifdef HHFFT_COMPILED_WITH_AVX512F
+    if (info.avx512f)
+    {
+        return hhfft::InstructionSet::avx512f;
+    }
+#endif
+
+#ifdef HHFFT_COMPILED_WITH_AVX
+    if (info.avx)
+    {
+        return hhfft::InstructionSet::avx;
+    }
+#endif
+
+    if (info.sse2)
+    {
+        return hhfft::InstructionSet::sse2;
+    }
+
+    return hhfft::InstructionSet::none;
+
+}

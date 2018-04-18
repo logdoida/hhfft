@@ -32,36 +32,11 @@
 namespace hhfft
 {
 
-// TODO it might be a good idea to have versions that also do the first fft step (at least for radix 2) (NOT needed if using DIF)
-// NOTE this is out of place reordering!
-template<typename T, size_t arch, bool forward> void fft_1d_reorder(const T *data_in, T *data_out, hhfft::StepInfo<T> &step_info)
-{
-    size_t n = step_info.repeats;    
-    uint32_t *reorder_table = step_info.reorder_table;
-
-    // Needed only in ifft. Equal to 1/N
-    T k = step_info.norm_factor;
-
-    for (size_t i = 0; i < n; i++)
-    {
-        size_t i2 = reorder_table[i];
-        if (forward)
-        {            
-            data_out[2*i+0] = data_in[2*i2+0];
-            data_out[2*i+1] = data_in[2*i2+1];
-        } else
-        {
-            data_out[2*i+0] = k*data_in[2*i2+0];
-            data_out[2*i+1] = k*data_in[2*i2+1];
-        }
-    }
-}
-
 // In-place reordering "swap"
 template<typename T, size_t arch, bool forward> void fft_1d_reorder_in_place(const T *data_in, T *data_out, hhfft::StepInfo<T> &step_info)
 {
     size_t n = step_info.repeats;
-    uint32_t *reorder_table = step_info.reorder_table;
+    uint32_t *reorder_table = step_info.reorder_table_inplace;
 
     // In-place algorithm
     assert (data_in == data_out);
@@ -89,9 +64,7 @@ template<typename T, size_t arch, bool forward> void fft_1d_reorder_in_place(con
     }
 
     // Scaling needs to be done as a separate step as some data might be copied twice or zero times
-    // TODO this is note very efficient. Scaling could be done at some other step (first/last)
-    // TESTING disabled
-    /*
+    // TODO this is note very efficient. Scaling could be done at some other step (first/last)    
     size_t n2 = step_info.stride;
     if (!forward)
     {
@@ -102,8 +75,38 @@ template<typename T, size_t arch, bool forward> void fft_1d_reorder_in_place(con
         {
             data_out[i] *= k;
         }
+    }    
+}
+
+// TODO it might be a good idea to have versions that also do the first fft step (at least for radix 2) (NOT needed if using DIF)
+// NOTE this is out of place reordering!
+template<typename T, size_t arch, bool forward> void fft_1d_reorder(const T *data_in, T *data_out, hhfft::StepInfo<T> &step_info)
+{
+    if (data_in == data_out)
+    {
+        fft_1d_reorder_in_place<T,arch,forward>(data_in, data_out, step_info);
+        return;
     }
-    */
+
+    size_t n = step_info.stride;
+    uint32_t *reorder_table = step_info.reorder_table;
+
+    // Needed only in ifft. Equal to 1/N
+    T k = step_info.norm_factor;
+
+    for (size_t i = 0; i < n; i++)
+    {
+        size_t i2 = reorder_table[i];
+        if (forward)
+        {
+            data_out[2*i+0] = data_in[2*i2+0];
+            data_out[2*i+1] = data_in[2*i2+1];
+        } else
+        {
+            data_out[2*i+0] = k*data_in[2*i2+0];
+            data_out[2*i+1] = k*data_in[2*i2+1];
+        }
+    }
 }
 
 // In-place reordering "cycle"
