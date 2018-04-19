@@ -23,68 +23,13 @@
 #include <assert.h>
 #include <cmath>
 
-#define ENABLE_SSE2
+#define ENABLE_COMPLEX_D
 #include "hhfft_1d_complex_common_d.h"
 
 using namespace hhfft;
 
-template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD *x_in, ComplexD *x_out)
-{
-    const double *coeff = nullptr;
-
-    if (radix == 2)
-    {
-        coeff = coeff_radix_2;
-    } else if (radix == 3)
-    {
-        coeff = coeff_radix_3;
-    } else if (radix == 4)
-    {
-        coeff = coeff_radix_4;
-    } else if (radix == 5)
-    {
-        coeff = coeff_radix_5;
-    } else if (radix == 7)
-    {
-        coeff = coeff_radix_7;
-    }
-
-    // Use temporary storage. This is needed (as usually is) if x_in == x_out
-    ComplexD x_temp_in[radix];
-    for (size_t j = 0; j < radix; j++)
-    {
-        x_temp_in[j] = x_in[j];
-    }
-
-    for (size_t i = 0; i < radix; i++)
-    {
-        x_out[i] = load(0.0, 0.0);
-        for (size_t j = 0; j < radix; j++)
-        {
-            ComplexD w = load128(coeff + 2*radix*i + 2*j);
-
-            x_out[i] = x_out[i] + mul_w<forward>(x_temp_in[j], w);
-        }
-    }
-}
-
-template<size_t radix, bool forward> inline void multiply_twiddle(const ComplexD *x_in, ComplexD *x_out, const ComplexD *twiddle_factors)
-{
-    // It is assumed that first twiddle factors are always (1 + 0i)
-    x_out[0] = x_in[0];
-
-    // Read in the values used in this step and multiply them with twiddle factors
-    for (size_t j = 1; j < radix; j++)
-    {
-        ComplexD x = x_in[j];
-        ComplexD w = twiddle_factors[j];
-
-        x_out[j] = mul_w<forward>(x, w);
-    }
-}
-
 template<size_t radix, StrideType stride_type, bool forward>
-    inline void fft_1d_complex_sse2_d_internal(const double *data_in, double *data_out, size_t stride)
+    inline __attribute__((always_inline)) void fft_1d_complex_sse2_d_internal(const double *data_in, double *data_out, size_t stride)
 {
     ComplexD x_temp_in[radix];
     ComplexD x_temp_out[radix];
@@ -110,7 +55,7 @@ template<size_t radix, StrideType stride_type, bool forward>
 
 
 template<size_t radix, StrideType stride_type, bool forward>
-    inline void fft_1d_complex_twiddle_dit_sse2_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride)
+    inline __attribute__((always_inline)) void fft_1d_complex_twiddle_dit_sse2_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride)
 {
     ComplexD x_temp_in[radix];
     ComplexD x_temp_out[radix];
@@ -142,7 +87,7 @@ template<size_t radix, StrideType stride_type, bool forward>
 }
 
 template<size_t radix, StrideType stride_type, bool forward>
-    inline void fft_1d_complex_twiddle_dif_sse2_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride)
+    inline __attribute__((always_inline)) void fft_1d_complex_twiddle_dif_sse2_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride)
 {
     ComplexD x_temp_in[radix];
     ComplexD x_temp_out[radix];

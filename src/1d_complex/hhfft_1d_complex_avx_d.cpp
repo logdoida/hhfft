@@ -23,13 +23,13 @@
 #include <assert.h>
 #include <cmath>
 
-#define ENABLE_SSE2
-#define ENABLE_AVX
+#define ENABLE_COMPLEX_D
+#define ENABLE_COMPLEX_D2
 #include "hhfft_1d_complex_common_d.h"
 
 using namespace hhfft;
 
-template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD *x_in, ComplexD *x_out)
+template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD2 *x_in, ComplexD2 *x_out)
 {
     const double *coeff = nullptr;
 
@@ -50,8 +50,8 @@ template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD *
         coeff = coeff_radix_7;
     }
 
-    // Use temporary storage. This is needed (as usually is) if x_in == x_out
-    ComplexD x_temp_in[radix];
+    // Use temporary storage. This is needed (as usually is the case) if x_in == x_out
+    ComplexD2 x_temp_in[radix];
     for (size_t j = 0; j < radix; j++)
     {
         x_temp_in[j] = x_in[j];
@@ -59,17 +59,17 @@ template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD *
 
     for (size_t i = 0; i < radix; i++)
     {
-        x_out[i] = load(0.0, 0.0);
+        x_out[i] = load(0.0, 0.0, 0.0, 0.0);
         for (size_t j = 0; j < radix; j++)
         {
-            ComplexD w = load128(coeff + 2*radix*i + 2*j);
+            ComplexD2 w = broadcast128(coeff + 2*radix*i + 2*j);
 
             x_out[i] = x_out[i] + mul_w<forward>(x_temp_in[j], w);
         }
     }
 }
 
-template<size_t radix, bool forward> inline void multiply_twiddle(const ComplexD *x_in, ComplexD *x_out, const ComplexD *twiddle_factors)
+template<size_t radix, bool forward> inline void multiply_twiddle(const ComplexD2 *x_in, ComplexD2 *x_out, const ComplexD2 *twiddle_factors)
 {
     // It is assumed that first twiddle factors are always (1 + 0i)
     x_out[0] = x_in[0];
@@ -77,25 +77,56 @@ template<size_t radix, bool forward> inline void multiply_twiddle(const ComplexD
     // Read in the values used in this step and multiply them with twiddle factors
     for (size_t j = 1; j < radix; j++)
     {
-        ComplexD x = x_in[j];
-        ComplexD w = twiddle_factors[j];
+        ComplexD2 x = x_in[j];
+        ComplexD2 w = twiddle_factors[j];
 
         x_out[j] = mul_w<forward>(x, w);
     }
 }
 
 template<size_t radix, StrideType stride_type, bool forward>
-    inline void fft_1d_complex_avx_d_internal(const double *data_in, double *data_out, size_t stride)
+    inline __attribute__((always_inline)) void fft_1d_complex_avx_d_internal(const double *data_in, double *data_out, size_t stride)
 {
-    ComplexD x_temp_in[radix];
-    ComplexD x_temp_out[radix];
+    size_t k = 0;
 
-    for (size_t k = 0; k < stride; k++)
+    // First use 256-bit variables
     {
+        ComplexD2 x_temp_in[radix];
+        ComplexD2 x_temp_out[radix];
+
+        for (k = 0; k+1 < stride; k+=2)
+        {
+            // Copy input data (squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                x_temp_in[j] = load(data_in + 2*k + 2*j*stride);
+            }
+
+            // Multiply with coefficients
+            multiply_coeff<radix,forward>(x_temp_in, x_temp_out);
+
+            // Copy ouput data (un-squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                store(x_temp_out[j], data_out + 2*k + 2*j*stride);
+            }
+        }
+    }
+
+    //TODO
+    //if (strid_type is divisible by 2)
+    //    return;
+
+    // Then, if necassery, use 128-bit variables
+    if (k < stride)
+    {
+        ComplexD x_temp_in[radix];
+        ComplexD x_temp_out[radix];
+
         // Copy input data (squeeze)
         for (size_t j = 0; j < radix; j++)
         {
-            x_temp_in[j] = load128(data_in + 2*k + 2*j*stride);
+            x_temp_in[j] = load128(data_in + 2*k + 2*j*stride);            
         }
 
         // Multiply with coefficients
@@ -104,21 +135,59 @@ template<size_t radix, StrideType stride_type, bool forward>
         // Copy ouput data (un-squeeze)
         for (size_t j = 0; j < radix; j++)
         {
-            store(x_temp_out[j], data_out + 2*k + 2*j*stride);
-        }
+            store(x_temp_out[j], data_out + 2*k + 2*j*stride);            
+        }    
     }
 }
 
 
 template<size_t radix, StrideType stride_type, bool forward>
-    inline void fft_1d_complex_twiddle_dit_avx_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride)
+    inline __attribute__((always_inline)) void fft_1d_complex_twiddle_dit_avx_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride)
 {
-    ComplexD x_temp_in[radix];
-    ComplexD x_temp_out[radix];
-    ComplexD twiddle_temp[radix];
+    size_t k = 0;
 
-    for (size_t k = 0; k < stride; k++)
+    // First use 256-bit variables
     {
+        ComplexD2 x_temp_in[radix];
+        ComplexD2 x_temp_out[radix];
+        ComplexD2 twiddle_temp[radix];
+
+        for (k = 0; k+1 < stride; k+=2)
+        {
+            // Copy input data (squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                x_temp_in[j] = load(data_in + 2*k + 2*j*stride);
+            }
+
+            // Copy twiddle factors (squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                twiddle_temp[j] = load(twiddle_factors + 2*k + 2*j*stride);
+            }
+
+            multiply_twiddle<radix,forward>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_coeff<radix,forward>(x_temp_in, x_temp_out);
+
+            // Copy ouput data (un-squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                store(x_temp_out[j], data_out + 2*k + 2*j*stride);
+            }
+        }
+    }
+
+    //TODO
+    //if (strid_type is divisible by 2)
+    //    return;
+
+    // Then, if necassery, use 128-bit variables
+    if (k < stride)
+    {
+        ComplexD x_temp_in[radix];
+        ComplexD x_temp_out[radix];
+        ComplexD twiddle_temp[radix];
+
         // Copy input data (squeeze)
         for (size_t j = 0; j < radix; j++)
         {
@@ -143,20 +212,58 @@ template<size_t radix, StrideType stride_type, bool forward>
 }
 
 template<size_t radix, StrideType stride_type, bool forward>
-    inline void fft_1d_complex_twiddle_dif_avx_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride)
+    inline __attribute__((always_inline)) void fft_1d_complex_twiddle_dif_avx_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride)
 {
-    ComplexD x_temp_in[radix];
-    ComplexD x_temp_out[radix];
-    ComplexD twiddle_temp[radix];
+    size_t k = 0;
 
-    // Copy twiddle factors (squeeze)
-    for (size_t j = 0; j < radix; j++)
+    // First use 256-bit variables
     {
-        twiddle_temp[j] = load128(twiddle_factors + 2*j);
+        ComplexD2 x_temp_in[radix];
+        ComplexD2 x_temp_out[radix];
+        ComplexD2 twiddle_temp[radix];
+
+        // Copy twiddle factors (squeeze)
+        for (size_t j = 0; j < radix; j++)
+        {
+            twiddle_temp[j] = broadcast128(twiddle_factors + 2*j);
+        }
+
+        for (k = 0; k+1 < stride; k+=2)
+        {
+            // Copy input data (squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                x_temp_in[j] = load(data_in + 2*k + 2*j*stride);
+            }
+
+            multiply_twiddle<radix,forward>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_coeff<radix,forward>(x_temp_in, x_temp_out);
+
+            // Copy ouput data (un-squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                store(x_temp_out[j], data_out + 2*k + 2*j*stride);
+            }
+        }
     }
 
-    for (size_t k = 0; k < stride; k++)
+    //TODO
+    //if (strid_type is divisible by 2)
+    //    return;
+
+    // Then, if necassery, use 128-bit variables
+    if (k < stride)
     {
+        ComplexD x_temp_in[radix];
+        ComplexD x_temp_out[radix];
+        ComplexD twiddle_temp[radix];
+
+        // Copy twiddle factors (squeeze)
+        for (size_t j = 0; j < radix; j++)
+        {
+            twiddle_temp[j] = load128(twiddle_factors + 2*j);
+        }
+
         // Copy input data (squeeze)
         for (size_t j = 0; j < radix; j++)
         {

@@ -18,7 +18,7 @@
 */
 
 // This header contains some small functions that are used many times
-// Flags ENABLE_SSE2, ENABLE_AVX, ENABLE_AVX512 will enable and disable certain features
+// Flags ENABLE_COMPLEX_D (SSE2 or AVX or AVX512), ENABLE_COMPLEX_D2 (AVX or AVX512), ENABLE_AVX512 (AVX512) will enable and disable certain features
 
 #include <immintrin.h>
 #include <iostream> //For testing...
@@ -67,7 +67,7 @@ static const double coeff_radix_7[98] = {
 
 
 //////////////////////////// ComplexD /////////////////////////////////////////
-#ifdef ENABLE_SSE2
+#ifdef ENABLE_COMPLEX_D
 
 // contains a single complex number: [r i]
 typedef __m128d ComplexD;
@@ -105,7 +105,7 @@ const ComplexD const1_128 = load(0.0, -0.0);
 const ComplexD const2_128 = load(-0.0, 0.0);
 
 // Multiplies complex numbers. If other of them changes more frequently, set it to b.
-#ifdef ENABLE_AVX
+#ifdef ENABLE_COMPLEX_D2
 // AVX-version is slightly more efficient
 inline ComplexD mul(ComplexD a, ComplexD b)
 {
@@ -140,7 +140,7 @@ inline ComplexD mul(ComplexD a, ComplexD b)
 
 
 // Calculates a*conj(b)
-#ifdef ENABLE_AVX
+#ifdef ENABLE_COMPLEX_D2
 // AVX-version is slightly more efficient
 inline ComplexD mul_conj(ComplexD a, ComplexD b)
 {
@@ -213,7 +213,7 @@ inline std::ostream& operator<<(std::ostream& os, const ComplexD &x)
 
 
 //////////////////////////// ComplexD2 ////////////////////////////////////////
-#ifdef ENABLE_AVX
+#ifdef ENABLE_COMPLEX_D2
 
 // contains two complex numbers: [r1 i1 r2 i2]
 typedef __m256d ComplexD2;
@@ -311,5 +311,68 @@ inline std::ostream& operator<<(std::ostream& os, const ComplexD2 &x)
     return os;
 }
 
+
+#endif
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#ifdef ENABLE_COMPLEX_D
+
+template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD *x_in, ComplexD *x_out)
+{
+    const double *coeff = nullptr;
+
+    if (radix == 2)
+    {
+        coeff = coeff_radix_2;
+    } else if (radix == 3)
+    {
+        coeff = coeff_radix_3;
+    } else if (radix == 4)
+    {
+        coeff = coeff_radix_4;
+    } else if (radix == 5)
+    {
+        coeff = coeff_radix_5;
+    } else if (radix == 7)
+    {
+        coeff = coeff_radix_7;
+    }
+
+    // Use temporary storage. This is needed (as usually is) if x_in == x_out
+    ComplexD x_temp_in[radix];
+    for (size_t j = 0; j < radix; j++)
+    {
+        x_temp_in[j] = x_in[j];
+    }
+
+    for (size_t i = 0; i < radix; i++)
+    {
+        x_out[i] = load(0.0, 0.0);
+        for (size_t j = 0; j < radix; j++)
+        {
+            ComplexD w = load128(coeff + 2*radix*i + 2*j);
+
+            x_out[i] = x_out[i] + mul_w<forward>(x_temp_in[j], w);
+        }
+    }
+}
+
+
+template<size_t radix, bool forward> inline void multiply_twiddle(const ComplexD *x_in, ComplexD *x_out, const ComplexD *twiddle_factors)
+{
+    // It is assumed that first twiddle factors are always (1 + 0i)
+    x_out[0] = x_in[0];
+
+    // Read in the values used in this step and multiply them with twiddle factors
+    for (size_t j = 1; j < radix; j++)
+    {
+        ComplexD x = x_in[j];
+        ComplexD w = twiddle_factors[j];
+
+        x_out[j] = mul_w<forward>(x, w);
+    }
+}
 
 #endif
