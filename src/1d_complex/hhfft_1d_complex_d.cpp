@@ -74,9 +74,7 @@ template<bool forward> void fft_1d_complex_reorder_in_place_d(const double *data
 
 // Compiler is not able to optimize this to use sse2! TODO implement different versions (plain/sse2/avx) of this!
 template<bool forward> void fft_1d_complex_reorder_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
-    std::cout << "fft_1d_reorder" << std::endl;
-
+{    
     // Check, if in-place should be done instead
     if (data_in == data_out)
     {
@@ -151,7 +149,10 @@ template<size_t radix, StrideType stride_type, bool forward>
 
 template<size_t radix, StrideType stride_type, bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
-    // TESTING to speedup compilation            
+    // TESTING to speedup compilation
+
+    ///*
+    // AVX
     if (step_info.twiddle_factors == nullptr)
     {
        step_info.step_function = fft_1d_complex_avx_d<radix, stride_type, forward>;
@@ -162,8 +163,10 @@ template<size_t radix, StrideType stride_type, bool forward> void set_instructio
         else
             step_info.step_function = fft_1d_complex_twiddle_dit_avx_d<radix, stride_type, forward>;
     }
+    //*/
 
     /*
+    // SSE2
     if (step_info.twiddle_factors == nullptr)
     {
        step_info.step_function = fft_1d_complex_sse2_d<radix, stride_type, forward>;
@@ -260,8 +263,17 @@ template<size_t radix, StrideType stride_type> void set_forward_d(StepInfoD &ste
 
 template<size_t radix> void set_stride_type_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
+    // Knowing something about the stride at compile time can help to optimize some cases
+    size_t stride = step_info.stride;
+
     // TESTING to speed up compilation
-    set_forward_d<radix, StrideType::StrideN>(step_info, instruction_set);
+    if (stride == 1)
+    {
+        set_forward_d<radix, StrideType::Stride1>(step_info, instruction_set);
+    } else
+    {
+        set_forward_d<radix, StrideType::StrideN>(step_info, instruction_set);
+    }
 
     /*
     size_t stride = step_info.stride;

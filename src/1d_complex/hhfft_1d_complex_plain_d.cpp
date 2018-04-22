@@ -48,15 +48,6 @@ template<size_t radix, bool forward> inline void multiply_coeff(const double *x_
         coeff = coeff_radix_7;
     }
 
-
-    // Use temporary storage. This is needed in (as usually is) if x_in == x_out
-    double x_temp_in[2*radix];
-    for (size_t j = 0; j < radix; j++)
-    {
-        x_temp_in[2*j + 0] = x_in[2*j + 0];
-        x_temp_in[2*j + 1] = x_in[2*j + 1];
-    }
-
     for (size_t i = 0; i < radix; i++)
     {
         x_out[2*i + 0] = 0;
@@ -65,8 +56,8 @@ template<size_t radix, bool forward> inline void multiply_coeff(const double *x_
         {
             double a = coeff[2*radix*i + 2*j + 0];
             double b = forward ? coeff[2*radix*i + 2*j + 1]: -coeff[2*radix*i + 2*j + 1];
-            x_out[2*i + 0] += a*x_temp_in[2*j + 0] - b*x_temp_in[2*j + 1];
-            x_out[2*i + 1] += b*x_temp_in[2*j + 0] + a*x_temp_in[2*j + 1];
+            x_out[2*i + 0] += a*x_in[2*j + 0] - b*x_in[2*j + 1];
+            x_out[2*i + 1] += b*x_in[2*j + 0] + a*x_in[2*j + 1];
         }
     }
 }

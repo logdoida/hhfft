@@ -45,10 +45,10 @@ static const double k3 = -cos(2.0*M_PI*2.0/5.0);
 static const double k4 = sin(2.0*M_PI*2.0/5.0);
 static const double coeff_radix_5[50] = {
     1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
-    1, 0, k1, -k2, -k3, -k4, -k3, k4, k1, k2,
-    1, 0, -k3, -k4, k1, k2, k1, -k2, -k3, k4,
-    1, 0, -k3, k4, k1, -k2, k1, k2, -k3, -k4,
-    1, 0, k1, k2, -k3, k4, -k3, -k4, k1, -k2};
+    1, 0,  k1, -k2, -k3, -k4, -k3,  k4,  k1,  k2,
+    1, 0, -k3, -k4,  k1,  k2,  k1, -k2, -k3,  k4,
+    1, 0, -k3,  k4,  k1, -k2,  k1,  k2, -k3, -k4,
+    1, 0,  k1,  k2, -k3,  k4, -k3, -k4,  k1, -k2};
 
 static const double k5 = cos(2.0*M_PI*1.0/7.0);
 static const double k6 = sin(2.0*M_PI*1.0/7.0);
@@ -58,12 +58,12 @@ static const double k9 = -cos(2.0*M_PI*3.0/7.0);
 static const double k10 = sin(2.0*M_PI*3.0/7.0);
 static const double coeff_radix_7[98] = {
     1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
-    1, 0, k5, -k6, -k7, -k8, -k9, -k10, -k9, k10, -k7, k8, k5, k6,
-    1, 0, -k7, -k8, -k9, k10, k5, k6, k5, -k6, -k9, -k10, -k7, k8,
-    1, 0, -k9, -k10, k5, k6, -k7, -k8, -k7, k8, k5, -k6, -k9, k10,
-    1, 0, -k9, k10, k5, -k6, -k7, k8, -k7, -k8, k5, k6, -k9, -k10,
-    1, 0, -k7, k8, -k9, -k10, k5, -k6, k5, k6, -k9, k10, -k7, -k8,
-    1, 0, k5, k6, -k7, k8, -k9, k10, -k9, -k10, -k7, -k8, k5, -k6};
+    1, 0,  k5, -k6, -k7, -k8, -k9, -k10,-k9,  k10, -k7, k8,  k5,  k6,
+    1, 0, -k7, -k8, -k9,  k10, k5,  k6,  k5, -k6, -k9, -k10, -k7, k8,
+    1, 0, -k9, -k10, k5,  k6, -k7, -k8, -k7,  k8,  k5, -k6, -k9,  k10,
+    1, 0, -k9,  k10, k5, -k6, -k7,  k8, -k7, -k8,  k5,  k6, -k9, -k10,
+    1, 0, -k7,  k8, -k9, -k10, k5, -k6,  k5,  k6, -k9,  k10, -k7, -k8,
+    1, 0,  k5,  k6, -k7,  k8, -k9,  k10,-k9, -k10, -k7, -k8, k5, -k6};
 
 
 //////////////////////////// ComplexD /////////////////////////////////////////
@@ -80,6 +80,10 @@ inline ComplexD load(double r, double i)
 inline const ComplexD load128(const double *v)
 {
     return _mm_loadu_pd(v);
+}
+inline ComplexD broadcast64(double x)
+{
+    return _mm_setr_pd(x,x);
 }
 
 // Store
@@ -192,13 +196,21 @@ inline ComplexD conj(ComplexD x)
 }
 
 // Multiply with i
+#ifdef ENABLE_COMPLEX_D2
 inline ComplexD mul_i(ComplexD a)
-{
-    //const ComplexD const1 = load(0.0, -0.0);
+{    
     ComplexD a1 = change_sign(a, const1_128);
     ComplexD y = _mm_permute_pd(a1, 1);
     return y;
 }
+#else
+inline ComplexD mul_i(ComplexD a)
+{
+    ComplexD a1 = change_sign(a, const1_128);
+    ComplexD y = _mm_shuffle_pd(a1, a1, 1);
+    return y;
+}
+#endif
 
 // For testing
 inline std::ostream& operator<<(std::ostream& os, const ComplexD &x)
@@ -236,6 +248,21 @@ inline const ComplexD2 broadcast128(const double *v)
     return _mm256_broadcast_pd((const __m128d*) v);
 }
 
+// Loads same number four times: [x] -> [x x x x]
+inline const ComplexD2 broadcast64_D2(const double x)
+{
+    return _mm256_broadcast_sd(&x);
+}
+
+// Combines complex number from two separate memory locations: [a1 a2], [b1 b2] -> [a1 a2 b1 b2]
+inline const ComplexD2 load_two_128(const double *a, const double *b)
+{
+    // NOTE this should compile into two operations
+    const ComplexD2 aa = _mm256_castpd128_pd256(load128(a));
+    const ComplexD bb = load128(b);
+    return _mm256_insertf128_pd (aa, bb, 1);
+}
+
 // Store a complex number
 inline void store(ComplexD2 val, double &r1, double &i1, double &r2, double &i2)
 {
@@ -246,6 +273,16 @@ inline void store(ComplexD2 val, double &r1, double &i1, double &r2, double &i2)
 inline void store(ComplexD2 val, double *v)
 {
     _mm256_storeu_pd(v, val);
+}
+
+// Divides the complex numbers to two separate memory locations: [a1 a2 b1 b2] -> [a1 a2], [b1 b2]
+inline void store_two_128(ComplexD2 val, double *a, double *b)
+{
+    // NOTE this should compile into three operations
+    ComplexD aa = _mm256_castpd256_pd128(val);
+    store(aa, a);
+    ComplexD bb = _mm256_extractf128_pd(val, 1);
+    store(bb, b);
 }
 
 // Changes signs of [x1 x2 x3 x4] using [s1 s2 s3 s4]. s should contain only 0.0 and -0.0
@@ -318,50 +355,122 @@ inline std::ostream& operator<<(std::ostream& os, const ComplexD2 &x)
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ENABLE_COMPLEX_D
-
 template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD *x_in, ComplexD *x_out)
-{
-    const double *coeff = nullptr;
-
+{    
+    // Implementation for radix = 2
     if (radix == 2)
     {
-        coeff = coeff_radix_2;
-    } else if (radix == 3)
+        x_out[0] = x_in[0] + x_in[1];
+        x_out[1] = x_in[0] - x_in[1];
+        return;
+    }
+
+    // Implementation for radix = 3
+    if (radix == 3)
     {
-        coeff = coeff_radix_3;
-    } else if (radix == 4)
+        const ComplexD k0 = broadcast64(0.5);
+        const ComplexD k1 = broadcast64(0.5*sqrt(3.0));
+        ComplexD t0 = x_in[1] + x_in[2];
+        ComplexD t1 = x_in[0] - k0*t0;
+        ComplexD t2 = mul_i(k1*(x_in[1] - x_in[2]));
+
+        x_out[0] = x_in[0] + t0;
+        if (forward)
+        {
+            x_out[1] = t1 - t2;
+            x_out[2] = t1 + t2;
+        } else
+        {
+            x_out[1] = t1 + t2;
+            x_out[2] = t1 - t2;
+        }
+        return;
+    }
+
+    // Implementation for radix = 4
+    if (radix == 4)
     {
-        coeff = coeff_radix_4;
-    } else if (radix == 5)
+        ComplexD t0 = x_in[0] + x_in[2];
+        ComplexD t1 = x_in[1] + x_in[3];
+        ComplexD t2 = x_in[0] - x_in[2];
+        ComplexD t3;
+        if (forward)
+            t3 = mul_i(x_in[3] - x_in[1]);
+        else
+            t3 = mul_i(x_in[1] - x_in[3]);
+
+        x_out[0] = t0 + t1;
+        x_out[1] = t2 + t3;
+        x_out[2] = t0 - t1;
+        x_out[3] = t2 - t3;
+        return;
+    }
+
+    // Implementation for radix = 5
+    if (radix == 5)
     {
-        coeff = coeff_radix_5;
-    } else if (radix == 7)
+        const ComplexD k1 = broadcast64(cos(2.0*M_PI*1.0/5.0));
+        const ComplexD k2 = broadcast64(sin(2.0*M_PI*1.0/5.0));
+        const ComplexD k3 = broadcast64(-cos(2.0*M_PI*2.0/5.0));
+        const ComplexD k4 = broadcast64(sin(2.0*M_PI*2.0/5.0));
+
+        ComplexD t0 = x_in[1] + x_in[4];
+        ComplexD t1 = x_in[2] + x_in[3];
+        ComplexD t2 = x_in[1] - x_in[4];
+        ComplexD t3 = x_in[2] - x_in[3];
+        ComplexD t4 = x_in[0] + k1*t0 - k3*t1;
+        ComplexD t5 = x_in[0] + k1*t1 - k3*t0;
+        ComplexD t6 = mul_i(k2*t2 + k4*t3);
+        ComplexD t7 = mul_i(k4*t2 - k2*t3);
+
+        x_out[0] = x_in[0] + t0 + t1;
+        if (forward)
+        {
+            x_out[1] = t4 - t6;
+            x_out[2] = t5 - t7;
+            x_out[3] = t5 + t7;
+            x_out[4] = t4 + t6;
+        }
+        else
+        {
+            x_out[1] = t4 + t6;
+            x_out[2] = t5 + t7;
+            x_out[3] = t5 - t7;
+            x_out[4] = t4 - t6;
+        }
+        return;
+    }
+
+    // Other radices
+    const double *coeff = nullptr;
+
+    if (radix == 7)
     {
         coeff = coeff_radix_7;
     }
 
-    // Use temporary storage. This is needed (as usually is) if x_in == x_out
-    ComplexD x_temp_in[radix];
-    for (size_t j = 0; j < radix; j++)
+    // First row is (1,0)
+    x_out[0] = x_in[0];
+    for (size_t i = 1; i < radix; i++)
     {
-        x_temp_in[j] = x_in[j];
+        x_out[0] = x_out[0] + x_in[i];
     }
 
-    for (size_t i = 0; i < radix; i++)
+    for (size_t i = 1; i < radix; i++)
     {
-        x_out[i] = load(0.0, 0.0);
-        for (size_t j = 0; j < radix; j++)
+        x_out[i] = x_in[0]; // First column is always (1,0)
+        for (size_t j = 1; j < radix; j++)
         {
             ComplexD w = load128(coeff + 2*radix*i + 2*j);
 
-            x_out[i] = x_out[i] + mul_w<forward>(x_temp_in[j], w);
+            x_out[i] = x_out[i] + mul_w<forward>(x_in[j], w);
         }
-    }
+    }   
 }
 
 
 template<size_t radix, bool forward> inline void multiply_twiddle(const ComplexD *x_in, ComplexD *x_out, const ComplexD *twiddle_factors)
-{
+{        
     // It is assumed that first twiddle factors are always (1 + 0i)
     x_out[0] = x_in[0];
 
