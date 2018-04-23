@@ -448,7 +448,7 @@ template<size_t radix, StrideType stride_type, bool forward>
 
 template<size_t radix, StrideType stride_type, bool forward>
     void fft_1d_complex_twiddle_dit_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
+{    
     assert(step_info.forward == forward);
 
     size_t stride = get_stride<stride_type>(step_info.stride);
@@ -463,7 +463,7 @@ template<size_t radix, StrideType stride_type, bool forward>
 
 template<size_t radix, StrideType stride_type, bool forward>
     void fft_1d_complex_twiddle_dif_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
+{    
     assert(step_info.forward == forward);
 
     size_t stride = get_stride<stride_type>(step_info.stride);

@@ -18,8 +18,10 @@
 */
 
 #include "utilities.h"
+#include <array>
 #include <algorithm>
 #include <assert.h>
+#include <iostream> //TESTING
 
 // Calculates twiddle factors for a given level for DIT
 hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, const std::vector<size_t> &N)
@@ -30,7 +32,7 @@ hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, 
     size_t num = 1;
     for(size_t i = 0; i <= level; i++)
     {
-        num = num*N[n_dim - i - 1];
+        num = num*N[i];
     }
     hhfft::AlignedVector<double> w(num*2);
 
@@ -39,7 +41,7 @@ hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, 
     temp1[0] = 1;
     for (size_t i = 1; i < n_dim+1; i++)
     {
-        temp1[i] = temp1[i-1]*N[i-1];
+        temp1[i] = temp1[i-1]*N[n_dim-i];
     }
 
     size_t N_tot = temp1.back(); // N1*N2*...
@@ -49,7 +51,7 @@ hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, 
     temp2[0] = 1;
     for (size_t i = 1; i < n_dim; i++)
     {
-        temp2[i] = temp2[i-1]*N[n_dim-i];
+        temp2[i] = temp2[i-1]*N[i-1];
     }
 
     for (size_t i = 0; i < num; i++)
@@ -77,13 +79,13 @@ hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIF(size_t level, 
     // Re-order twiddle factors
     std::vector<size_t> N_temp(level+1);
     for(size_t i = 0; i <= level; i++)
-    {
-        N_temp[i] = N[n_dim - i - 1];
+    {        
+        N_temp[level - i] = N[i];
     }
 
     std::vector<uint32_t> reorder = hhfft::calculate_reorder_table(N_temp);
 
-    size_t num = reorder.size();
+    size_t num = reorder.size();    
     assert (2*num == w_temp.size());
 
     hhfft::AlignedVector<double> w(2*num);
@@ -106,8 +108,8 @@ std::vector<size_t> hhfft::index_to_n(size_t i, const std::vector<size_t> &N)
     for(size_t j = 0; j < n_dim; j++)
     {
         size_t jj = n_dim-j-1;
-        n[jj] = temp % N[jj];
-        temp = temp/N[jj];
+        n[jj] = temp % N[j];
+        temp = temp/N[j];
     }
     return n;
 }
@@ -121,7 +123,7 @@ std::vector<uint32_t> hhfft::calculate_reorder_table(const std::vector<size_t> &
     temp1[0] = 1;
     for (size_t i = 1; i < n_dim+1; i++)
     {
-        temp1[i] = temp1[i-1]*N[i-1];
+        temp1[i] = temp1[i-1]*N[n_dim-i];
     }
 
     size_t N_tot = temp1.back(); // N1*N2*...
@@ -204,4 +206,42 @@ std::vector<uint32_t> hhfft::calculate_reorder_table_in_place(const std::vector<
 
     return reorder_in_place;
     */
+}
+
+// Finds an efficient factorization (not necassery a prime factorization)
+std::vector<size_t> hhfft::calculate_factorization(size_t n, bool use_dif)
+{
+    std::vector<size_t> factors;
+
+    // This list is the supported factorizations in order of preference
+    std::array<size_t, 5> radices = {4,2,3,5,7};
+    //std::array<size_t, 4> radices = {2,3,5,7}; // for TESTING use 2 instead of 4
+
+    while(n > 1)
+    {
+        bool radix_found = false;
+        for (auto r: radices)
+        {
+            if(n%r == 0)
+            {
+                factors.push_back(r);
+                n = n / r;
+                radix_found = true;
+                break;
+            }
+        }
+        if (!radix_found)
+        {
+            // TODO these should be combined (?) and taken care of with other algorithms!
+            throw(std::runtime_error("HHFFT error: size is not factorizable!"));
+        }
+    }
+
+    if (use_dif)
+    {
+        // Reverse the order as last radix in the vector is actually used first
+        std::reverse(factors.begin(),factors.end());
+    }
+
+    return factors;
 }
