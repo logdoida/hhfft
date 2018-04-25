@@ -23,8 +23,7 @@
 #include <assert.h>
 #include <cmath>
 
-#define ENABLE_COMPLEX_D
-#include "hhfft_1d_complex_common_d.h"
+#include "../common/hhfft_1d_complex_sse2_common_d.h"
 
 using namespace hhfft;
 

@@ -26,10 +26,63 @@
 
 using namespace hhfft;
 
+// Compiler is not able to optimize this to use sse2! TODO implement different versions (plain/sse2/avx) of this!
+// In-place reordering "swap"
+template<bool forward> void fft_2d_complex_reorder_rows_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    std::cout << "fft_2d_complex_reorder_rows_in_place_d" << std::endl;
+
+    size_t n = step_info.size; // number of rows
+    size_t m = step_info.stride; // number of columns
+    size_t reorder_table_size = step_info.repeats;
+    uint32_t *reorder_table = step_info.reorder_table_inplace;
+
+    // In-place algorithm
+    assert (data_in == data_out);
+
+    for (size_t i = 0; i < n; i++)
+    {
+        for (size_t j = 0; j < reorder_table_size; j++)
+        {
+            size_t ind1 = j + 1; // First one has been omitted!
+            size_t ind2 = reorder_table[j];
+
+            // Swap two doubles at a time
+            /*
+            __m128d temp1 = _mm_loadu_pd(data_in + 2*i*m + 2*ind1);
+            __m128d temp2 = _mm_loadu_pd(data_in + 2*i*m + 2*ind2);
+            _mm_storeu_pd(data_out + 2*i*m + 2*ind2, temp1);
+            _mm_storeu_pd(data_out + 2*i*m + 2*ind1, temp2);
+            */
+
+            double r_temp = data_out[2*i*m + 2*ind1+0];
+            double c_temp = data_out[2*i*m + 2*ind1+1];
+            data_out[2*i*m + 2*ind1+0] = data_out[2*i*m + 2*ind2+0];
+            data_out[2*i*m + 2*ind1+1] = data_out[2*i*m + 2*ind2+1];
+            data_out[2*i*m + 2*ind2+0] = r_temp;
+            data_out[2*i*m + 2*ind2+1] = c_temp;
+        }
+    }
+
+    // Scaling is performed always in the reorder-columns step
+    /*
+    if (!forward)
+    {
+        // Needed only in ifft. Equal to 1/N
+        double k = step_info.norm_factor;
+
+        for (size_t i = 0; i < 2*m*n; i++)
+        {
+            data_out[i] *= k;
+        }
+    }
+    */
+}
+
 // TODO implement different versions (plain/sse2/avx) of this?
 // In-place reordering "swap"
 template<bool forward> void fft_2d_complex_reorder_columns_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{    
+{
     size_t n = step_info.repeats;
     size_t m = step_info.size;
     uint32_t *reorder_table = step_info.reorder_table_inplace;
@@ -52,6 +105,7 @@ template<bool forward> void fft_2d_complex_reorder_columns_in_place_d(const doub
 
     // Scaling needs to be done as a separate step as some data might be copied twice or zero times
     // TODO this is not very efficient. Scaling could be done at some other step (first/last)
+    // Scaling needs to be done as a separate step as some data might be copied twice or zero times        
     size_t n2 = step_info.stride;
     if (!forward)
     {
@@ -62,7 +116,7 @@ template<bool forward> void fft_2d_complex_reorder_columns_in_place_d(const doub
         {
             data_out[i] *= k;
         }
-    }
+    }    
 }
 
 // TODO implement different versions (plain/sse2/avx) of this?
@@ -128,6 +182,7 @@ template<size_t radix, SizeType size_type, bool forward>
 // TODO DIF not implemented yet!
 
 
+//////////////////////// column-wise ////////////////////////////////////
 
 template<size_t radix, SizeType size_type, bool forward> void set_instruction_set_columns_2d_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
@@ -234,8 +289,6 @@ void set_radix_2d_colums_d(StepInfoD &step_info, hhfft::InstructionSet instructi
     }
 }
 
-
-
 // This set pointer to correct fft functions based on radix and stride etc
 // NOTE currently only reordering steps are needed
 void hhfft::HHFFT_2D_Complex_D_set_function_columns(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
@@ -266,11 +319,136 @@ void hhfft::HHFFT_2D_Complex_D_set_function_columns(StepInfoD &step_info, hhfft:
     }
 }
 
+///////////////////////// rOW-wise ////////////////////////////////////
+
+template<size_t radix, SizeType stride_type, bool forward> void set_instruction_set_rows_2d_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    // TESTING to speedup compilation
+
+    // Plain
+    //*
+    if (step_info.dif)
+    {
+        //step_info.step_function = fft_2d_complex_row_twiddle_dif_plain_d<radix, forward>;
+    } else
+    {
+        step_info.step_function = fft_2d_complex_row_twiddle_dit_plain_d<radix, forward>;
+    }
+    //*/
+
+/*
+    // TODO
+    if (instruction_set == hhfft::InstructionSet::avx512f)
+    {
+
+    } else if (instruction_set == hhfft::InstructionSet::avx)
+    {
+
+    } else if (instruction_set == hhfft::InstructionSet::sse2)
+    {
+
+    } else
+    {
+
+    }
+  */
+}
+
+// These functions set different template parameters one at time
+template<size_t radix, SizeType stride_type> void set_forward_2d_rows_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    if (step_info.forward)
+    {
+        set_instruction_set_rows_2d_d<radix, stride_type, true>(step_info, instruction_set);
+    } else
+    {
+        set_instruction_set_rows_2d_d<radix, stride_type, false>(step_info, instruction_set);
+    }
+}
+
+template<size_t radix> void set_stride_type_2d_rows_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    // Knowing something about the stride at compile time can help to optimize some cases
+    // NOTE for column-wise the row length is used instead!
+    size_t n_stride = step_info.stride;
+
+    // TESTING to speed up compilation
+    if (n_stride == 1)
+    {
+        set_forward_2d_rows_d<radix, SizeType::Size1>(step_info, instruction_set);
+    } else
+    {
+        set_forward_2d_rows_d<radix, SizeType::SizeN>(step_info, instruction_set);
+    }
+
+    /*
+    if (n_stride == 1)
+    {
+        set_forward_2d_rows_d<radix, SizeType::Sizee1>(step_info, instruction_set);
+    } else if (n_stride == 2)
+    {
+        set_forward_2d_rows_d<radix, SizeType::Size2>(step_info, instruction_set);
+    } else if (n_stride == 4)
+    {
+        set_forward_2d_rows_d<radix, SizeType::Size4>(step_info, instruction_set);
+    } else if (n_stride%4 == 0)
+    {
+        set_forward_2d_rows_d<radix, SizeType::Size4N>(step_info, instruction_set);
+    } else if (n_stride%2 == 0)
+    {
+        set_forward_2d_rows_d<radix, SizeType::Size2N>(step_info, instruction_set);
+    } else
+    {
+        set_forward_2d_rows_d<radix, SizeType::SizeeN>(step_info, instruction_set);
+    }
+    */
+}
+
+void set_radix_2d_rows_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    size_t radix = step_info.radix;
+
+    if (radix == 2)
+    {
+        set_stride_type_2d_rows_d<2>(step_info, instruction_set);
+    } if (radix == 3)
+    {
+        set_stride_type_2d_rows_d<3>(step_info, instruction_set);
+    } if (radix == 4)
+    {
+        set_stride_type_2d_rows_d<4>(step_info, instruction_set);
+    } if (radix == 5)
+    {
+        set_stride_type_2d_rows_d<5>(step_info, instruction_set);
+    } if (radix == 7)
+    {
+        set_stride_type_2d_rows_d<7>(step_info, instruction_set);
+    }
+}
+
+
 void hhfft::HHFFT_2D_Complex_D_set_function_rows(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
     step_info.step_function = nullptr;
 
-    // TODO implement reordering
+    if (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr)
+    {
+        // Only in-place re-ordering of
+        if (step_info.forward)
+            step_info.step_function = fft_2d_complex_reorder_rows_in_place_d<true>;
+        else
+            step_info.step_function = fft_2d_complex_reorder_rows_in_place_d<false>;
+
+        return;
+    }
+
+    if (step_info.twiddle_factors == nullptr)
+    {
+        // TODO 1d could be used if properly initialized
+    } else
+    {
+        set_radix_2d_rows_d(step_info, instruction_set);
+    }
 
     if (step_info.step_function == nullptr)
     {
