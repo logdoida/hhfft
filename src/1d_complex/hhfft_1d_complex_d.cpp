@@ -108,50 +108,50 @@ template<bool forward> void fft_1d_complex_reorder_d(const double *data_in, doub
 
 // Actual implementations are in different .cpp-files
 // No twiddle factors
-template<size_t radix, StrideType stride_type, bool forward>
+template<size_t radix, bool forward>
     void fft_1d_complex_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, StrideType stride_type, bool forward>
+template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, StrideType stride_type, bool forward>
+template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, StrideType stride_type, bool forward>
+template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 // DIT
-template<size_t radix, StrideType stride_type, bool forward>
+template<size_t radix, bool forward>
     void fft_1d_complex_twiddle_dit_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, StrideType stride_type, bool forward>
+template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_twiddle_dit_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, StrideType stride_type, bool forward>
+template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_twiddle_dit_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, StrideType stride_type, bool forward>
+template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_twiddle_dit_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 // DIT
-template<size_t radix, StrideType stride_type, bool forward>
+template<size_t radix, bool forward>
     void fft_1d_complex_twiddle_dif_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, StrideType stride_type, bool forward>
+template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_twiddle_dif_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, StrideType stride_type, bool forward>
+template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_twiddle_dif_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, StrideType stride_type, bool forward>
+template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_twiddle_dif_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 
-template<size_t radix, StrideType stride_type, bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+template<size_t radix, SizeType stride_type, bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
     // TESTING to speedup compilation
 
-    ///*
+    /*
     // AVX
     if (step_info.twiddle_factors == nullptr)
     {
@@ -163,7 +163,7 @@ template<size_t radix, StrideType stride_type, bool forward> void set_instructio
         else
             step_info.step_function = fft_1d_complex_twiddle_dit_avx_d<radix, stride_type, forward>;
     }
-    //*/
+    */
 
     /*
     // SSE2
@@ -180,18 +180,18 @@ template<size_t radix, StrideType stride_type, bool forward> void set_instructio
     */
 
 
-    /*
+    //*
     if (step_info.twiddle_factors == nullptr)
     {
-       step_info.step_function = fft_1d_complex_plain_d<radix, stride_type, forward>;
+       step_info.step_function = fft_1d_complex_plain_d<radix, forward>;
     } else
     {
         if (step_info.dif)
-            step_info.step_function = fft_1d_complex_twiddle_dif_plain_d<radix, stride_type, forward>;
+            step_info.step_function = fft_1d_complex_twiddle_dif_plain_d<radix, forward>;
         else
-            step_info.step_function = fft_1d_complex_twiddle_dit_plain_d<radix, stride_type, forward>;
+            step_info.step_function = fft_1d_complex_twiddle_dit_plain_d<radix, forward>;
     }
-    */
+    //*/
 
 
 /*
@@ -249,7 +249,7 @@ template<size_t radix, StrideType stride_type, bool forward> void set_instructio
 }
 
 // These functions set different template parameters one at time
-template<size_t radix, StrideType stride_type> void set_forward_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+template<size_t radix, SizeType stride_type> void set_forward_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
 
     if (step_info.forward)
@@ -269,10 +269,10 @@ template<size_t radix> void set_stride_type_d(StepInfoD &step_info, hhfft::Instr
     // TESTING to speed up compilation
     if (stride == 1)
     {
-        set_forward_d<radix, StrideType::Stride1>(step_info, instruction_set);
+        set_forward_d<radix, SizeType::Size1>(step_info, instruction_set);
     } else
     {
-        set_forward_d<radix, StrideType::StrideN>(step_info, instruction_set);
+        set_forward_d<radix, SizeType::SizeN>(step_info, instruction_set);
     }
 
     /*

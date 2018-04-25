@@ -17,8 +17,8 @@
 *   along with HHFFT. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HHFFT_1D_COMPLEX_D_H
-#define HHFFT_1D_COMPLEX_D_H
+#ifndef HHFFT_2D_COMPLEX_D_H
+#define HHFFT_2D_COMPLEX_D_H
 
 #include "step_info.h"
 #include "architecture.h"
@@ -26,10 +26,13 @@
 namespace hhfft
 {
 
-// This sets pointer to correct fft functions based on radix and stride etc
-void HHFFT_1D_Complex_D_set_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
+// For column-wise operations
+void HHFFT_2D_Complex_D_set_function_columns(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
+
+// For row-wise operations
+void HHFFT_2D_Complex_D_set_function_rows(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
 
 
 }
 
-#endif // HHFFT_1D_COMPLEX_H
+#endif // HHFFT_2D_COMPLEX_H

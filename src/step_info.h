@@ -31,7 +31,7 @@ enum StepDataType {data_in = 0, data_out = 1, temp_data = 2};
 // StrideX -> stride = X
 // StrideXN -> stride divisible by X
 // StrideN -> stride something else
-enum StrideType{Stride1, Stride2, Stride4, Stride2N, Stride4N, StrideN};
+enum SizeType{Size1, Size2, Size4, Size2N, Size4N, SizeN};
 
 template<typename T> struct StepInfo
 {
@@ -42,6 +42,7 @@ template<typename T> struct StepInfo
     size_t radix = 1;
     size_t stride = 1;
     size_t repeats = 1;
+    size_t size = 1;
 
     // True if fft is done, false if ifft
     bool forward = true;

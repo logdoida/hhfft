@@ -354,6 +354,69 @@ inline std::ostream& operator<<(std::ostream& os, const ComplexD2 &x)
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 
+template<size_t radix, bool forward> inline void multiply_coeff(const double *x_in, double *x_out)
+{
+    const double *coeff = nullptr;
+
+    if (radix == 2)
+    {
+        coeff = coeff_radix_2;
+    } else if (radix == 3)
+    {
+        coeff = coeff_radix_3;
+    } else if (radix == 4)
+    {
+        coeff = coeff_radix_4;
+    } else if (radix == 5)
+    {
+        coeff = coeff_radix_5;
+    } else if (radix == 7)
+    {
+        coeff = coeff_radix_7;
+    }
+
+    for (size_t i = 0; i < radix; i++)
+    {
+        x_out[2*i + 0] = 0;
+        x_out[2*i + 1] = 0;
+        for (size_t j = 0; j < radix; j++)
+        {
+            double a = coeff[2*radix*i + 2*j + 0];
+            double b = forward ? coeff[2*radix*i + 2*j + 1]: -coeff[2*radix*i + 2*j + 1];
+            x_out[2*i + 0] += a*x_in[2*j + 0] - b*x_in[2*j + 1];
+            x_out[2*i + 1] += b*x_in[2*j + 0] + a*x_in[2*j + 1];
+        }
+    }
+}
+
+template<size_t radix, bool forward> inline void multiply_twiddle(const double *x_in, double *x_out, const double *twiddle_factors)
+{
+    // It is assumed that first twiddle factors are always (1 + 0i)
+    x_out[0] = x_in[0];
+    x_out[1] = x_in[1];
+
+    // Read in the values used in this step and multiply them with twiddle factors
+    for (size_t j = 1; j < radix; j++)
+    {
+        double x_r = x_in[2*j + 0];
+        double x_i = x_in[2*j + 1];
+        double w_r = twiddle_factors[2*j + 0];
+        double w_i = twiddle_factors[2*j + 1];
+
+        if (forward == 1)
+        {
+            x_out[2*j + 0] = w_r*x_r - w_i*x_i;
+            x_out[2*j + 1] = w_i*x_r + w_r*x_i;
+        } else
+        {
+            x_out[2*j + 0] =  w_r*x_r + w_i*x_i;
+            x_out[2*j + 1] = -w_i*x_r + w_r*x_i;
+        }
+    }
+}
+
+//////////////////////////// ComplexD ////////////////////////////////////////
+
 #ifdef ENABLE_COMPLEX_D
 template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD *x_in, ComplexD *x_out)
 {    
@@ -479,6 +542,139 @@ template<size_t radix, bool forward> inline void multiply_twiddle(const ComplexD
     {
         ComplexD x = x_in[j];
         ComplexD w = twiddle_factors[j];
+
+        x_out[j] = mul_w<forward>(x, w);
+    }
+}
+
+#endif
+
+//////////////////////////// ComplexD2 ////////////////////////////////////////
+#ifdef ENABLE_COMPLEX_D2
+
+template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD2 *x_in, ComplexD2 *x_out)
+{
+    // Implementation for radix = 2
+    if (radix == 2)
+    {
+        x_out[0] = x_in[0] + x_in[1];
+        x_out[1] = x_in[0] - x_in[1];
+        return;
+    }
+
+    // Implementation for radix = 3
+    if (radix == 3)
+    {
+        const ComplexD2 k0 = broadcast64_D2(0.5);
+        const ComplexD2 k1 = broadcast64_D2(0.5*sqrt(3.0));
+        ComplexD2 t0 = x_in[1] + x_in[2];
+        ComplexD2 t1 = x_in[0] - k0*t0;
+        ComplexD2 t2 = mul_i(k1*(x_in[1] - x_in[2]));
+
+        x_out[0] = x_in[0] + t0;
+        if (forward)
+        {
+            x_out[1] = t1 - t2;
+            x_out[2] = t1 + t2;
+        } else
+        {
+            x_out[1] = t1 + t2;
+            x_out[2] = t1 - t2;
+        }
+        return;
+    }
+
+    // Implementation for radix = 4
+    if (radix == 4)
+    {
+        ComplexD2 t0 = x_in[0] + x_in[2];
+        ComplexD2 t1 = x_in[1] + x_in[3];
+        ComplexD2 t2 = x_in[0] - x_in[2];
+        ComplexD2 t3;
+        if (forward)
+            t3 = mul_i(x_in[3] - x_in[1]);
+        else
+            t3 = mul_i(x_in[1] - x_in[3]);
+
+        x_out[0] = t0 + t1;
+        x_out[1] = t2 + t3;
+        x_out[2] = t0 - t1;
+        x_out[3] = t2 - t3;
+        return;
+    }
+
+    // Implementation for radix = 5
+    if (radix == 5)
+    {
+        const ComplexD2 k1 = broadcast64_D2(cos(2.0*M_PI*1.0/5.0));
+        const ComplexD2 k2 = broadcast64_D2(sin(2.0*M_PI*1.0/5.0));
+        const ComplexD2 k3 = broadcast64_D2(-cos(2.0*M_PI*2.0/5.0));
+        const ComplexD2 k4 = broadcast64_D2(sin(2.0*M_PI*2.0/5.0));
+
+        ComplexD2 t0 = x_in[1] + x_in[4];
+        ComplexD2 t1 = x_in[2] + x_in[3];
+        ComplexD2 t2 = x_in[1] - x_in[4];
+        ComplexD2 t3 = x_in[2] - x_in[3];
+        ComplexD2 t4 = x_in[0] + k1*t0 - k3*t1;
+        ComplexD2 t5 = x_in[0] + k1*t1 - k3*t0;
+        ComplexD2 t6 = mul_i(k2*t2 + k4*t3);
+        ComplexD2 t7 = mul_i(k4*t2 - k2*t3);
+
+        x_out[0] = x_in[0] + t0 + t1;
+        if (forward)
+        {
+            x_out[1] = t4 - t6;
+            x_out[2] = t5 - t7;
+            x_out[3] = t5 + t7;
+            x_out[4] = t4 + t6;
+        }
+        else
+        {
+            x_out[1] = t4 + t6;
+            x_out[2] = t5 + t7;
+            x_out[3] = t5 - t7;
+            x_out[4] = t4 - t6;
+        }
+        return;
+    }
+
+    // Other radices
+    const double *coeff = nullptr;
+
+    if (radix == 7)
+    {
+        coeff = coeff_radix_7;
+    }
+
+    // First row is (1,0)
+    x_out[0] = x_in[0];
+    for (size_t i = 1; i < radix; i++)
+    {
+        x_out[0] = x_out[0] + x_in[i];
+    }
+
+    for (size_t i = 1; i < radix; i++)
+    {
+        x_out[i] = x_in[0]; // First column is always (1,0)
+        for (size_t j = 1; j < radix; j++)
+        {
+            ComplexD2 w = broadcast128(coeff + 2*radix*i + 2*j);
+
+            x_out[i] = x_out[i] + mul_w<forward>(x_in[j], w);
+        }
+    }
+}
+
+template<size_t radix, bool forward> inline void multiply_twiddle(const ComplexD2 *x_in, ComplexD2 *x_out, const ComplexD2 *twiddle_factors)
+{
+    // It is assumed that first twiddle factors are always (1 + 0i)
+    x_out[0] = x_in[0];
+
+    // Read in the values used in this step and multiply them with twiddle factors
+    for (size_t j = 1; j < radix; j++)
+    {
+        ComplexD2 x = x_in[j];
+        ComplexD2 w = twiddle_factors[j];
 
         x_out[j] = mul_w<forward>(x, w);
     }

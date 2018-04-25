@@ -60,7 +60,7 @@ hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, 
         double ww = 0;
         for (size_t j = 0; j < level; j++)
         {
-            ww = ww + n[n_dim-level-1]*temp1[n_dim-level-1]*n[n_dim-j-1]*temp2[j];
+            ww = ww + n[level]*temp1[n_dim-level-1]*n[j]*temp2[j];
         }
         w[2*i]   = cos(-2.0*M_PI*ww/N_tot);
         w[2*i+1] = sin(-2.0*M_PI*ww/N_tot);
@@ -106,9 +106,8 @@ std::vector<size_t> hhfft::index_to_n(size_t i, const std::vector<size_t> &N)
 
     size_t temp = i;
     for(size_t j = 0; j < n_dim; j++)
-    {
-        size_t jj = n_dim-j-1;
-        n[jj] = temp % N[j];
+    {        
+        n[j] = temp % N[j];
         temp = temp/N[j];
     }
     return n;
@@ -135,7 +134,7 @@ std::vector<uint32_t> hhfft::calculate_reorder_table(const std::vector<size_t> &
         uint32_t temp = 0;
         for(size_t j = 0; j < n_dim; j++)
         {
-            temp = temp + n[j]*temp1[j];
+            temp = temp + n[n_dim-j-1]*temp1[j];
         }
         reorder[i] = temp;
     }
