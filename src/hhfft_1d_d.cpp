@@ -40,65 +40,6 @@ using hhfft::HHFFT_1D_D;
 // True if dif should be used
 static const bool use_dif = false;
 
-void HHFFT_1D_set_function(StepInfoD &step_info, bool use_dif)
-{
-    // NEW
-    //*
-    // TODO this should be done only once
-    hhfft::InstructionSet instruction_set = hhfft::get_best_instruction_set();
-
-    step_info.dif = use_dif;
-
-    HHFFT_1D_Complex_D_set_function(step_info, instruction_set);
-    //*/
-
-    // OLD
-    /*
-    // TODO this should be done only once
-    hhfft::CPUID_info info = hhfft::get_supported_instructions();
-
-#ifdef HHFFT_COMPILED_WITH_AVX512F
-    if (info.avx512f)
-    {
-        if (use_dif)
-        {
-            // TODO add support for avx512f
-            // HHFFT_1D_AVX512F_set_function_DIF(step_info);
-            // return;
-        } else
-        {
-            // TODO add support for avx512f
-            // HHFFT_1D_AVX512F_set_function(step_info);
-            // return;
-        }
-    }
-#endif
-
-#ifdef HHFFT_COMPILED_WITH_AVX
-    if (info.avx)
-    {
-        if (use_dif)
-        {            
-            HHFFT_1D_AVX_set_function_DIF(step_info);
-            return;
-        } else
-        {
-            HHFFT_1D_AVX_set_function(step_info);
-            return;
-        }
-    }
-#endif
-
-    if (use_dif)
-    {
-        HHFFT_1D_Plain_set_function_DIF(step_info);
-    } else
-    {
-        HHFFT_1D_Plain_set_function(step_info);
-    }    
-    */
-}
-
 double* HHFFT_1D_D::allocate_memory()
 {
     return (double *) allocate_aligned_memory(2*n*sizeof(double));
@@ -110,7 +51,7 @@ void HHFFT_1D_D::free_memory(double *data)
 }
 
 // Does the planning step
-HHFFT_1D_D::HHFFT_1D_D(size_t n)
+HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
 {
     this->n = n;
 
@@ -124,6 +65,12 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
     {
         // TODO add a support to small radices with a single pass dft
         throw(std::runtime_error("HHFFT error: fft size must be larger than 1!"));
+    }
+
+    // Define instruction set if needed
+    if (instruction_set == InstructionSet::automatic)
+    {
+        instruction_set = hhfft::get_best_instruction_set();
     }
 
     // Calculate factorization
@@ -174,7 +121,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
         step1.repeats = 1;
         step1.data_type_in = hhfft::StepDataType::data_in;
         step1.data_type_out = hhfft::StepDataType::data_out;
-        HHFFT_1D_set_function(step1, true);
+        step1.dif = use_dif;
+        HHFFT_1D_Complex_D_set_function(step1, instruction_set);
         forward_steps.push_back(step1);
 
         // then put rest fft steps combined with twiddle factor
@@ -188,7 +136,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
             step.data_type_in = hhfft::StepDataType::data_out;
             step.data_type_out = hhfft::StepDataType::data_out;
             step.twiddle_factors = twiddle_factors[i].data();
-            HHFFT_1D_set_function(step, true);
+            step.dif = use_dif;
+            HHFFT_1D_Complex_D_set_function(step, instruction_set);
             forward_steps.push_back(step);
         }
 
@@ -201,7 +150,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
         step2.repeats = reorder_table_in_place.size();
         step2.stride = n;
         step2.norm_factor = 1.0/(double(n));
-        HHFFT_1D_set_function(step2, true);
+        step2.dif = use_dif;
+        HHFFT_1D_Complex_D_set_function(step2, instruction_set);
         forward_steps.push_back(step2);
     }
     else
@@ -218,7 +168,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
         step1.repeats = reorder_table_in_place.size();
         step1.stride = n;
         step1.norm_factor = 1.0/(double(n));
-        HHFFT_1D_set_function(step1, false);
+        step1.dif = use_dif;
+        HHFFT_1D_Complex_D_set_function(step1, instruction_set);
         forward_steps.push_back(step1);
 
         // Put first fft step
@@ -228,7 +179,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
         step2.repeats = n / step2.radix;
         step2.data_type_in = hhfft::StepDataType::data_out;
         step2.data_type_out = hhfft::StepDataType::data_out;
-        HHFFT_1D_set_function(step2, false);
+        step2.dif = use_dif;
+        HHFFT_1D_Complex_D_set_function(step2, instruction_set);
         forward_steps.push_back(step2);
 
         // then put rest fft steps combined with twiddle factor
@@ -242,7 +194,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
             step.data_type_in = hhfft::StepDataType::data_out;
             step.data_type_out = hhfft::StepDataType::data_out;
             step.twiddle_factors = twiddle_factors[i].data();
-            HHFFT_1D_set_function(step, false);
+            step2.dif = use_dif;
+            HHFFT_1D_Complex_D_set_function(step, instruction_set);
             forward_steps.push_back(step);
         }
     }
@@ -250,8 +203,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n)
     // Make the inverse steps. They are otherwise the same, but different version of function is called    
     for (auto step: forward_steps)
     {
-        step.forward = false;
-        HHFFT_1D_set_function(step,use_dif);
+        step.forward = false;        
+        HHFFT_1D_Complex_D_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
 }

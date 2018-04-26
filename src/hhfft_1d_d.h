@@ -34,7 +34,7 @@ namespace hhfft
 class HHFFT_1D_D
 {
 public:
-    HHFFT_1D_D(size_t n);
+    HHFFT_1D_D(size_t n, InstructionSet instruction_set = InstructionSet::automatic);
 
     // Copying currently not allowed. Data and pointers must be copied properly when implemented!
     HHFFT_1D_D(const HHFFT_1D_D &other) = delete;

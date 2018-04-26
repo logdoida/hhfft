@@ -44,7 +44,7 @@ struct CPUID_info
     bool avx512f = false;
 };
 
-enum InstructionSet{avx512f, avx, sse2, none};
+enum InstructionSet{avx512f, avx, sse2, none, automatic};
 
 // This function is used to determine what versions to actually use at run-time
 CPUID_info get_supported_instructions();

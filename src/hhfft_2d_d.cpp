@@ -47,7 +47,7 @@ void HHFFT_2D_D::free_memory(double *data)
 }
 
 // Does the planning step
-HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m)
+HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
 {
     this->n = n;
     this->m = m;
@@ -62,6 +62,12 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m)
     {
         // TODO add a support to small radices with a single pass dft
         throw(std::runtime_error("HHFFT error: fft size must be larger than 1!"));
+    }
+
+    // Define instruction set if needed
+    if (instruction_set == InstructionSet::automatic)
+    {
+        instruction_set = hhfft::get_best_instruction_set();
     }
 
     // Calculate factorization
@@ -111,8 +117,6 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m)
         twiddle_factors_rows.push_back(w);
         //print_complex_vector(w.data(), w.size()/2);
     }
-
-    hhfft::InstructionSet instruction_set = hhfft::get_best_instruction_set();
 
     // This helps to create the inverse steps    
     std::vector<bool> forward_step_columns;
@@ -221,10 +225,8 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m)
             hhfft::StepInfoD &step_prev = forward_steps.back();
             step.radix = N_rows[i];
             step.stride = step_prev.stride * step_prev.radix;
-            step.repeats = step_prev.repeats / step.radix;
-            if (i == 1)
-                step.repeats = step.repeats / n;
-            step.size = n;
+            step.repeats = step_prev.repeats / step.radix;            
+            step.size = 1;
             step.data_type_in = hhfft::StepDataType::data_out;
             step.data_type_out = hhfft::StepDataType::data_out;
             step.twiddle_factors = twiddle_factors_rows[i].data();

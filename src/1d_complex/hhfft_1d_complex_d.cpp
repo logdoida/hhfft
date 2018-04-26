@@ -149,53 +149,8 @@ template<size_t radix, SizeType stride_type, bool forward>
 
 template<size_t radix, SizeType stride_type, bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
-    // TESTING to speedup compilation
 
-    /*
-    // AVX
-    if (step_info.twiddle_factors == nullptr)
-    {
-       step_info.step_function = fft_1d_complex_avx_d<radix, stride_type, forward>;
-    } else
-    {
-        if (step_info.dif)
-            step_info.step_function = fft_1d_complex_twiddle_dif_avx_d<radix, stride_type, forward>;
-        else
-            step_info.step_function = fft_1d_complex_twiddle_dit_avx_d<radix, stride_type, forward>;
-    }
-    */
-
-    /*
-    // SSE2
-    if (step_info.twiddle_factors == nullptr)
-    {
-       step_info.step_function = fft_1d_complex_sse2_d<radix, stride_type, forward>;
-    } else
-    {
-        if (step_info.dif)
-            step_info.step_function = fft_1d_complex_twiddle_dif_sse2_d<radix, stride_type, forward>;
-        else
-            step_info.step_function = fft_1d_complex_twiddle_dit_sse2_d<radix, stride_type, forward>;
-    }
-    */
-
-
-    //*
-    if (step_info.twiddle_factors == nullptr)
-    {
-       step_info.step_function = fft_1d_complex_plain_d<radix, forward>;
-    } else
-    {
-        if (step_info.dif)
-            step_info.step_function = fft_1d_complex_twiddle_dif_plain_d<radix, forward>;
-        else
-            step_info.step_function = fft_1d_complex_twiddle_dit_plain_d<radix, forward>;
-    }
-    //*/
-
-
-/*
-#ifdef COMPILER_SUPPORTS_AVX512F
+#ifdef HHFFT_COMPILED_WITH_AVX512F
     if (instruction_set == hhfft::InstructionSet::avx512f)
     {
         if (step_info.twiddle_factors == nullptr)
@@ -211,7 +166,7 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
     }
 #endif
 
-#ifdef COMPILER_SUPPORTS_AVX
+#ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {
         if (step_info.twiddle_factors == nullptr)
@@ -237,25 +192,24 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
             if (step_info.dif)
                 step_info.step_function = fft_1d_complex_twiddle_dif_sse2_d<radix, stride_type, forward>;
             else
-                step_info.step_function = fft_1d_complex_twiddle_dit_sse_d<radix, stride_type, forward>;
+                step_info.step_function = fft_1d_complex_twiddle_dit_sse2_d<radix, stride_type, forward>;
         }
     }
 
-    if (instruction_set == hhfft::InstructionSet::plain)
+    if (instruction_set == hhfft::InstructionSet::none)
     {
         // NOTE plain is more or less an unused reference implementation, as sse2 should always be supported
         if (step_info.twiddle_factors == nullptr)
         {
-           step_info.step_function = fft_1d_complex_plain_d<radix, stride_type, forward>;
+           step_info.step_function = fft_1d_complex_plain_d<radix, forward>;
         } else
         {
             if (step_info.dif)
-                step_info.step_function = fft_1d_complex_twiddle_dif_plain_d<radix, stride_type, forward>;
+                step_info.step_function = fft_1d_complex_twiddle_dif_plain_d<radix, forward>;
             else
-                step_info.step_function = fft_1d_complex_twiddle_dit_plain_d<radix, stride_type, forward>;
+                step_info.step_function = fft_1d_complex_twiddle_dit_plain_d<radix, forward>;
         }
-    }
-  */
+    }  
 }
 
 // These functions set different template parameters one at time

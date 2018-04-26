@@ -34,7 +34,7 @@ namespace hhfft
 class HHFFT_2D_D
 {
 public:
-    HHFFT_2D_D(size_t n, size_t m);
+    HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set = InstructionSet::automatic);
 
     // Copying currently not allowed. Data and pointers must be copied properly when implemented!
     HHFFT_2D_D(const HHFFT_2D_D &other) = delete;
