@@ -188,7 +188,7 @@ template<size_t radix, SizeType size_type, bool forward> void set_instruction_se
     // TESTING to speedup compilation
 
     // Plain
-    //*
+    /*
     if (step_info.dif)
     {
             //step_info.step_function = fft_2d_complex_column_twiddle_dif_plain_d<radix, forward>;
@@ -196,20 +196,51 @@ template<size_t radix, SizeType size_type, bool forward> void set_instruction_se
     {
         step_info.step_function = fft_2d_complex_column_twiddle_dit_plain_d<radix, forward>;
     }
-    //*/
+    */
+
+    // SSE2
+    /*
+    if (step_info.dif)
+    {
+            //step_info.step_function = fft_2d_complex_column_twiddle_dif_sse2_d<radix, size_type, forward>;
+    } else
+    {
+        step_info.step_function = fft_2d_complex_column_twiddle_dit_sse2_d<radix, size_type, forward>;
+    }
+    */
+
+    // AVX
+    //*
+    if (step_info.dif)
+    {
+        //step_info.step_function = fft_2d_complex_column_twiddle_dif_avx_d<radix, size_type, forward>;
+    } else
+    {
+        step_info.step_function = fft_2d_complex_column_twiddle_dit_avx_d<radix, size_type, forward>;
+    }
+    /*/
 
 /*
-    // TODO
+#ifdef COMPILER_SUPPORTS_AVX512F
     if (instruction_set == hhfft::InstructionSet::avx512f)
     {
 
-    } else if (instruction_set == hhfft::InstructionSet::avx)
+    }
+#endif
+
+#ifdef COMPILER_SUPPORTS_AVX
+    if (instruction_set == hhfft::InstructionSet::avx)
     {
 
-    } else if (instruction_set == hhfft::InstructionSet::sse2)
+    }
+#endif
+
+    if (instruction_set == hhfft::InstructionSet::sse2)
     {
 
-    } else
+    }
+
+    if (instruction_set == hhfft::InstructionSet::plain)
     {
 
     }
@@ -319,14 +350,14 @@ void hhfft::HHFFT_2D_Complex_D_set_function_columns(StepInfoD &step_info, hhfft:
     }
 }
 
-///////////////////////// rOW-wise ////////////////////////////////////
+///////////////////////// row-wise ////////////////////////////////////
 
 template<size_t radix, SizeType stride_type, bool forward> void set_instruction_set_rows_2d_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
     // TESTING to speedup compilation
 
     // Plain
-    //*
+    /*
     if (step_info.dif)
     {
         //step_info.step_function = fft_2d_complex_row_twiddle_dif_plain_d<radix, forward>;
@@ -334,20 +365,52 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
     {
         step_info.step_function = fft_2d_complex_row_twiddle_dit_plain_d<radix, forward>;
     }
+    */
+
+    // SSE2
+    /*
+    if (step_info.dif)
+    {
+        //step_info.step_function = fft_2d_complex_row_twiddle_dif_sse2_d<radix, stride_type, forward>;
+    } else
+    {
+        step_info.step_function = fft_2d_complex_row_twiddle_dit_sse2_d<radix, stride_type, forward>;
+    }
+    */
+
+    // AVX
+    //*
+    if (step_info.dif)
+    {
+        //step_info.step_function = fft_2d_complex_row_twiddle_dif_avx_d<radix, stride_type, forward>;
+    } else
+    {
+        step_info.step_function = fft_2d_complex_row_twiddle_dit_avx_d<radix, stride_type, forward>;
+    }
     //*/
 
 /*
-    // TODO
+
+#ifdef COMPILER_SUPPORTS_AVX512F
     if (instruction_set == hhfft::InstructionSet::avx512f)
     {
 
-    } else if (instruction_set == hhfft::InstructionSet::avx)
+    }
+#endif
+
+#ifdef COMPILER_SUPPORTS_AVX
+    if (instruction_set == hhfft::InstructionSet::avx)
     {
 
-    } else if (instruction_set == hhfft::InstructionSet::sse2)
+    }
+#endif
+
+    if (instruction_set == hhfft::InstructionSet::sse2)
     {
 
-    } else
+    }
+
+    if (instruction_set == hhfft::InstructionSet::plain)
     {
 
     }

@@ -276,28 +276,10 @@ template<size_t radix, SizeType stride_type, bool forward>
     }
 }
 
-// This function can help compiler to optimze the code
-template<SizeType stride_type> size_t get_stride(size_t stride)
-{
-    if (stride_type == SizeType::Size1)
-    {
-        return 1;
-    } else if (stride_type == SizeType::Size2)
-    {
-        return 2;
-    } else if (stride_type == SizeType::Size4)
-    {
-        return 4;
-    } else
-    {
-        return stride;
-    }
-}
-
 template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
-    size_t stride = get_stride<stride_type>(step_info.stride);
+    size_t stride = get_size<stride_type>(step_info.stride);
     size_t repeats = step_info.repeats;
 
     // Implementation for stride == 1
@@ -321,7 +303,7 @@ template<size_t radix, SizeType stride_type, bool forward>
 {    
     assert(step_info.forward == forward);
 
-    size_t stride = get_stride<stride_type>(step_info.stride);
+    size_t stride = get_size<stride_type>(step_info.stride);
     size_t repeats = step_info.repeats;
 
     for (size_t i = 0; i < repeats; i++)
@@ -336,7 +318,7 @@ template<size_t radix, SizeType stride_type, bool forward>
 {    
     assert(step_info.forward == forward);
 
-    size_t stride = get_stride<stride_type>(step_info.stride);
+    size_t stride = get_size<stride_type>(step_info.stride);
     size_t repeats = step_info.repeats;
 
     for (size_t i = 0; i < repeats; i++)

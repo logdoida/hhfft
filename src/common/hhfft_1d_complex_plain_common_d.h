@@ -122,3 +122,21 @@ template<size_t radix, bool forward> inline void multiply_twiddle(const double *
         }
     }
 }
+
+// This function can help compiler to optimze the code
+template<hhfft::SizeType size_type> inline size_t get_size(size_t size)
+{
+    if (size_type == hhfft::SizeType::Size1)
+    {
+        return 1;
+    } else if (size_type == hhfft::SizeType::Size2)
+    {
+        return 2;
+    } else if (size_type == hhfft::SizeType::Size4)
+    {
+        return 4;
+    } else
+    {
+        return size;
+    }
+}
