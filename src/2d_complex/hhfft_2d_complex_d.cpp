@@ -17,6 +17,7 @@
 *   along with HHFFT. If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "../1d_complex/hhfft_1d_complex_d.h"
 #include "hhfft_2d_complex_d.h"
 #include <stdexcept>
 #include <assert.h>
@@ -30,8 +31,6 @@ using namespace hhfft;
 // In-place reordering "swap"
 template<bool forward> void fft_2d_complex_reorder_rows_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
-    std::cout << "fft_2d_complex_reorder_rows_in_place_d" << std::endl;
-
     size_t n = step_info.size; // number of rows
     size_t m = step_info.stride; // number of columns
     size_t reorder_table_size = step_info.repeats;
@@ -307,7 +306,8 @@ void hhfft::HHFFT_2D_Complex_D_set_function_columns(StepInfoD &step_info, hhfft:
 
     if (step_info.twiddle_factors == nullptr)
     {
-        // TODO 1d could be used if properly initialized
+        // 1D FFT is used here instead!
+        HHFFT_1D_Complex_D_set_function(step_info, instruction_set);
     } else
     {
         set_radix_2d_colums_d(step_info, instruction_set);
@@ -428,7 +428,7 @@ void set_radix_2d_rows_d(StepInfoD &step_info, hhfft::InstructionSet instruction
 
 
 void hhfft::HHFFT_2D_Complex_D_set_function_rows(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
-{
+{  
     step_info.step_function = nullptr;
 
     if (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr)
@@ -444,7 +444,8 @@ void hhfft::HHFFT_2D_Complex_D_set_function_rows(StepInfoD &step_info, hhfft::In
 
     if (step_info.twiddle_factors == nullptr)
     {
-        // TODO 1d could be used if properly initialized
+        // 1D FFT is used here instead!
+        HHFFT_1D_Complex_D_set_function(step_info, instruction_set);
     } else
     {
         set_radix_2d_rows_d(step_info, instruction_set);

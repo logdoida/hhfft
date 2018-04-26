@@ -68,12 +68,6 @@ template<size_t radix, bool forward>
                 data_out[2*j*stride*length + 2*i*length + 2*k + 0] = x_temp_out[2*j + 0];
                 data_out[2*j*stride*length + 2*i*length + 2*k + 1] = x_temp_out[2*j + 1];
             }
-
-            /*if (radix == 2)
-            {
-                std::cout << "x_temp_in  = (" << x_temp_in[0] << ", " << x_temp_in[1] << "), (" << x_temp_in[2] << ", " << x_temp_in[3] << ")" << std::endl;
-                std::cout << "x_temp_out = (" << x_temp_out[0] << ", " << x_temp_out[1] << "), (" << x_temp_out[2] << ", " << x_temp_out[3] << ")" << std::endl;
-            }*/
         }
     }
 }
@@ -87,7 +81,6 @@ template<size_t radix, bool forward>
     size_t repeats = step_info.repeats;
     size_t length = step_info.size;
 
-    std::cout << "fft_2d_complex_column_twiddle_dit_plain_d_internal. repeats = " << repeats << ", radix = " << radix << ", stride = " << stride << ", length = " << length << std::endl;
     for (size_t i = 0; i < repeats; i++)
     {
         fft_2d_complex_column_twiddle_dit_plain_d_internal<radix,forward>
@@ -136,12 +129,6 @@ template<size_t radix, bool forward>
             data_out[2*k + 2*j*stride + 0] = x_temp_out[2*j + 0];
             data_out[2*k + 2*j*stride + 1] = x_temp_out[2*j + 1];
         }
-
-        /*if (radix == 2)
-        {
-            std::cout << "x_temp_in  = (" << x_temp_in[0] << ", " << x_temp_in[1] << "), (" << x_temp_in[2] << ", " << x_temp_in[3] << ")" << std::endl;
-            std::cout << "x_temp_out = (" << x_temp_out[0] << ", " << x_temp_out[1] << "), (" << x_temp_out[2] << ", " << x_temp_out[3] << ")" << std::endl;
-        }*/
     }
 }
 
@@ -154,7 +141,6 @@ template<size_t radix, bool forward>
     size_t repeats = step_info.repeats;
     size_t rows = step_info.size;
 
-    std::cout << "fft_2d_complex_row_twiddle_dit_plain_d. repeats = " << repeats << ", radix = " << radix << ", stride = " << stride << ", rows = " << rows << std::endl;
     for (size_t i = 0; i < rows; i++)
     {
         for (size_t j = 0; j < repeats; j++)
