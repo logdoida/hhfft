@@ -35,16 +35,16 @@ namespace hhfft
 class HHFFT_1D_REAL_D
 {
 public:
-    HHFFT_1D_REAL_D(size_t n);
+    HHFFT_1D_REAL_D(size_t n, InstructionSet instruction_set = InstructionSet::automatic);
 
     // Copying currently not allowed. Data and pointers must be copied properly when implemented!
     HHFFT_1D_REAL_D(const HHFFT_1D_REAL_D &other) = delete;
     HHFFT_1D_REAL_D& operator=(const HHFFT_1D_REAL_D &other) = delete;
 
-    // FFT with real inputs and complex outputs
+    // FFT with complex inputs and outputs
     void fft(const double *in, double *out);
 
-    // IFFT with complex inputs and real outputs
+    // IFFT with complex inputs and outputs
     void ifft(const double *in, double *out);
 
     // Allocate aligned array that contains enough space for the complex input and output data
@@ -59,6 +59,9 @@ public:
 
 private:
 
+    void plan_even(InstructionSet instruction_set);
+    void plan_odd(InstructionSet instruction_set);
+
     // Dimension of the vector (Number of complex numbers)
     size_t n;
 
@@ -69,14 +72,14 @@ private:
     std::vector<uint32_t> reorder_table;
 
     // Table that is used to reorder the data in-place.
-    //std::vector<uint32_t> reorder_table_in_place;
+    std::vector<uint32_t> reorder_table_in_place;
 
     // Some algorithms might need extra space that is allocated at the beginning
     size_t temp_data_size = 0;
 
     // The actual fft plan is a sequence of individual steps
-    std::vector<StepInfoRealD> forward_steps;
-    std::vector<StepInfoRealD> inverse_steps;
+    std::vector<StepInfoD> forward_steps;
+    std::vector<StepInfoD> inverse_steps;
 };
 
 }

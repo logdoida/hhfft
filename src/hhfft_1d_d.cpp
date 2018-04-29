@@ -26,12 +26,6 @@
 #include "utilities.h"
 
 #include "hhfft_1d_d.h"
-
-// OLD TODO remove when not needed
-#include "hhfft_1d_plain_d.h"
-#include "hhfft_1d_avx_d.h"
-
-// NEW
 #include "1d_complex/hhfft_1d_complex_d.h"
 
 using namespace hhfft;

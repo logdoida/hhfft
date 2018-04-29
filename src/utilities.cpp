@@ -244,3 +244,20 @@ std::vector<size_t> hhfft::calculate_factorization(size_t n, bool use_dif)
 
     return factors;
 }
+
+// Calculates packing factors used for converting
+hhfft::AlignedVector<double> hhfft::calculate_packing_factors(size_t n)
+{
+    hhfft::AlignedVector<double> w(n);
+
+    for (size_t i = 0; i < n/2; i+=2)
+    {
+        double c = cos(0.25*M_PI*(2.0/n*i + 1.0));
+        double s = sin(0.25*M_PI*(2.0/n*i + 1.0));
+
+        w[i+0] = -s*s;
+        w[i+1] = -s*c;
+    }
+
+    return w;
+}
