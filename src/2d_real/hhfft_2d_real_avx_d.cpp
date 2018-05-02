@@ -27,31 +27,14 @@
 
 using namespace hhfft;
 
+/*
 template<bool forward>
-    void fft_1d_complex_to_complex_packed_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+    void fft_2d_complex_to_complex_packed_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     const double *packing_table = step_info.twiddle_factors;
     size_t n = step_info.repeats; // n = number of original real numbers
 
     const ComplexD2 const2 = load(-0.0, 0.0, -0.0, 0.0);
-
-    // TODO this way is probably need in 2D FFT
-    // Packed way
-    /*
-    if (forward)
-    {
-        double x_r = data_in[0];
-        double x_i = data_in[1];
-        data_out[0] = x_r + x_i;
-        data_out[1] = x_r - x_i;
-    } else
-    {
-        double x_r = data_in[0];
-        double x_i = data_in[1];
-        data_out[0] = 0.5*(x_r + x_i);
-        data_out[1] = 0.5*(x_r - x_i);
-    }
-    */
 
     // Input/output way
     if (forward)
@@ -122,5 +105,6 @@ template<bool forward>
 }
 
 // Instantiations of the functions defined in this class
-template void fft_1d_complex_to_complex_packed_avx_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_to_complex_packed_avx_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_to_complex_packed_avx_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_to_complex_packed_avx_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+*/
