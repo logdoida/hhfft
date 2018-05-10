@@ -75,8 +75,8 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
     std::vector<size_t> N_rows = calculate_factorization(m, use_dif);
 
     // TESTING print factorization    
-    for (size_t i = 0; i < N_columns.size(); i++)  { std::cout << N_columns[i] << " ";} std::cout << std::endl;
-    for (size_t i = 0; i < N_rows.size(); i++)  { std::cout << N_rows[i] << " ";} std::cout << std::endl;
+    //for (size_t i = 0; i < N_columns.size(); i++)  { std::cout << N_columns[i] << " ";} std::cout << std::endl;
+    //for (size_t i = 0; i < N_rows.size(); i++)  { std::cout << N_rows[i] << " ";} std::cout << std::endl;
 
     // First calculate the reorder table
     reorder_table_columns = calculate_reorder_table(N_columns);
@@ -142,7 +142,7 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
             step1.repeats = reorder_table_in_place_columns.size();
             step1.stride = n;
             step1.size = m;
-            step1.norm_factor = 1.0/(double(n*m));
+            //step1.norm_factor = 1.0/(double(n*m));
             step1.dif = false;
             HHFFT_2D_Complex_D_set_function_columns(step1, instruction_set);
             forward_steps.push_back(step1);
@@ -244,6 +244,12 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
 
         step.forward = false;
 
+        // Scaling is done in the first step
+        if (i == 0)
+        {
+            step.norm_factor = 1.0/(double(n*m));
+        }
+
         if (forward_step_columns[i])
         {
             HHFFT_2D_Complex_D_set_function_columns(step, instruction_set);
@@ -259,8 +265,8 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
 
 void HHFFT_2D_D::fft(const double *in, double *out)
 {
-    // Allocate some extra space if needed
-    std::vector<double> temp_data(temp_data_size);
+    // Allocate some extra space if needed    
+    hhfft::AlignedVector<double> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
     const double *data_in[3] = {in, out, temp_data.data()};
@@ -278,7 +284,7 @@ void HHFFT_2D_D::fft(const double *in, double *out)
 void HHFFT_2D_D::ifft(const double *in, double *out)
 {
     // Allocate some extra space if needed
-    std::vector<double> temp_data(temp_data_size);
+    hhfft::AlignedVector<double> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
     const double *data_in[3] = {in, out, temp_data.data()};

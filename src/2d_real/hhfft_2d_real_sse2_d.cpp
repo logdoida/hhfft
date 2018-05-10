@@ -27,60 +27,77 @@
 
 using namespace hhfft;
 
-/*
 template<bool forward>
     void fft_2d_complex_to_complex_packed_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     const double *packing_table = step_info.twiddle_factors;
-    size_t n = step_info.repeats; // n = number of original real numbers
+    size_t n = step_info.repeats; // n = number of original real rows
+    size_t m = step_info.size;    // m = number of original real columns
 
     // Input/output way
     if (forward)
     {
-        double x_r = data_in[0];
-        double x_i = data_in[1];
-        data_out[0] = x_r + x_i;
-        data_out[1] = 0.0;
-        data_out[n] = x_r - x_i;
-        data_out[n+1] = 0.0;
+        for (size_t j = 0; j < 2*m; j+=2)
+        {
+            double x_r = data_in[j + 0];
+            double x_i = data_in[j + 1];
+            data_out[j + 0] = x_r + x_i;
+            data_out[j + 1] = 0.0;
+            data_out[j + n*m + 0] = x_r - x_i;
+            data_out[j + n*m + 1] = 0.0;
+        }
     } else
     {
-        double x_r = data_in[0];
-        double x_i = data_in[n];
-        data_out[0] = 0.5*(x_r + x_i);
-        data_out[1] = 0.5*(x_r - x_i);
+        // For inverse data_in = last row (temporary variable), data_out is actually both input and output!
+        for (size_t j = 0; j < 2*m; j+=2)
+        {
+            double x_r = data_out[j];
+            double x_i = data_in[j];
+            data_out[j + 0] = 0.5*(x_r + x_i);
+            data_out[j + 1] = 0.5*(x_r - x_i);
+        }
+
+        // !
+        data_in = data_out;
     }
 
     if (n%4 == 0)
     {
-        ComplexD x_in = load128(data_in + n/2);
-        ComplexD x_out = change_sign(x_in, const1_128);
-        store(x_out, data_out + n/2);
+        for (size_t j = 0; j < 2*m; j+=2)
+        {
+            ComplexD x_in = load128(data_in + j + n*m/2);
+            ComplexD x_out = change_sign(x_in, const1_128);
+            store(x_out, data_out + j + n*m/2);
+        }
     }
 
     for (size_t i = 2; i < n/2; i+=2)
     {
         ComplexD k = load128(packing_table + i);
-        ComplexD x0_in = load128(data_in + i);
-        ComplexD x1_in = load128(data_in + n - i);
 
         if(!forward)
         {
             k = change_sign(k, const1_128);
         }
 
-        ComplexD temp0 = x0_in + change_sign(x1_in, const2_128);
-        ComplexD temp1 = mul(k, temp0);
+        for (size_t j = 0; j < 2*m; j+=2)
+        {
+            ComplexD x0_in = load128(data_in + i*m + j);
+            ComplexD x1_in = load128(data_in + (n - i)*m + j);
 
-        ComplexD x0_out = temp1 + x0_in;
-        ComplexD x1_out = change_sign(temp1, const2_128) + x1_in;
+            ComplexD temp0 = x0_in + change_sign(x1_in, const2_128);
+            ComplexD temp1 = mul(k, temp0);
 
-        store(x0_out, data_out + i);
-        store(x1_out, data_out + n - i);
+            ComplexD x0_out = temp1 + x0_in;
+            ComplexD x1_out = change_sign(temp1, const2_128) + x1_in;
+
+            store(x0_out, data_out + i*m + j);
+            store(x1_out, data_out + (n - i)*m + j);
+        }
     }
 }
 
 // Instantiations of the functions defined in this class
 template void fft_2d_complex_to_complex_packed_sse2_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_to_complex_packed_sse2_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-*/
+

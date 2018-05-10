@@ -34,22 +34,43 @@ void fft_2d_real_reorder_columns_forward_inplace_d(const double *data_in, double
     size_t n = step_info.stride;
     size_t m = step_info.size;
 
-    // First suffle
-    // NOTE Should temp vector be initialized outside of this function?
+    // First suffle   
+    // TODO there is more efficient way, see below
     hhfft::AlignedVector<double> temp(2*m);
+    double* temp_data = temp.data();
     for (size_t i = 0; i < n; i++)
     {
         for (size_t j = 0; j < m; j++)
         {
-            temp[2*j + 0] = data_in[2*i*m + j];
-            temp[2*j + 1] = data_in[(2*i+1)*m + j];
+            temp_data[2*j + 0] = data_in[2*i*m + j];
+            temp_data[2*j + 1] = data_in[(2*i+1)*m + j];
+
         }
 
         for (size_t j = 0; j < 2*m; j++)
         {
-            data_out[2*i*m + j] = temp[j];
+            data_out[2*i*m + j] = temp_data[j];
+
         }
     }
+
+    /*
+    hhfft::AlignedVector<double> temp(m);
+    double* temp_data = temp.data();
+    for (size_t i = 0; i < n; i++)
+    {
+        for (size_t j = 0; j < m; j++)
+        {
+            temp_data[j] = data_in[2*i*m + m + j];
+        }
+
+        for (size_t j = 0; j < m; j++)
+        {
+            data_out[2*i*m + 2*(m-j-1) + 0] = data_in[2*i*m + (m-j-1)];
+            data_out[2*i*m + 2*(m-j-1) + 1] = temp_data[(m-j-1)];
+        }
+    }
+    */
 
     // Then reorder columns in-place
     size_t nn = step_info.repeats;
@@ -96,30 +117,29 @@ void fft_2d_real_reorder_columns_forward_d(const double *data_in, double *data_o
     }
 }
 
+// Shuffles one row into two rows
 void fft_2d_real_reorder_columns_inverse_inplace_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
-    std::cout << "fft_2d_real_reorder_columns_inverse_inplace_d, n = " << step_info.stride << ", m = " << step_info.size << std::endl;
-
     // It is assumed that this is always in-place as this is the last step
     assert (data_in == data_out);
 
     size_t n = step_info.stride;
     size_t m = step_info.size;
 
-    // Only suffle is needed
-    // NOTE Should temp vector be initialized outside of this function?
-    hhfft::AlignedVector<double> temp(2*m);
+    // Only shuffle is needed
+    hhfft::AlignedVector<double> temp(m);
+    double* temp_data = temp.data();
     for (size_t i = 0; i < n; i++)
     {
-        for (size_t j = 0; j < 2*m; j++)
+        for (size_t j = 0; j < m; j++)
         {
-            temp[j] = data_in[2*i*m + j];
+            data_out[2*i*m + j] = data_in[2*i*m + 2*j + 0];
+            temp_data[j]        = data_in[2*i*m + 2*j + 1];
         }
 
         for (size_t j = 0; j < m; j++)
         {
-            data_out[2*i*m + j] = temp[2*j + 0];
-            data_out[(2*i+1)*m + j] = temp[2*j + 1];
+            data_out[2*i*m + m + j] = temp_data[j];
         }
     }
 }
@@ -165,13 +185,13 @@ template<bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::I
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {
-        //step_info.step_function = fft_2d_complex_to_complex_packed_avx_d<forward>;
+       step_info.step_function = fft_2d_complex_to_complex_packed_avx_d<forward>;
     }
 #endif
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
-        //step_info.step_function = fft_1d_complex_to_complex_packed_sse2_d<forward>;
+        step_info.step_function = fft_2d_complex_to_complex_packed_sse2_d<forward>;
     }
 
     if (instruction_set == hhfft::InstructionSet::none)

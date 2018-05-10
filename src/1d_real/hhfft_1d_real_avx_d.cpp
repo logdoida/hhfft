@@ -33,25 +33,12 @@ template<bool forward>
     const double *packing_table = step_info.twiddle_factors;
     size_t n = step_info.repeats; // n = number of original real numbers
 
-    const ComplexD2 const2 = load(-0.0, 0.0, -0.0, 0.0);
+    // Needed only in inverse step
+    const double k = step_info.norm_factor;
+    ComplexD k128 = broadcast64(k);
+    ComplexD2 k256 = broadcast64_D2(k);
 
-    // TODO this way is probably need in 2D FFT
-    // Packed way
-    /*
-    if (forward)
-    {
-        double x_r = data_in[0];
-        double x_i = data_in[1];
-        data_out[0] = x_r + x_i;
-        data_out[1] = x_r - x_i;
-    } else
-    {
-        double x_r = data_in[0];
-        double x_i = data_in[1];
-        data_out[0] = 0.5*(x_r + x_i);
-        data_out[1] = 0.5*(x_r - x_i);
-    }
-    */
+    const ComplexD2 const2 = load(-0.0, 0.0, -0.0, 0.0);
 
     // Input/output way
     if (forward)
@@ -66,13 +53,17 @@ template<bool forward>
     {
         double x_r = data_in[0];
         double x_i = data_in[n];
-        data_out[0] = 0.5*(x_r + x_i);
-        data_out[1] = 0.5*(x_r - x_i);
+        data_out[0] = 0.5*k*(x_r + x_i);
+        data_out[1] = 0.5*k*(x_r - x_i);
     }
 
     if (n%4 == 0)
     {
         ComplexD x_in = load128(data_in + n/2);
+        if (!forward)
+        {
+            x_in *= k128;
+        }
         ComplexD x_out = change_sign(x_in, const1_128);
         store(x_out, data_out + n/2);
     }
@@ -80,17 +71,19 @@ template<bool forward>
     size_t i;
     for (i = 2; i + 2 < n/2; i+=4)
     {
-        ComplexD2 k = load(packing_table + i);
+        ComplexD2 sssc = load(packing_table + i);
         ComplexD2 x0_in = load(data_in + i);
         ComplexD2 x1_in = load_two_128(data_in + n - i, data_in + n - i - 2);
 
         if(!forward)
         {
-            k = change_sign(k, const1);
+            sssc = change_sign(sssc, const1);
+            x0_in *= k256;
+            x1_in *= k256;
         }
 
         ComplexD2 temp0 = x0_in + change_sign(x1_in, const2);
-        ComplexD2 temp1 = mul(k, temp0);
+        ComplexD2 temp1 = mul(sssc, temp0);
 
         ComplexD2 x0_out = temp1 + x0_in;
         ComplexD2 x1_out = change_sign(temp1, const2) + x1_in;
@@ -101,17 +94,19 @@ template<bool forward>
 
     if (i < n/2)
     {
-        ComplexD k = load128(packing_table + i);
+        ComplexD sssc = load128(packing_table + i);
         ComplexD x0_in = load128(data_in + i);
         ComplexD x1_in = load128(data_in + n - i);
 
         if(!forward)
         {
-            k = change_sign(k, const1_128);
+            sssc = change_sign(sssc, const1_128);
+            x0_in *= k128;
+            x1_in *= k128;
         }
 
         ComplexD temp0 = x0_in + change_sign(x1_in, const2_128);
-        ComplexD temp1 = mul(k, temp0);
+        ComplexD temp1 = mul(sssc, temp0);
 
         ComplexD x0_out = temp1 + x0_in;
         ComplexD x1_out = change_sign(temp1, const2_128) + x1_in;

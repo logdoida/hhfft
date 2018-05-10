@@ -39,7 +39,12 @@ double* HHFFT_1D_REAL_D::allocate_memory()
 {
     // For real data only n doubles are needed
     // For complex data 2*((n/2)+1) doubles are needed
-    return (double *) allocate_aligned_memory(2*((n/2)+1)*sizeof(double));
+    size_t size = 2*((n/2)+1)*sizeof(double);
+
+    // Allow the allocation of some extra space for larger arrays
+    bool allocate_extra = size >= 64;
+
+    return (double *) allocate_aligned_memory(size, allocate_extra);
 }
 
 void HHFFT_1D_REAL_D::free_memory(double *data)
@@ -82,7 +87,7 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n, InstructionSet instruction_set)
 
 void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
 {
-    throw(std::runtime_error("HHFFT error: odd fft size not supported!"));
+    throw(std::runtime_error("HHFFT error: odd n fft size not supported!"));
 }
 
 void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
@@ -94,7 +99,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
     std::vector<size_t> N = calculate_factorization(n_complex, use_dif);
 
     // TESTING print factorization
-    for (size_t i = 0; i < N.size(); i++)  { std::cout << N[i] << " ";} std::cout << std::endl;
+    //for (size_t i = 0; i < N.size(); i++)  { std::cout << N[i] << " ";} std::cout << std::endl;
 
     // First calculate the reorder table
     reorder_table = calculate_reorder_table(N);
@@ -168,7 +173,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         step2.reorder_table_inplace = reorder_table_in_place.data();
         step2.repeats = reorder_table_in_place.size();
         step2.stride = n_complex;
-        step2.norm_factor = 1.0/(double(n_complex));
+        step2.norm_factor = 1.0;
         step2.dif = use_dif;
         HHFFT_1D_Complex_D_set_function(step2, instruction_set);
         forward_steps.push_back(step2);
@@ -186,7 +191,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         step1.reorder_table_inplace = reorder_table_in_place.data(); // It is possible that data_in = data_out!
         step1.repeats = reorder_table_in_place.size();
         step1.stride = n_complex;
-        step1.norm_factor = 1.0/(double(n_complex));
+        step1.norm_factor = 1.0;
         step1.dif = use_dif;
         HHFFT_1D_Complex_D_set_function(step1, instruction_set);
         forward_steps.push_back(step1);
@@ -220,16 +225,18 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
     }
 
     // Add complex-to-complex-packed step to ifft as the first step
+    // Scaling is done here!
     {
         hhfft::StepInfo<double> step;
         step.repeats = n;
         step.twiddle_factors = twiddle_factors[0].data();
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
+        step.norm_factor = 1.0/(double(n_complex));
         step.forward = false;
         HHFFT_1D_Real_D_set_complex_to_complex_packed_function(step, instruction_set);
         inverse_steps.push_back(step);
-    }
+    }    
 
     // Make the inverse steps. They are almost the same, but different version of function is called
     for (auto step: forward_steps)
@@ -249,18 +256,19 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         step.twiddle_factors = twiddle_factors[0].data();
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
+        step.norm_factor = 1.0;
         step.forward = true;
         HHFFT_1D_Real_D_set_complex_to_complex_packed_function(step, instruction_set);
         forward_steps.push_back(step);
-    }
+    }    
 }
 
 
 
 void HHFFT_1D_REAL_D::fft(const double *in, double *out)
 {
-    // Allocate some extra space if needed
-    std::vector<double> temp_data(temp_data_size);
+    // Allocate some extra space if needed    
+    hhfft::AlignedVector<double> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
     const double *data_in[3] = {in, out, temp_data.data()};
@@ -277,8 +285,8 @@ void HHFFT_1D_REAL_D::fft(const double *in, double *out)
 
 void HHFFT_1D_REAL_D::ifft(const double *in, double *out)
 {
-    // Allocate some extra space if needed
-    std::vector<double> temp_data(temp_data_size);
+    // Allocate some extra space if needed    
+    hhfft::AlignedVector<double> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
     const double *data_in[3] = {in, out, temp_data.data()};

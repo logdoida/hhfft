@@ -34,24 +34,8 @@ template<bool forward>
 {        
     const double *packing_table = step_info.twiddle_factors;
     size_t n = step_info.repeats; // n = number of original real numbers
-
-    // TODO this way is probably need in 2D FFT
-    // Packed way
-    /*
-    if (forward)
-    {
-        double x_r = data_in[0];
-        double x_i = data_in[1];
-        data_out[0] = x_r + x_i;
-        data_out[1] = x_r - x_i;
-    } else
-    {
-        double x_r = data_in[0];
-        double x_i = data_in[1];
-        data_out[0] = 0.5*(x_r + x_i);
-        data_out[1] = 0.5*(x_r - x_i);
-    }
-    */
+    // Needed only in inverse step
+    const double k = step_info.norm_factor;
 
     // Input/output way
     if (forward)
@@ -66,8 +50,8 @@ template<bool forward>
     {
         double x_r = data_in[0];
         double x_i = data_in[n];
-        data_out[0] = 0.5*(x_r + x_i);
-        data_out[1] = 0.5*(x_r - x_i);
+        data_out[0] = 0.5*k*(x_r + x_i);
+        data_out[1] = 0.5*k*(x_r - x_i);
     }
 
     if (n%4 == 0)
@@ -75,8 +59,15 @@ template<bool forward>
         double x_r = data_in[n/2 + 0];
         double x_i = data_in[n/2 + 1];
 
-        data_out[n/2 + 0] =  x_r;
-        data_out[n/2 + 1] = -x_i;
+        if (forward)
+        {
+            data_out[n/2 + 0] =  x_r;
+            data_out[n/2 + 1] = -x_i;
+        } else
+        {
+            data_out[n/2 + 0] =  k*x_r;
+            data_out[n/2 + 1] = -k*x_i;
+        }
     }
 
     for (size_t i = 2; i < n/2; i+=2)
@@ -84,15 +75,20 @@ template<bool forward>
         double ss = -packing_table[i + 0];
         double sc = -packing_table[i + 1];
 
-        if (!forward)
-        {
-            sc = -sc;
-        }
-
         double x0_r = data_in[i + 0];
         double x0_i = data_in[i + 1];
         double x1_r = data_in[n - i + 0];
         double x1_i = data_in[n - i + 1];
+
+        if (!forward)
+        {
+            ss = ss;
+            sc = -sc;
+            x0_r *= k;
+            x0_i *= k;
+            x1_r *= k;
+            x1_i *= k;
+        }
 
         double temp0 = -ss*(x0_r - x1_r) + sc*(x0_i + x1_i);
         double temp1 = -sc*(x0_r - x1_r) - ss*(x0_i + x1_i);

@@ -71,7 +71,7 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     std::vector<size_t> N = calculate_factorization(n, use_dif);
 
     // TESTING print factorization    
-    for (size_t i = 0; i < N.size(); i++)  { std::cout << N[i] << " ";} std::cout << std::endl;
+    //for (size_t i = 0; i < N.size(); i++)  { std::cout << N[i] << " ";} std::cout << std::endl;
 
     // First calculate the reorder table
     reorder_table = calculate_reorder_table(N);
@@ -142,8 +142,7 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
         step2.reorder_table = nullptr; // always in-place
         step2.reorder_table_inplace = reorder_table_in_place.data();
         step2.repeats = reorder_table_in_place.size();
-        step2.stride = n;
-        step2.norm_factor = 1.0/(double(n));
+        step2.stride = n;        
         step2.dif = use_dif;
         HHFFT_1D_Complex_D_set_function(step2, instruction_set);
         forward_steps.push_back(step2);
@@ -160,8 +159,7 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
         step1.reorder_table = reorder_table.data();
         step1.reorder_table_inplace = reorder_table_in_place.data(); // It is possible that data_in = data_out!
         step1.repeats = reorder_table_in_place.size();
-        step1.stride = n;
-        step1.norm_factor = 1.0/(double(n));
+        step1.stride = n;        
         step1.dif = use_dif;
         HHFFT_1D_Complex_D_set_function(step1, instruction_set);
         forward_steps.push_back(step1);
@@ -195,9 +193,18 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     }
 
     // Make the inverse steps. They are otherwise the same, but different version of function is called    
-    for (auto step: forward_steps)
+    for (size_t i = 0; i < forward_steps.size(); i++)
     {
+        auto step = forward_steps[i];
         step.forward = false;        
+
+        // Scaling is be done in reordering step (first or last step)
+        if ((use_dif && i == forward_steps.size() - 1) ||
+            (!use_dif && i == 0))
+        {
+             step.norm_factor = 1.0/(double(n));
+        }
+
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
@@ -205,8 +212,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
 
 void HHFFT_1D_D::fft(const double *in, double *out)
 {
-    // Allocate some extra space if needed
-    std::vector<double> temp_data(temp_data_size);
+    // Allocate some extra space if needed    
+    hhfft::AlignedVector<double> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
     const double *data_in[3] = {in, out, temp_data.data()};
@@ -223,8 +230,8 @@ void HHFFT_1D_D::fft(const double *in, double *out)
 
 void HHFFT_1D_D::ifft(const double *in, double *out)
 {
-    // Allocate some extra space if needed
-    std::vector<double> temp_data(temp_data_size);
+    // Allocate some extra space if needed    
+    hhfft::AlignedVector<double> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
     const double *data_in[3] = {in, out, temp_data.data()};

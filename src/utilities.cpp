@@ -23,6 +23,33 @@
 #include <assert.h>
 #include <iostream> //TESTING
 
+
+// calculates cos and -sin for a = 2*M_PI*a/b
+inline void calculate_cos_sin(size_t a, size_t b, double &c, double &s)
+{
+    a = a%b;
+
+    if (a == 0)
+    {
+        c = 1.0; s = 0.0;
+    } else if (a*4 == b)
+    {
+        c = 0.0; s = -1.0;
+    } else if (a*2 == b)
+    {
+        c = -1.0; s = 0.0;
+    } else if (a*4 == b*3)
+    {
+        c = 0.0; s = 1.0;
+    } else
+    {
+        double angle = 2.0*M_PI*a/b;
+        c = cos(angle);
+        s = -sin(angle);
+    }
+}
+
+
 // Calculates twiddle factors for a given level for DIT
 hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, const std::vector<size_t> &N)
 {
@@ -57,13 +84,12 @@ hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, 
     for (size_t i = 0; i < num; i++)
     {
         auto n = hhfft::index_to_n(i,N);
-        double ww = 0;
+        size_t ww = 0;
         for (size_t j = 0; j < level; j++)
         {
             ww = ww + n[level]*temp1[n_dim-level-1]*n[j]*temp2[j];
-        }
-        w[2*i]   = cos(-2.0*M_PI*ww/N_tot);
-        w[2*i+1] = sin(-2.0*M_PI*ww/N_tot);
+        }        
+        calculate_cos_sin(ww, N_tot, w[2*i], w[2*i+1]);
     }
 
     return w;
@@ -71,9 +97,7 @@ hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, 
 
 // Calculates twiddle factors for a given level for DIF
 hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIF(size_t level, const std::vector<size_t> &N)
-{
-    size_t n_dim = N.size();
-
+{    
     hhfft::AlignedVector<double> w_temp = calculate_twiddle_factors_DIT(level, N);
 
     // Re-order twiddle factors
@@ -245,18 +269,23 @@ std::vector<size_t> hhfft::calculate_factorization(size_t n, bool use_dif)
     return factors;
 }
 
-// Calculates packing factors used for converting
+// Calculates packing factors used for converting complex packed to real
 hhfft::AlignedVector<double> hhfft::calculate_packing_factors(size_t n)
 {
     hhfft::AlignedVector<double> w(n);
 
     for (size_t i = 0; i < n/2; i+=2)
     {
-        double c = cos(0.25*M_PI*(2.0/n*i + 1.0));
-        double s = sin(0.25*M_PI*(2.0/n*i + 1.0));
+        //double c = cos(0.25*M_PI*(2.0/n*i + 1.0));
+        //double s = sin(0.25*M_PI*(2.0/n*i + 1.0));
+        //w[i+0] = -s*s;
+        //w[i+1] = -s*c;
+
+        double c,s;
+        calculate_cos_sin(2*i + n, 8*n, c, s);
 
         w[i+0] = -s*s;
-        w[i+1] = -s*c;
+        w[i+1] = s*c;
     }
 
     return w;

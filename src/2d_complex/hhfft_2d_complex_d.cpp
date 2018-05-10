@@ -29,7 +29,7 @@ using namespace hhfft;
 
 // Compiler is not able to optimize this to use sse2! TODO implement different versions (plain/sse2/avx) of this!
 // In-place reordering "swap"
-template<bool forward> void fft_2d_complex_reorder_rows_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<bool scale> void fft_2d_complex_reorder_rows_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     size_t n = step_info.size; // number of rows
     size_t m = step_info.stride; // number of columns
@@ -65,7 +65,7 @@ template<bool forward> void fft_2d_complex_reorder_rows_in_place_d(const double 
 
     // Scaling can be needed for real-fft
     double k = step_info.norm_factor;
-    if (!forward && k != 1.0)
+    if (scale)
     {
         // Needed only in ifft. Equal to 1/N
         double k = step_info.norm_factor;
@@ -78,12 +78,12 @@ template<bool forward> void fft_2d_complex_reorder_rows_in_place_d(const double 
 }
 
 // TODO implement different versions (plain/sse2/avx) of this?
-template<bool forward> void fft_2d_complex_reorder_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<bool scale> void fft_2d_complex_reorder_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     // Check, if in-place should be done instead
     if (data_in == data_out)
     {
-        fft_2d_complex_reorder_rows_in_place_d<forward>(data_in, data_out, step_info);
+        fft_2d_complex_reorder_rows_in_place_d<scale>(data_in, data_out, step_info);
         return;
     }
 
@@ -92,24 +92,20 @@ template<bool forward> void fft_2d_complex_reorder_d(const double *data_in, doub
     uint32_t *reorder_table = step_info.reorder_table;
 
     // Needed only in ifft. Equal to 1/(n*m)
-    double k = step_info.norm_factor;
-    if (forward)
-    {
-        k = 1.0;
-    }
+    double k = step_info.norm_factor;    
 
     for (size_t i = 0; i < n; i++)
     {
         for (size_t j = 0; j < m; j++)
         {
             size_t j2 = reorder_table[j];
-            if (forward)
+            if (scale)
             {
-                data_out[2*i*m + 2*j + 0] = data_in[2*i*m + 2*j2 + 0];
-                data_out[2*i*m + 2*j + 1] = data_in[2*i*m + 2*j2 + 1];
-            } else {
                 data_out[2*i*m + 2*j + 0] = k*data_in[2*i*m + 2*j2 + 0];
                 data_out[2*i*m + 2*j + 1] = k*data_in[2*i*m + 2*j2 + 1];
+            } else {
+                data_out[2*i*m + 2*j + 0] = data_in[2*i*m + 2*j2 + 0];
+                data_out[2*i*m + 2*j + 1] = data_in[2*i*m + 2*j2 + 1];
             }
         }
     }
@@ -117,7 +113,7 @@ template<bool forward> void fft_2d_complex_reorder_d(const double *data_in, doub
 
 // TODO implement different versions (plain/sse2/avx) of this?
 // In-place reordering "swap"
-template<bool forward> void fft_2d_complex_reorder_columns_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<bool scale> void fft_2d_complex_reorder_columns_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     size_t n = step_info.repeats;
     size_t m = step_info.size;
@@ -144,7 +140,7 @@ template<bool forward> void fft_2d_complex_reorder_columns_in_place_d(const doub
     // Scaling needs to be done as a separate step as some data might be copied twice or zero times        
     size_t n2 = step_info.stride;
     double k = step_info.norm_factor;
-    if (!forward && k != 1.0)
+    if (scale)
     {        
         for (size_t i = 0; i < 2*n2*m; i++)
         {
@@ -154,12 +150,12 @@ template<bool forward> void fft_2d_complex_reorder_columns_in_place_d(const doub
 }
 
 // TODO implement different versions (plain/sse2/avx) of this?
-template<bool forward> void fft_2d_complex_reorder_columns_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<bool scale> void fft_2d_complex_reorder_columns_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {    
     // Check, if in-place should be done instead
     if (data_in == data_out)
     {
-        fft_2d_complex_reorder_columns_in_place_d<forward>(data_in, data_out, step_info);
+        fft_2d_complex_reorder_columns_in_place_d<scale>(data_in, data_out, step_info);
         return;
     }
 
@@ -168,11 +164,7 @@ template<bool forward> void fft_2d_complex_reorder_columns_d(const double *data_
     uint32_t *reorder_table = step_info.reorder_table;
 
     // Needed only in ifft. Equal to 1/N
-    double k = step_info.norm_factor;
-    if (forward)
-    {
-        k = 1.0;
-    }
+    double k = step_info.norm_factor;    
 
     for (size_t i = 0; i < n; i++)
     {
@@ -180,7 +172,10 @@ template<bool forward> void fft_2d_complex_reorder_columns_d(const double *data_
 
         for (size_t j = 0; j < 2*m; j++)
         {
-            data_out[2*i*m + j] = k*data_in[2*i2*m + j];
+            if (scale)
+                data_out[2*i*m + j] = k*data_in[2*i2*m + j];
+            else
+                data_out[2*i*m + j] = data_in[2*i2*m + j];
         }
     }
 }
@@ -331,7 +326,7 @@ void hhfft::HHFFT_2D_Complex_D_set_function_columns(StepInfoD &step_info, hhfft:
 
     if (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr)
     {    
-        if (step_info.forward)
+        if (step_info.norm_factor != 1.0)
             step_info.step_function = fft_2d_complex_reorder_columns_d<true>;
         else
             step_info.step_function = fft_2d_complex_reorder_columns_d<false>;
@@ -362,7 +357,7 @@ void hhfft::HHFFT_2D_Complex_D_set_function_rows(StepInfoD &step_info, hhfft::In
 
     if (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr)
     {        
-        if (step_info.forward)
+        if (step_info.norm_factor != 1.0)
             step_info.step_function = fft_2d_complex_reorder_d<true>;
         else
             step_info.step_function = fft_2d_complex_reorder_d<false>;

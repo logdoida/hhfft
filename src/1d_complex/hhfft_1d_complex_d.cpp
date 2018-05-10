@@ -22,13 +22,13 @@
 #include <assert.h>
 #include <cmath>
 
-#include <iostream> //TESTING
+#include <immintrin.h>
 
 using namespace hhfft;
 
 // Compiler is not able to optimize this to use sse2! TODO implement different versions (plain/sse2/avx) of this!
 // In-place reordering "swap"
-template<bool forward> void fft_1d_complex_reorder_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<bool scale> void fft_1d_complex_reorder_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {    
     size_t n = step_info.repeats;
     uint32_t *reorder_table = step_info.reorder_table_inplace;
@@ -46,7 +46,7 @@ template<bool forward> void fft_1d_complex_reorder_in_place_d(const double *data
         __m128d temp1 = _mm_loadu_pd(data_in + 2*ind1);
         __m128d temp2 = _mm_loadu_pd(data_in + 2*ind2);
         _mm_storeu_pd(data_out + 2*ind2, temp1);
-        _mm_storeu_pd(data_out + 2*ind1, temp2);
+        _mm_storeu_pd(data_out + 2*ind1, temp2);        
         */
 
         double r_temp = data_out[2*ind1+0];
@@ -54,13 +54,13 @@ template<bool forward> void fft_1d_complex_reorder_in_place_d(const double *data
         data_out[2*ind1+0] = data_out[2*ind2+0];
         data_out[2*ind1+1] = data_out[2*ind2+1];
         data_out[2*ind2+0] = r_temp;
-        data_out[2*ind2+1] = c_temp;
+        data_out[2*ind2+1] = c_temp;                        
     }
 
     // Scaling needs to be done as a separate step as some data might be copied twice or zero times
-    // TODO this is not very efficient. Scaling could be done at some other step (first/last)    
+    // TODO this is not very efficient. Scaling could be done at some other step (first/last)        
     size_t n2 = step_info.stride;
-    if (!forward)
+    if (scale)
     {
         // Needed only in ifft. Equal to 1/N
         double k = step_info.norm_factor;
@@ -73,12 +73,12 @@ template<bool forward> void fft_1d_complex_reorder_in_place_d(const double *data
 }
 
 // Compiler is not able to optimize this to use sse2! TODO implement different versions (plain/sse2/avx) of this!
-template<bool forward> void fft_1d_complex_reorder_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{    
+template<bool scale> void fft_1d_complex_reorder_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
     // Check, if in-place should be done instead
     if (data_in == data_out)
     {
-        fft_1d_complex_reorder_in_place_d<forward>(data_in, data_out, step_info);
+        fft_1d_complex_reorder_in_place_d<scale>(data_in, data_out, step_info);
         return;
     }
 
@@ -91,16 +91,16 @@ template<bool forward> void fft_1d_complex_reorder_d(const double *data_in, doub
     for (size_t i = 0; i < n; i++)
     {
         size_t i2 = reorder_table[i];
-        if (forward)
-        {
-            // Compiler is not able to optimize this to use sse2!
-            data_out[2*i+0] = data_in[2*i2+0];
-            data_out[2*i+1] = data_in[2*i2+1];
-        } else
+        if (scale)
         {
             // Compiler is not able to optimize this to use sse2!
             data_out[2*i+0] = k*data_in[2*i2+0];
             data_out[2*i+1] = k*data_in[2*i2+1];
+        } else
+        {
+            // Compiler is not able to optimize this to use sse2!
+            data_out[2*i+0] = data_in[2*i2+0];
+            data_out[2*i+1] = data_in[2*i2+1];
         }
     }
 }
@@ -294,7 +294,7 @@ void hhfft::HHFFT_1D_Complex_D_set_function(StepInfoD &step_info, hhfft::Instruc
 
     if (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr)
     {    
-        if (step_info.forward)
+        if (step_info.norm_factor != 1.0)
             step_info.step_function = fft_1d_complex_reorder_d<true>;
         else
             step_info.step_function = fft_1d_complex_reorder_d<false>;

@@ -26,7 +26,7 @@ namespace hhfft
 {
 
 // Allocates aligned memory
-void* allocate_aligned_memory(size_t num_bytes);
+void* allocate_aligned_memory(size_t num_bytes, bool allocate_extra = false);
 
 // A simple vector (1D array) that wraps aligned memory if possible
 template<typename T> class AlignedVector
