@@ -38,6 +38,7 @@ template<bool forward>
     ComplexD k128 = broadcast64(k);
     ComplexD2 k256 = broadcast64_D2(k);
 
+    const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
     const ComplexD2 const2 = load(-0.0, 0.0, -0.0, 0.0);
 
     // Input/output way

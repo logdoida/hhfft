@@ -27,6 +27,72 @@
 
 using namespace hhfft;
 
+// In-place reordering "swap"
+template<bool scale> inline void fft_1d_complex_reorder_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t n = step_info.repeats;
+    uint32_t *reorder_table = step_info.reorder_table_inplace;
+
+    // In-place algorithm
+    assert (data_in == data_out);
+
+    for (size_t i = 0; i < n; i++)
+    {
+        size_t ind1 = i + 1; // First one has been omitted!
+        size_t ind2 = reorder_table[i];
+
+        double r_temp = data_out[2*ind1+0];
+        double c_temp = data_out[2*ind1+1];
+        data_out[2*ind1+0] = data_out[2*ind2+0];
+        data_out[2*ind1+1] = data_out[2*ind2+1];
+        data_out[2*ind2+0] = r_temp;
+        data_out[2*ind2+1] = c_temp;
+    }
+
+    // Scaling needs to be done as a separate step as some data might be copied twice or zero times
+    // TODO this is not very efficient. Scaling could be done at some other step (first/last)
+    size_t n2 = step_info.stride;
+    if (scale)
+    {
+        // Needed only in ifft. Equal to 1/N
+        double k = step_info.norm_factor;
+
+        for (size_t i = 0; i < 2*n2; i++)
+        {
+            data_out[i] *= k;
+        }
+    }
+}
+
+template<bool scale> void fft_1d_complex_reorder_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    // Check, if in-place should be done instead
+    if (data_in == data_out)
+    {
+        fft_1d_complex_reorder_in_place_d<scale>(data_in, data_out, step_info);
+        return;
+    }
+
+    size_t n = step_info.stride;
+    uint32_t *reorder_table = step_info.reorder_table;
+
+    // Needed only in ifft. Equal to 1/N
+    double k = step_info.norm_factor;
+
+    for (size_t i = 0; i < n; i++)
+    {
+        size_t i2 = reorder_table[i];
+        if (scale)
+        {
+            data_out[2*i+0] = k*data_in[2*i2+0];
+            data_out[2*i+1] = k*data_in[2*i2+1];
+        } else
+        {
+            data_out[2*i+0] = data_in[2*i2+0];
+            data_out[2*i+1] = data_in[2*i2+1];
+        }
+    }
+}
 
 
 template<size_t radix, bool forward>
@@ -173,8 +239,25 @@ template<size_t radix, bool forward>
     }
 }
 
+void fft_1d_complex_convolution_plain_d(const double *in1, const double *in2, double *out, size_t n)
+{
+    for(size_t i = 0; i < n; i++)
+    {
+        double re1 = in1[2*i + 0];
+        double im1 = in1[2*i + 1];
+        double re2 = in2[2*i + 0];
+        double im2 = in2[2*i + 1];
+
+        out[2*i + 0] = re1*re2 - im1*im2;
+        out[2*i + 1] = re1*im2 + im1*re2;
+    }
+}
+
 
 // Instantiations of the functions defined in this class
+template void fft_1d_complex_reorder_plain_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder_plain_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
 template void fft_1d_complex_plain_d<2, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_plain_d<2, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_plain_d<3, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

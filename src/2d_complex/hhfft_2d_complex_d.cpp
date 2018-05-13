@@ -264,7 +264,7 @@ template<size_t radix> void set_stride_type_2d_columns_d(StepInfoD &step_info, h
     // NOTE for row-wise the stride is used instead!
     size_t n_size = step_info.size;
 
-    // TESTING to speed up compilation
+    // Only stride = 1 and N are currently used
     if (n_size == 1)
     {
         set_forward_2d_columns_d<radix, SizeType::Size1>(step_info, instruction_set);

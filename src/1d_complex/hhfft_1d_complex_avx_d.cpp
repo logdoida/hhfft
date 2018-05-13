@@ -27,6 +27,73 @@
 
 using namespace hhfft;
 
+// In-place reordering "swap"
+template<bool scale> inline void fft_1d_complex_reorder_in_place_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t n = step_info.repeats;
+    uint32_t *reorder_table = step_info.reorder_table_inplace;
+
+    // In-place algorithm
+    assert (data_in == data_out);
+
+    for (size_t i = 0; i < n; i++)
+    {
+        size_t ind1 = i + 1; // First one has been omitted!
+        size_t ind2 = reorder_table[i];
+
+        // Swap two doubles at a time
+        ComplexD x_in0 = load128(data_in + 2*ind1);
+        ComplexD x_in1 = load128(data_in + 2*ind2);
+        store(x_in0, data_out + 2*ind2);
+        store(x_in1, data_out + 2*ind1);
+    }
+
+    // Scaling needs to be done as a separate step as some data might be copied twice or zero times
+    // TODO this is not very efficient. Scaling could be done at some other step (first/last)
+    size_t n2 = step_info.stride;
+    if (scale)
+    {
+        // Needed only in ifft. Equal to 1/N
+        double k = step_info.norm_factor;
+
+        for (size_t i = 0; i < 2*n2; i++)
+        {
+            data_out[i] *= k;
+        }
+    }
+}
+
+template<bool scale> void fft_1d_complex_reorder_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    // Check, if in-place should be done instead
+    if (data_in == data_out)
+    {
+        fft_1d_complex_reorder_in_place_avx_d<scale>(data_in, data_out, step_info);
+        return;
+    }
+
+    size_t n = step_info.stride;
+    uint32_t *reorder_table = step_info.reorder_table;
+
+    // Needed only in ifft. Equal to 1/N
+    double k = step_info.norm_factor;
+    ComplexD k128 = broadcast64(k);
+
+    for (size_t i = 0; i < n; i++)
+    {
+        size_t i2 = reorder_table[i];
+        if (scale)
+        {
+            ComplexD x_in = k128*load128(data_in + 2*i2);
+            store(x_in, data_out + 2*i);
+        } else
+        {
+            ComplexD x_in = load128(data_in + 2*i2);
+            store(x_in, data_out + 2*i);
+        }
+    }
+}
+
 template<size_t radix, bool forward>
     inline __attribute__((always_inline)) void fft_1d_complex_avx_d_internal_stride1(const double *data_in, double *data_out, size_t repeats)
 {
@@ -173,7 +240,7 @@ template<size_t radix, SizeType stride_type, bool forward>
     }
 
     //TODO
-    //if (strid_type is divisible by 2)
+    //if (stride_type is divisible by 2)
     //    return;
 
     // Then, if necassery, use 128-bit variables
@@ -328,8 +395,33 @@ template<size_t radix, SizeType stride_type, bool forward>
     }
 }
 
+void fft_1d_complex_convolution_avx_d(const double *data_in0, const double *data_in1, double *data_out, size_t n)
+{
+    size_t i;
+
+    // First use 2*256-bit variables (real and complex parts are calculated separately)
+    for (i = 0; i+6 < 2*n; i+=8)
+    {
+        ComplexD4S x_in0 = load512s(data_in0 + i);
+        ComplexD4S x_in1 = load512s(data_in1 + i);
+        ComplexD4S x_out = mul(x_in0, x_in1);
+        store(x_out, data_out + i);
+    }
+
+    // Then, if necassery, use 128-bit variables
+    for (; i < 2*n; i+=2)
+    {
+        ComplexD x_in0 = load128(data_in0 + i);
+        ComplexD x_in1 = load128(data_in1 + i);
+        ComplexD x_out = mul(x_in0, x_in1);
+        store(x_out, data_out + i);
+    }
+}
 
 // Instantiations of the functions defined in this class
+template void fft_1d_complex_reorder_avx_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder_avx_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
 template void fft_1d_complex_avx_d<2, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_avx_d<2, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_avx_d<3, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

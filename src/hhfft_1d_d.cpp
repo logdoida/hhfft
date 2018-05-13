@@ -208,6 +208,9 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
+
+    // Set the convolution function
+    convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
 }
 
 void HHFFT_1D_D::fft(const double *in, double *out)
@@ -246,6 +249,12 @@ void HHFFT_1D_D::ifft(const double *in, double *out)
     }
 }
 
+
+// Calculates convolution in Fourier space
+void HHFFT_1D_D::convolution(const double *in1, const double *in2, double *out)
+{
+    convolution_function(in1, in2, out, n);
+}
 
 // Prints contents of a 1d-vector that has n complex numbers (2*n doubles)
 void HHFFT_1D_D::print_complex_vector(const double *data, size_t n)

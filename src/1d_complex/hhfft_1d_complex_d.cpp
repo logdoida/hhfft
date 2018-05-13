@@ -26,86 +26,6 @@
 
 using namespace hhfft;
 
-// Compiler is not able to optimize this to use sse2! TODO implement different versions (plain/sse2/avx) of this!
-// In-place reordering "swap"
-template<bool scale> void fft_1d_complex_reorder_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{    
-    size_t n = step_info.repeats;
-    uint32_t *reorder_table = step_info.reorder_table_inplace;
-
-    // In-place algorithm
-    assert (data_in == data_out);
-
-    for (size_t i = 0; i < n; i++)
-    {
-        size_t ind1 = i + 1; // First one has been omitted!
-        size_t ind2 = reorder_table[i];
-
-        // Swap two doubles at a time
-        /*
-        __m128d temp1 = _mm_loadu_pd(data_in + 2*ind1);
-        __m128d temp2 = _mm_loadu_pd(data_in + 2*ind2);
-        _mm_storeu_pd(data_out + 2*ind2, temp1);
-        _mm_storeu_pd(data_out + 2*ind1, temp2);        
-        */
-
-        double r_temp = data_out[2*ind1+0];
-        double c_temp = data_out[2*ind1+1];
-        data_out[2*ind1+0] = data_out[2*ind2+0];
-        data_out[2*ind1+1] = data_out[2*ind2+1];
-        data_out[2*ind2+0] = r_temp;
-        data_out[2*ind2+1] = c_temp;                        
-    }
-
-    // Scaling needs to be done as a separate step as some data might be copied twice or zero times
-    // TODO this is not very efficient. Scaling could be done at some other step (first/last)        
-    size_t n2 = step_info.stride;
-    if (scale)
-    {
-        // Needed only in ifft. Equal to 1/N
-        double k = step_info.norm_factor;
-
-        for (size_t i = 0; i < 2*n2; i++)
-        {
-            data_out[i] *= k;
-        }
-    }
-}
-
-// Compiler is not able to optimize this to use sse2! TODO implement different versions (plain/sse2/avx) of this!
-template<bool scale> void fft_1d_complex_reorder_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
-    // Check, if in-place should be done instead
-    if (data_in == data_out)
-    {
-        fft_1d_complex_reorder_in_place_d<scale>(data_in, data_out, step_info);
-        return;
-    }
-
-    size_t n = step_info.stride;
-    uint32_t *reorder_table = step_info.reorder_table;
-
-    // Needed only in ifft. Equal to 1/N
-    double k = step_info.norm_factor;
-
-    for (size_t i = 0; i < n; i++)
-    {
-        size_t i2 = reorder_table[i];
-        if (scale)
-        {
-            // Compiler is not able to optimize this to use sse2!
-            data_out[2*i+0] = k*data_in[2*i2+0];
-            data_out[2*i+1] = k*data_in[2*i2+1];
-        } else
-        {
-            // Compiler is not able to optimize this to use sse2!
-            data_out[2*i+0] = data_in[2*i2+0];
-            data_out[2*i+1] = data_in[2*i2+1];
-        }
-    }
-}
-
-
 // Actual implementations are in different .cpp-files
 // No twiddle factors
 template<size_t radix, bool forward>
@@ -145,6 +65,21 @@ template<size_t radix, SizeType stride_type, bool forward>
 
 template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_twiddle_dif_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+// Reordering
+template<bool scale>
+    void fft_1d_complex_reorder_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<bool scale>
+    void fft_1d_complex_reorder_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<bool scale>
+    void fft_1d_complex_reorder_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+// Convolution
+void fft_1d_complex_convolution_plain_d(const double *in1, const double *in2, double *out, size_t n);
+void fft_1d_complex_convolution_sse2_d(const double *in1, const double *in2, double *out, size_t n);
+void fft_1d_complex_convolution_avx_d(const double *in1, const double *in2, double *out, size_t n);
 
 
 template<size_t radix, SizeType stride_type, bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
@@ -215,7 +150,6 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
 // These functions set different template parameters one at time
 template<size_t radix, SizeType stride_type> void set_forward_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
-
     if (step_info.forward)
     {
         set_instruction_set_d<radix, stride_type, true>(step_info, instruction_set);
@@ -230,7 +164,7 @@ template<size_t radix> void set_stride_type_d(StepInfoD &step_info, hhfft::Instr
     // Knowing something about the stride at compile time can help to optimize some cases
     size_t stride = step_info.stride;
 
-    // TESTING to speed up compilation
+    // Only stride = 1 and N are currently used
     if (stride == 1)
     {
         set_forward_d<radix, SizeType::Size1>(step_info, instruction_set);
@@ -287,22 +221,52 @@ void set_radix_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
     }
 }
 
+template<bool scale> void set_reorder_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+
+#ifdef HHFFT_COMPILED_WITH_AVX512F
+    if (instruction_set == hhfft::InstructionSet::avx512f)
+    {
+        step_info.step_function = fft_1d_complex_reorder_avx512_d<scale>;
+    }
+#endif
+
+#ifdef HHFFT_COMPILED_WITH_AVX
+    if (instruction_set == hhfft::InstructionSet::avx)
+    {
+        step_info.step_function = fft_1d_complex_reorder_avx_d<scale>;
+    }
+#endif
+
+    if (instruction_set == hhfft::InstructionSet::sse2)
+    {
+        step_info.step_function = fft_1d_complex_reorder_sse2_d<scale>;
+    }
+
+    if (instruction_set == hhfft::InstructionSet::none)
+    {
+        // NOTE plain is more or less an unused reference implementation, as sse2 should always be supported
+        step_info.step_function = fft_1d_complex_reorder_plain_d<scale>;
+    }
+}
+
 // This set pointer to correct fft functions based on radix and stride etc
 void hhfft::HHFFT_1D_Complex_D_set_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
     step_info.step_function = nullptr;
 
     if (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr)
-    {    
+    {
+        // Add reordering step
         if (step_info.norm_factor != 1.0)
-            step_info.step_function = fft_1d_complex_reorder_d<true>;
+            set_reorder_instruction_set_d<true>(step_info, instruction_set);
         else
-            step_info.step_function = fft_1d_complex_reorder_d<false>;
-
-        return;
+            set_reorder_instruction_set_d<false>(step_info, instruction_set);
+    } else
+    {
+        // Add a fft step
+        set_radix_d(step_info, instruction_set);
     }
-
-    set_radix_d(step_info, instruction_set);
 
     if (step_info.step_function == nullptr)
     {
@@ -310,3 +274,27 @@ void hhfft::HHFFT_1D_Complex_D_set_function(StepInfoD &step_info, hhfft::Instruc
     }
 }
 
+// This returns a pointer to correct convolution function based on instruction set
+void (*hhfft::HHFFT_1D_Complex_D_set_convolution_function(hhfft::InstructionSet instruction_set))(const double *, const double *, double *, size_t n)
+{
+#ifdef HHFFT_COMPILED_WITH_AVX512F
+    if (instruction_set == hhfft::InstructionSet::avx512f)
+    {
+        return fft_1d_complex_convolution_avx512_d;
+    }
+#endif
+
+#ifdef HHFFT_COMPILED_WITH_AVX
+    if (instruction_set == hhfft::InstructionSet::avx)
+    {
+        return fft_1d_complex_convolution_avx_d;
+    }
+#endif
+
+    if (instruction_set == hhfft::InstructionSet::sse2)
+    {
+        return fft_1d_complex_convolution_sse2_d;
+    }
+
+    return fft_1d_complex_convolution_plain_d;
+}

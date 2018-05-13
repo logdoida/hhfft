@@ -46,6 +46,9 @@ public:
     // IFFT with complex inputs and outputs
     void ifft(const double *in, double *out);
 
+    // Calculates convolution of fourier transformed inputs
+    void convolution(const double *in1, const double *in2, double *out);
+
     // Allocate aligned array that contains enough space for the complex input and output data
     double* allocate_memory();
 
@@ -79,6 +82,9 @@ private:
     // The actual fft plan is a sequence of individual steps
     std::vector<StepInfoD> forward_steps;
     std::vector<StepInfoD> inverse_steps;
+
+    // This is a pointer to a function that performs the convolution
+    void (*convolution_function)(const double *, const double *, double *, size_t n);
 };
 
 }

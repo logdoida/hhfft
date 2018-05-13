@@ -22,6 +22,8 @@
 #define ENABLE_AVX
 #include "hhfft_1d_complex_sse2_common_d.h"
 
+////////////////////////////////////////// ComplexD2 ///////////////////////////////////////
+
 // contains two complex numbers: [r1 i1 r2 i2]
 typedef __m256d ComplexD2;
 
@@ -87,13 +89,15 @@ inline ComplexD2 change_sign(ComplexD2 x, ComplexD2 s)
     return _mm256_xor_pd(x,s);
 }
 
-// Defining the constants here or within the functions can have some difference. Compare!
-static const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
+// It seems that it is more efficient to define the constant inside the functions
+//static const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
 
 // Multiplies two packed complex numbers. If other of them changes more frequently, set it to b.
 inline ComplexD2 mul(ComplexD2 a, ComplexD2 b)
-{
+{    
+    const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
     ComplexD2 a1 = change_sign(a, const1);
+
     ComplexD2 a2 = _mm256_permute_pd(a, 1 + 4);
 
     ComplexD2 t1 = _mm256_mul_pd(a1, b);
@@ -105,7 +109,9 @@ inline ComplexD2 mul(ComplexD2 a, ComplexD2 b)
 
 // Multiplies two packed complex numbers. The forward means a*b, inverse a*conj(b)
 template<bool forward> inline ComplexD2 mul_w(ComplexD2 a, ComplexD2 b)
-{
+{    
+    const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
+
     ComplexD2 b1, b2;
     if (forward)
     {
@@ -126,8 +132,8 @@ template<bool forward> inline ComplexD2 mul_w(ComplexD2 a, ComplexD2 b)
 
 // Multiplies packed complex numbers with i
 inline ComplexD2 mul_i(ComplexD2 a)
-{
-    //const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
+{    
+    const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
 
     ComplexD2 a1 = change_sign(a, const1);
     ComplexD2 y = _mm256_permute_pd(a1, 1 + 4);
@@ -269,4 +275,48 @@ template<size_t radix, bool forward> inline void multiply_twiddle(const ComplexD
 
         x_out[j] = mul_w<forward>(x, w);
     }
+}
+
+
+////////////////////////////////////////// ComplexD4S ///////////////////////////////////////
+// contains four complex numbers separated to real and imaginary parts : [r0 r2 r1 r3] & [i0 i2 i1 i3]
+// this is mainly intended to be used with FMA instructions, but it might also sometimes be more efficient way also with normal avx
+typedef struct
+{
+    __m256d real, imag;
+} ComplexD4S;
+
+
+// Read four complex numbers and reorder them to real and complex parts
+inline const ComplexD4S load512s(const double *x)
+{
+    __m256d x0 = _mm256_loadu_pd(x);
+    __m256d x1 = _mm256_loadu_pd(x + 4);
+
+    ComplexD4S out;
+    out.real = _mm256_unpacklo_pd(x0, x1);
+    out.imag = _mm256_unpackhi_pd(x0, x1);
+
+    return out;
+}
+
+// Store four complex numbers
+inline void store(ComplexD4S val, double *v)
+{
+    // Reorder data back to correct form
+    __m256d x0 = _mm256_unpacklo_pd(val.real, val.imag);
+    __m256d x1 = _mm256_unpackhi_pd(val.real, val.imag);
+
+    _mm256_storeu_pd(v, x0);
+    _mm256_storeu_pd(v + 4, x1);
+}
+
+// Multiplies four complex numbers.
+inline ComplexD4S mul(ComplexD4S a, ComplexD4S b)
+{
+    ComplexD4S out;
+    out.real = a.real * b.real - a.imag*b.imag;
+    out.imag = a.real * b.imag + a.imag*b.real;
+
+    return out;
 }

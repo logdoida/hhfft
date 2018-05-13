@@ -34,6 +34,7 @@ template<bool forward>
     size_t n = step_info.repeats; // n = number of original real rows
     size_t m = step_info.size;    // m = number of original real columns
 
+    const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
     const ComplexD2 const2 = load(-0.0, 0.0, -0.0, 0.0);
 
     if (forward)

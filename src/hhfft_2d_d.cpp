@@ -261,6 +261,8 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
         inverse_steps.push_back(step);
     }
 
+    // Set the convolution function
+    convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
 }
 
 void HHFFT_2D_D::fft(const double *in, double *out)
@@ -299,6 +301,11 @@ void HHFFT_2D_D::ifft(const double *in, double *out)
     }
 }
 
+// Calculates convolution in Fourier space
+void HHFFT_2D_D::convolution(const double *in1, const double *in2, double *out)
+{
+    convolution_function(in1, in2, out, n*m);
+}
 
 // Prints contents of a matrix that has nxm complex numbers (2*n*m doubles)
 void HHFFT_2D_D::print_complex_matrix(const double *data, size_t n, size_t m)

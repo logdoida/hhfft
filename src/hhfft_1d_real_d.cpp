@@ -260,7 +260,10 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         step.forward = true;
         HHFFT_1D_Real_D_set_complex_to_complex_packed_function(step, instruction_set);
         forward_steps.push_back(step);
-    }    
+    }
+
+    // Set the convolution function
+    convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
 }
 
 
@@ -301,6 +304,11 @@ void HHFFT_1D_REAL_D::ifft(const double *in, double *out)
     }
 }
 
+// Calculates convolution in Fourier space
+void HHFFT_1D_REAL_D::convolution(const double *in1, const double *in2, double *out)
+{
+    convolution_function(in1, in2, out, n/2 + 1);
+}
 
 // Prints contents of a 1d-vector that has n numbers (n doubles)
 void HHFFT_1D_REAL_D::print_real_vector(const double *data, size_t n)
