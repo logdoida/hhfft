@@ -262,6 +262,56 @@ template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD *
         return;
     }
 
+    // Implementation for radix = 8
+    if (radix == 8)
+    {
+        const ComplexD k = broadcast64(sqrt(0.5));
+
+        ComplexD t12 = x_in[1] + x_in[5];
+        ComplexD t13 = x_in[3] + x_in[7];
+        ComplexD t14 = x_in[1] - x_in[5];
+        ComplexD t15 = x_in[7] - x_in[3];
+
+        ComplexD t1 = t12 + t13;
+        ComplexD t5;
+        if (forward)
+            t5 = mul_i(t13 - t12);
+        else
+            t5 = mul_i(t12 - t13);
+
+        ComplexD t16 = k*(t14 + t15);
+        ComplexD t17;
+        if (forward)
+            t17 = k*mul_i(t15 - t14);
+        else
+            t17 = k*mul_i(t14 - t15);
+        ComplexD t3 = t16 + t17;
+        ComplexD t7 = t17 - t16;
+
+        ComplexD t8  = x_in[0] + x_in[4];
+        ComplexD t9  = x_in[2] + x_in[6];
+        ComplexD t10 = x_in[0] - x_in[4];
+        ComplexD t11;
+        if (forward)
+            t11 = mul_i(x_in[2] - x_in[6]);
+        else
+            t11 = mul_i(x_in[6] - x_in[2]);
+        ComplexD t0  = t8 + t9;
+        ComplexD t4  = t8 - t9;
+        ComplexD t2  = t10 - t11;
+        ComplexD t6  = t10 + t11;
+
+        x_out[0] = t0 + t1;
+        x_out[1] = t2 + t3;
+        x_out[2] = t4 + t5;
+        x_out[3] = t6 + t7;
+        x_out[4] = t0 - t1;
+        x_out[5] = t2 - t3;
+        x_out[6] = t4 - t5;
+        x_out[7] = t6 - t7;
+        return;
+    }
+
     // Other radices
     const double *coeff = nullptr;
 

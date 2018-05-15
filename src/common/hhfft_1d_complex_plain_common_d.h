@@ -61,6 +61,17 @@ static const double coeff_radix_7[98] = {
     1, 0, -k7,  k8, -k9, -k10, k5, -k6,  k5,  k6, -k9,  k10, -k7, -k8,
     1, 0,  k5,  k6, -k7,  k8, -k9,  k10,-k9, -k10, -k7, -k8, k5, -k6};
 
+static const double k11 = sqrt(0.5);
+static const double coeff_radix_8[128] = {
+1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
+1, 0, k11, -k11, 0, -1, -k11, -k11, -1, 0, -k11, k11, 0, 1, k11, k11,
+1, 0, 0, -1, -1, 0, 0, 1, 1, 0, 0, -1, -1, 0, 0, 1,
+1, 0, -k11, -k11, 0, 1, k11, -k11, -1, 0, k11, k11, 0, -1, -k11, k11,
+1, 0, -1, 0, 1, 0, -1, 0, 1, 0, -1, 0, 1, 0, -1, 0,
+1, 0, -k11, k11, 0, -1, k11, k11, -1, 0, k11, -k11, 0, 1, -k11, -k11,
+1, 0, 0, 1, -1, 0, 0, -1, 1, 0, 0, 1, -1, 0, 0, -1,
+1, 0, k11, k11, 0, 1, -k11, k11, -1, 0, -k11, -k11, 0, -1, k11, -k11};
+
 
 template<size_t radix, bool forward> inline void multiply_coeff(const double *x_in, double *x_out)
 {
@@ -81,6 +92,9 @@ template<size_t radix, bool forward> inline void multiply_coeff(const double *x_
     } else if (radix == 7)
     {
         coeff = coeff_radix_7;
+    } else if (radix == 8)
+    {
+        coeff = coeff_radix_8;
     }
 
     for (size_t i = 0; i < radix; i++)

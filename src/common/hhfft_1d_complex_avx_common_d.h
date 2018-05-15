@@ -92,42 +92,47 @@ inline ComplexD2 change_sign(ComplexD2 x, ComplexD2 s)
 // It seems that it is more efficient to define the constant inside the functions
 //static const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
 
-// Multiplies two packed complex numbers. If other of them changes more frequently, set it to b.
+// Multiplies two packed complex numbers.
 inline ComplexD2 mul(ComplexD2 a, ComplexD2 b)
-{    
-    const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
-    ComplexD2 a1 = change_sign(a, const1);
-
+{
     ComplexD2 a2 = _mm256_permute_pd(a, 1 + 4);
 
-    ComplexD2 t1 = _mm256_mul_pd(a1, b);
+    ComplexD2 t1 = _mm256_mul_pd(a, b);
     ComplexD2 t2 = _mm256_mul_pd(a2, b);
 
-    ComplexD2 y = _mm256_hadd_pd(t1, t2);
-    return y;
+    ComplexD2 t3 = _mm256_unpacklo_pd(t1,t2);
+    ComplexD2 t4 = _mm256_unpackhi_pd(t1,t2);
+
+    return _mm256_addsub_pd(t3,t4);
 }
 
 // Multiplies two packed complex numbers. The forward means a*b, inverse a*conj(b)
 template<bool forward> inline ComplexD2 mul_w(ComplexD2 a, ComplexD2 b)
-{    
-    const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
-
-    ComplexD2 b1, b2;
+{        
     if (forward)
     {
-        b1 = change_sign(b, const1);
-        b2 = _mm256_permute_pd(b, 1 + 4);
+        ComplexD2 a2 = _mm256_permute_pd(a, 1 + 4);
+
+        ComplexD2 t1 = _mm256_mul_pd(a, b);
+        ComplexD2 t2 = _mm256_mul_pd(a2, b);
+
+        ComplexD2 t3 = _mm256_unpacklo_pd(t1,t2);
+        ComplexD2 t4 = _mm256_unpackhi_pd(t1,t2);
+
+        return _mm256_addsub_pd(t3,t4);
     } else
     {
-        b1 = b;
-        b2 = _mm256_permute_pd(change_sign(b, const1), 1 + 4);
+        // NOTE this is slightly slower than forward version. Is there way to improve?
+        const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
+
+        ComplexD2 b2 = _mm256_permute_pd(change_sign(b, const1), 1 + 4);
+
+        ComplexD2 t1 = _mm256_mul_pd(a, b);
+        ComplexD2 t2 = _mm256_mul_pd(a, b2);
+
+        ComplexD2 y = _mm256_hadd_pd(t1, t2);
+        return y;
     }
-
-    ComplexD2 t1 = _mm256_mul_pd(a, b1);
-    ComplexD2 t2 = _mm256_mul_pd(a, b2);
-
-    ComplexD2 y = _mm256_hadd_pd(t1, t2);
-    return y;
 }
 
 // Multiplies packed complex numbers with i
@@ -191,7 +196,7 @@ template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD2 
         if (forward)
             t3 = mul_i(x_in[3] - x_in[1]);
         else
-            t3 = mul_i(x_in[1] - x_in[3]);
+            t3 = mul_i(x_in[1] - x_in[3]);        
 
         x_out[0] = t0 + t1;
         x_out[1] = t2 + t3;
@@ -235,6 +240,56 @@ template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD2 
         return;
     }
 
+    // Implementation for radix = 8
+    if (radix == 8)
+    {
+        const ComplexD2 k = broadcast64_D2(sqrt(0.5));
+
+        ComplexD2 t12 = x_in[1] + x_in[5];
+        ComplexD2 t13 = x_in[3] + x_in[7];
+        ComplexD2 t14 = x_in[1] - x_in[5];
+        ComplexD2 t15 = x_in[7] - x_in[3];
+
+        ComplexD2 t1 = t12 + t13;
+        ComplexD2 t5;
+        if (forward)
+            t5 = mul_i(t13 - t12);
+        else
+            t5 = mul_i(t12 - t13);
+
+        ComplexD2 t16 = k*(t14 + t15);
+        ComplexD2 t17;
+        if (forward)
+            t17 = k*mul_i(t15 - t14);
+        else
+            t17 = k*mul_i(t14 - t15);
+        ComplexD2 t3 = t16 + t17;
+        ComplexD2 t7 = t17 - t16;
+
+        ComplexD2 t8  = x_in[0] + x_in[4];
+        ComplexD2 t9  = x_in[2] + x_in[6];
+        ComplexD2 t10 = x_in[0] - x_in[4];
+        ComplexD2 t11;
+        if (forward)
+            t11 = mul_i(x_in[2] - x_in[6]);
+        else
+            t11 = mul_i(x_in[6] - x_in[2]);
+        ComplexD2 t0  = t8 + t9;
+        ComplexD2 t4  = t8 - t9;
+        ComplexD2 t2  = t10 - t11;
+        ComplexD2 t6  = t10 + t11;
+
+        x_out[0] = t0 + t1;
+        x_out[1] = t2 + t3;
+        x_out[2] = t4 + t5;
+        x_out[3] = t6 + t7;
+        x_out[4] = t0 - t1;
+        x_out[5] = t2 - t3;
+        x_out[6] = t4 - t5;
+        x_out[7] = t6 - t7;
+        return;
+    }
+
     // Other radices
     const double *coeff = nullptr;
 
@@ -261,6 +316,9 @@ template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD2 
         }
     }
 }
+
+
+
 
 template<size_t radix, bool forward> inline void multiply_twiddle(const ComplexD2 *x_in, ComplexD2 *x_out, const ComplexD2 *twiddle_factors)
 {
@@ -320,3 +378,23 @@ inline ComplexD4S mul(ComplexD4S a, ComplexD4S b)
 
     return out;
 }
+
+// Multiplies four complex numbers. Forward means a*b, inverse a*conj(b)
+template<bool forward> inline void mul_w(ComplexD4S a, ComplexD4S b)
+{
+    ComplexD4S out;
+
+    if (forward)
+    {
+        out.real = a.real * b.real - a.imag*b.imag;
+        out.imag = a.real * b.imag + a.imag*b.real;
+
+    } else
+    {
+        out.real = a.real * b.real + a.imag*b.imag;
+        out.imag = a.real * b.imag - a.imag*b.real;
+    }
+
+    return out;
+}
+

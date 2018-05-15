@@ -315,6 +315,9 @@ void set_radix_2d_colums_d(StepInfoD &step_info, hhfft::InstructionSet instructi
     } if (radix == 7)
     {
         set_stride_type_2d_columns_d<7>(step_info, instruction_set);
+    } if (radix == 8)
+    {
+       set_stride_type_2d_columns_d<8>(step_info, instruction_set);
     }
 }
 

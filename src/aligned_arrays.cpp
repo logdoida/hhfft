@@ -49,19 +49,19 @@ void* hhfft::allocate_aligned_memory(size_t num_bytes, bool allocate_extra)
 template<typename T> AlignedVector<T>::AlignedVector()
 {
     this->n = 0;
-    this->array = nullptr;
+    this->array = nullptr;    
 }
 
 template<typename T> AlignedVector<T>::AlignedVector(size_t n)
 {
     this->n = n;
-    this->array = (T*) allocate_aligned_memory(n*sizeof(T));
+    this->array = (T*) allocate_aligned_memory(n*sizeof(T), true);
 }
 
 template<typename T> void AlignedVector<T>::resize(size_t new_n)
 {
     // Allocate new memory
-    T* new_array = (T*) allocate_aligned_memory(new_n*sizeof(T));
+    T* new_array = (T*) allocate_aligned_memory(new_n*sizeof(T), true);
 
     // Copy data from the old array to the new one
     size_t n_to_copy = std::min(new_n, n);
@@ -86,9 +86,9 @@ template<typename T> AlignedVector<T>::AlignedVector(const AlignedVector<T>& oth
     {
         this->array = nullptr;
     } else
-    {
-        this->array = (T*) allocate_aligned_memory(n*sizeof(T));
-        std::copy(other.array, other.array + n, this->array);
+    {        
+        this->array = (T*) allocate_aligned_memory(n*sizeof(T), true);
+        std::copy(other.array, other.array + n, this->array);        
     }
 }
 
@@ -109,7 +109,7 @@ template<typename T> AlignedVector<T>& AlignedVector<T>::operator=(const Aligned
         this->array = nullptr;
     } else
     {
-        this->array = (T*) allocate_aligned_memory(n*sizeof(T));
+        this->array = (T*) allocate_aligned_memory(n*sizeof(T), true);
         std::copy(other.array, other.array + n, this->array);
     }
 
@@ -122,6 +122,7 @@ template<typename T> AlignedVector<T>& AlignedVector<T>::operator=(AlignedVector
 
     this->n = other.n;
     this->array = other.array;
+
 
     other.n = 0;
     other.array = nullptr;

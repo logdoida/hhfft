@@ -63,7 +63,6 @@ private:
     size_t n;
 
     T* array;
-
 };
 
 typedef AlignedVector<double> AlignedVectorD;

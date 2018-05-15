@@ -129,7 +129,7 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
             else
                 step_info.step_function = fft_1d_complex_twiddle_dit_sse2_d<radix, stride_type, forward>;
         }
-    }
+    }  
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
@@ -218,6 +218,9 @@ void set_radix_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
     } if (radix == 7)
     {
         set_stride_type_d<7>(step_info, instruction_set);
+    } if (radix == 8)
+    {
+        set_stride_type_d<8>(step_info, instruction_set);
     }
 }
 
