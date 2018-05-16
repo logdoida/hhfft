@@ -95,34 +95,6 @@ hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, 
     return w;
 }
 
-// Calculates twiddle factors for a given level for DIF
-hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIF(size_t level, const std::vector<size_t> &N)
-{    
-    hhfft::AlignedVector<double> w_temp = calculate_twiddle_factors_DIT(level, N);
-
-    // Re-order twiddle factors
-    std::vector<size_t> N_temp(level+1);
-    for(size_t i = 0; i <= level; i++)
-    {        
-        N_temp[level - i] = N[i];
-    }
-
-    std::vector<uint32_t> reorder = hhfft::calculate_reorder_table(N_temp);
-
-    size_t num = reorder.size();    
-    assert (2*num == w_temp.size());
-
-    hhfft::AlignedVector<double> w(2*num);
-    for (size_t i = 0; i < num; i++)
-    {
-        size_t i2 = reorder[i];
-        w[2*i + 0] = w_temp[2*i2 + 0];
-        w[2*i + 1] = w_temp[2*i2 + 1];
-    }
-
-    return w;
-}
-
 std::vector<size_t> hhfft::index_to_n(size_t i, const std::vector<size_t> &N)
 {
     size_t n_dim = N.size();
@@ -232,7 +204,7 @@ std::vector<uint32_t> hhfft::calculate_reorder_table_in_place(const std::vector<
 }
 
 // Finds an efficient factorization (not necassery a prime factorization)
-std::vector<size_t> hhfft::calculate_factorization(size_t n, bool use_dif)
+std::vector<size_t> hhfft::calculate_factorization(size_t n)
 {
     std::vector<size_t> factors;
 
@@ -259,12 +231,6 @@ std::vector<size_t> hhfft::calculate_factorization(size_t n, bool use_dif)
             // TODO these should be combined (?) and taken care of with other algorithms!
             throw(std::runtime_error("HHFFT error: size is not factorizable!"));
         }
-    }
-
-    if (use_dif)
-    {
-        // Reverse the order as last radix in the vector is actually used first
-        std::reverse(factors.begin(),factors.end());
     }
 
     return factors;

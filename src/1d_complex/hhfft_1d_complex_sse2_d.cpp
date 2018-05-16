@@ -198,38 +198,6 @@ template<size_t radix, bool forward>
     }
 }
 
-template<size_t radix, bool forward>
-    inline __attribute__((always_inline)) void fft_1d_complex_twiddle_dif_sse2_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride)
-{
-    ComplexD x_temp_in[radix];
-    ComplexD x_temp_out[radix];
-    ComplexD twiddle_temp[radix];
-
-    // Copy twiddle factors (squeeze)
-    for (size_t j = 0; j < radix; j++)
-    {
-        twiddle_temp[j] = load128(twiddle_factors + 2*j);
-    }
-
-    for (size_t k = 0; k < stride; k++)
-    {
-        // Copy input data (squeeze)
-        for (size_t j = 0; j < radix; j++)
-        {
-            x_temp_in[j] = load128(data_in + 2*k + 2*j*stride);
-        }
-
-        multiply_twiddle<radix,forward>(x_temp_in, x_temp_in, twiddle_temp);
-        multiply_coeff<radix,forward>(x_temp_in, x_temp_out);
-
-        // Copy ouput data (un-squeeze)
-        for (size_t j = 0; j < radix; j++)
-        {
-            store(x_temp_out[j], data_out + 2*k + 2*j*stride);
-        }
-    }
-}
-
 template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
@@ -268,21 +236,6 @@ template<size_t radix, SizeType stride_type, bool forward>
     {
         fft_1d_complex_twiddle_dit_sse2_d_internal<radix,forward>
                 (data_in + 2*i*radix*stride, data_out + 2*i*radix*stride, step_info.twiddle_factors, stride);
-    }
-}
-
-template<size_t radix, SizeType stride_type, bool forward>
-    void fft_1d_complex_twiddle_dif_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
-    assert(step_info.forward == forward);
-
-    size_t stride = get_size<stride_type>(step_info.stride);
-    size_t repeats = step_info.repeats;
-
-    for (size_t i = 0; i < repeats; i++)
-    {
-        fft_1d_complex_twiddle_dif_sse2_d_internal<radix,forward>
-                (data_in + 2*i*radix*stride, data_out + 2*i*radix*stride, step_info.twiddle_factors + 2*i*radix, stride);
     }
 }
 
@@ -379,29 +332,3 @@ template void fft_1d_complex_twiddle_dit_sse2_d<7, SizeType::Size1, false>(const
 template void fft_1d_complex_twiddle_dit_sse2_d<7, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_twiddle_dit_sse2_d<8, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_twiddle_dit_sse2_d<8, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-
-template void fft_1d_complex_twiddle_dif_sse2_d<2, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<2, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<3, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<3, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<4, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<4, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<5, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<5, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<7, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<7, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<8, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<8, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-
-template void fft_1d_complex_twiddle_dif_sse2_d<2, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<2, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<3, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<3, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<4, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<4, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<5, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<5, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<7, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<7, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<8, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dif_sse2_d<8, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

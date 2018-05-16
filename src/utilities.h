@@ -29,12 +29,11 @@ namespace hhfft
 {
 
 AlignedVector<double> calculate_twiddle_factors_DIT(size_t level, const std::vector<size_t> &N);
-AlignedVector<double> calculate_twiddle_factors_DIF(size_t level, const std::vector<size_t> &N);
 AlignedVector<double> calculate_packing_factors(size_t n);
 std::vector<size_t> index_to_n(size_t i, const std::vector<size_t> &N);
 std::vector<uint32_t> calculate_reorder_table(const std::vector<size_t> &N);
 std::vector<uint32_t> calculate_reorder_table_in_place(const std::vector<uint32_t> &reorder);
-std::vector<size_t> calculate_factorization(size_t n, bool use_dif);
+std::vector<size_t> calculate_factorization(size_t n);
 
 }
 

@@ -211,37 +211,19 @@ template<size_t radix, SizeType size_type, bool forward> void set_instruction_se
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
-    {
-        if (step_info.dif)
-        {
-            //step_info.step_function = fft_2d_complex_column_twiddle_dif_avx_d<radix, size_type, forward>;
-        } else
-        {
-            step_info.step_function = fft_2d_complex_column_twiddle_dit_avx_d<radix, size_type, forward>;
-        }
+    {        
+        step_info.step_function = fft_2d_complex_column_twiddle_dit_avx_d<radix, size_type, forward>;
     }
 #endif
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
-        if (step_info.dif)
-        {
-                //step_info.step_function = fft_2d_complex_column_twiddle_dif_sse2_d<radix, size_type, forward>;
-        } else
-        {
-            step_info.step_function = fft_2d_complex_column_twiddle_dit_sse2_d<radix, size_type, forward>;
-        }
+        step_info.step_function = fft_2d_complex_column_twiddle_dit_sse2_d<radix, size_type, forward>;
     }
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
-        if (step_info.dif)
-        {
-                //step_info.step_function = fft_2d_complex_column_twiddle_dif_plain_d<radix, forward>;
-        } else
-        {
-            step_info.step_function = fft_2d_complex_column_twiddle_dit_plain_d<radix, forward>;
-        }
+        step_info.step_function = fft_2d_complex_column_twiddle_dit_plain_d<radix, forward>;
     }
 }
 
@@ -365,11 +347,6 @@ void hhfft::HHFFT_2D_Complex_D_set_function_rows(StepInfoD &step_info, hhfft::In
             step_info.step_function = fft_2d_complex_reorder_d<false>;
 
         return;
-    }
-
-    if (step_info.dif)
-    {
-        throw(std::runtime_error("HHFFT error: 2D DIF not supported yet!"));
     }
 
     if (step_info.twiddle_factors == nullptr)

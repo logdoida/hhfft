@@ -47,9 +47,6 @@ template<typename T> struct StepInfo
     // True if fft is done, false if ifft
     bool forward = true;
 
-    // True if DIF is done, false if DIT
-    bool dif = false;
-
     // Used in some step in ifft. Equal to 1/N
     T norm_factor = 1.0;
 
