@@ -57,33 +57,7 @@ template<typename T> struct StepInfo
     T *twiddle_factors = nullptr;
     uint32_t *reorder_table = nullptr;
     uint32_t *reorder_table_inplace = nullptr;
-
-    // These tell what data is used and where does it start
-    size_t start_index_in = 0;
-    size_t start_index_out = 0;
-    StepDataType data_type_in = data_out;
-    StepDataType data_type_out = data_out;
-};
-
-template<typename T> struct StepInfoReal
-{
-    // This is a pointer to a function that performs some operation to data
-    void (*step_function)(const T *, T *, StepInfoReal &);
-
-    // This constants are used inside the function
-    size_t radix = 1;
-    size_t stride = 1;
-    size_t repeats = 1;
-
-    // True if forward fft is done, false if inverse fft
-    bool forward = true;
-
-    // Used in some step in inverse. Equal to 1/N
-    T norm_factor = 1.0;
-
-    // Twiddle factors or reorder table might be used in function
-    T *twiddle_factors = nullptr;
-    uint32_t *reorder_table = nullptr;
+    size_t reorder_table_inplace_size = 0;
 
     // These tell what data is used and where does it start
     size_t start_index_in = 0;
@@ -93,8 +67,6 @@ template<typename T> struct StepInfoReal
 };
 
 typedef StepInfo<double> StepInfoD;
-typedef StepInfoReal<double> StepInfoRealD;
-
 
 }
 

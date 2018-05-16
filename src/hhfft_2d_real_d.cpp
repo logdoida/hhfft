@@ -303,7 +303,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
             step.data_type_out = hhfft::StepDataType::temp_data;
             step.reorder_table = reorder_table_rows.data();
             step.reorder_table_inplace = nullptr; // In-place not possible
-            step.stride = m;
+            step.repeats = m;
             step.norm_factor = 1.0 / (n_complex*m);
             step.forward = false;
             step.dif = use_dif;

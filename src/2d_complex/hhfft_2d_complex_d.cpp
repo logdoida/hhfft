@@ -63,8 +63,7 @@ template<bool scale> void fft_2d_complex_reorder_rows_in_place_d(const double *d
         }
     }
 
-    // Scaling can be needed for real-fft
-    double k = step_info.norm_factor;
+    // Scaling can be needed for real-fft    
     if (scale)
     {
         // Needed only in ifft. Equal to 1/N

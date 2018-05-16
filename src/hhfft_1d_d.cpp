@@ -102,7 +102,7 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
         }
         twiddle_factors.push_back(w);
 
-        //print_complex_vector(w.data(), w.size()/2);
+        //print_complex_vector(w.data(), w.size()/2); // TESTING
     }
 
     if (use_dif)
@@ -151,29 +151,22 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     {
         // DIT
 
-        // TODO reordering and first fft step could be combined
-        // Put reordering step
-        hhfft::StepInfoD step1;
-        step1.data_type_in = hhfft::StepDataType::data_in;
-        step1.data_type_out = hhfft::StepDataType::data_out;
-        step1.reorder_table = reorder_table.data();
-        step1.reorder_table_inplace = reorder_table_in_place.data(); // It is possible that data_in = data_out!
-        step1.repeats = reorder_table_in_place.size();
-        step1.stride = n;        
-        step1.dif = use_dif;
-        HHFFT_1D_Complex_D_set_function(step1, instruction_set);
-        forward_steps.push_back(step1);
-
-        // Put first fft step
-        hhfft::StepInfoD step2;
-        step2.radix = N[0];
-        step2.stride = 1;
-        step2.repeats = n / step2.radix;
-        step2.data_type_in = hhfft::StepDataType::data_out;
-        step2.data_type_out = hhfft::StepDataType::data_out;
-        step2.dif = use_dif;
-        HHFFT_1D_Complex_D_set_function(step2, instruction_set);
-        forward_steps.push_back(step2);
+        // Put first fft step combined with reordering
+        {
+            hhfft::StepInfoD step;
+            step.radix = N[0];
+            step.stride = 1;
+            step.repeats = n / step.radix;
+            step.data_type_in = hhfft::StepDataType::data_in;
+            step.data_type_out = hhfft::StepDataType::data_out;
+            step.reorder_table = reorder_table.data();
+            step.reorder_table_inplace = reorder_table_in_place.data(); // It is possible that data_in = data_out!
+            step.reorder_table_inplace_size = reorder_table_in_place.size();
+            step.norm_factor = 1.0;
+            step.dif = use_dif;
+            HHFFT_1D_Complex_D_set_function(step, instruction_set);
+            forward_steps.push_back(step);
+        }        
 
         // then put rest fft steps combined with twiddle factor
         for (size_t i = 1; i < N.size(); i++)
@@ -186,7 +179,7 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
             step.data_type_in = hhfft::StepDataType::data_out;
             step.data_type_out = hhfft::StepDataType::data_out;
             step.twiddle_factors = twiddle_factors[i].data();
-            step2.dif = use_dif;
+            step.dif = use_dif;
             HHFFT_1D_Complex_D_set_function(step, instruction_set);
             forward_steps.push_back(step);
         }
@@ -222,6 +215,7 @@ void HHFFT_1D_D::fft(const double *in, double *out)
     const double *data_in[3] = {in, out, temp_data.data()};
     double *data_out[3] = {nullptr, out, temp_data.data()};
 
+    // TESTING    
     for (auto &step: forward_steps)
     {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
@@ -240,6 +234,7 @@ void HHFFT_1D_D::ifft(const double *in, double *out)
     const double *data_in[3] = {in, out, temp_data.data()};
     double *data_out[3] = {nullptr, out, temp_data.data()};
 
+    // TESTING    
     for (auto &step: inverse_steps)
     {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);

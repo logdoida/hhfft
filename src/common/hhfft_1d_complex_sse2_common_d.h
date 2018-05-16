@@ -176,7 +176,7 @@ inline std::ostream& operator<<(std::ostream& os, const ComplexD &x)
     return os;
 }
 
-template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD *x_in, ComplexD *x_out)
+template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_coeff(const ComplexD *x_in, ComplexD *x_out)
 {    
     // Implementation for radix = 2
     if (radix == 2)
@@ -339,7 +339,7 @@ template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD *
     }   
 }
 
-template<size_t radix, bool forward> inline void multiply_twiddle(const ComplexD *x_in, ComplexD *x_out, const ComplexD *twiddle_factors)
+template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_twiddle(const ComplexD *x_in, ComplexD *x_out, const ComplexD *twiddle_factors)
 {        
     // It is assumed that first twiddle factors are always (1 + 0i)
     x_out[0] = x_in[0];

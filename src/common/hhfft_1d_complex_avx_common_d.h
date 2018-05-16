@@ -93,7 +93,7 @@ inline ComplexD2 change_sign(ComplexD2 x, ComplexD2 s)
 //static const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
 
 // Multiplies two packed complex numbers.
-inline ComplexD2 mul(ComplexD2 a, ComplexD2 b)
+inline ComplexD2 __attribute__((always_inline)) mul(ComplexD2 a, ComplexD2 b)
 {
     ComplexD2 a2 = _mm256_permute_pd(a, 1 + 4);
 
@@ -107,7 +107,7 @@ inline ComplexD2 mul(ComplexD2 a, ComplexD2 b)
 }
 
 // Multiplies two packed complex numbers. The forward means a*b, inverse a*conj(b)
-template<bool forward> inline ComplexD2 mul_w(ComplexD2 a, ComplexD2 b)
+template<bool forward> inline __attribute__((always_inline)) ComplexD2 mul_w(ComplexD2 a, ComplexD2 b)
 {        
     if (forward)
     {
@@ -136,7 +136,7 @@ template<bool forward> inline ComplexD2 mul_w(ComplexD2 a, ComplexD2 b)
 }
 
 // Multiplies packed complex numbers with i
-inline ComplexD2 mul_i(ComplexD2 a)
+inline __attribute__((always_inline)) ComplexD2 mul_i(ComplexD2 a)
 {    
     const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
 
@@ -154,7 +154,7 @@ inline std::ostream& operator<<(std::ostream& os, const ComplexD2 &x)
     return os;
 }
 
-template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD2 *x_in, ComplexD2 *x_out)
+template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_coeff(const ComplexD2 *x_in, ComplexD2 *x_out)
 {
     // Implementation for radix = 2
     if (radix == 2)
@@ -318,9 +318,7 @@ template<size_t radix, bool forward> inline void multiply_coeff(const ComplexD2 
 }
 
 
-
-
-template<size_t radix, bool forward> inline void multiply_twiddle(const ComplexD2 *x_in, ComplexD2 *x_out, const ComplexD2 *twiddle_factors)
+template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_twiddle(const ComplexD2 *x_in, ComplexD2 *x_out, const ComplexD2 *twiddle_factors)
 {
     // It is assumed that first twiddle factors are always (1 + 0i)
     x_out[0] = x_in[0];

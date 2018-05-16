@@ -179,33 +179,23 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         forward_steps.push_back(step2);
     }
     else
-    {
-        // DIT
-
-        // TODO reordering and first fft step could be combined
-        // Put reordering step
-        hhfft::StepInfoD step1;
-        step1.data_type_in = hhfft::StepDataType::data_in;
-        step1.data_type_out = hhfft::StepDataType::data_out;
-        step1.reorder_table = reorder_table.data();
-        step1.reorder_table_inplace = reorder_table_in_place.data(); // It is possible that data_in = data_out!
-        step1.repeats = reorder_table_in_place.size();
-        step1.stride = n_complex;
-        step1.norm_factor = 1.0;
-        step1.dif = use_dif;
-        HHFFT_1D_Complex_D_set_function(step1, instruction_set);
-        forward_steps.push_back(step1);
-
-        // Put first fft step
-        hhfft::StepInfoD step2;
-        step2.radix = N[0];
-        step2.stride = 1;
-        step2.repeats = n_complex / step2.radix;
-        step2.data_type_in = hhfft::StepDataType::data_out;
-        step2.data_type_out = hhfft::StepDataType::data_out;
-        step2.dif = use_dif;
-        HHFFT_1D_Complex_D_set_function(step2, instruction_set);
-        forward_steps.push_back(step2);
+    {        
+        // Put first fft step combined with reordering
+        {
+            hhfft::StepInfoD step;
+            step.radix = N[0];
+            step.stride = 1;
+            step.repeats = n_complex / step.radix;
+            step.data_type_in = hhfft::StepDataType::data_in;
+            step.data_type_out = hhfft::StepDataType::data_out;
+            step.reorder_table = reorder_table.data();
+            step.reorder_table_inplace = reorder_table_in_place.data(); // It is possible that data_in = data_out!
+            step.reorder_table_inplace_size = reorder_table_in_place.size();
+            step.norm_factor = 1.0;
+            step.dif = use_dif;
+            HHFFT_1D_Complex_D_set_function(step, instruction_set);
+            forward_steps.push_back(step);
+        }
 
         // then put rest fft steps combined with twiddle factor
         for (size_t i = 1; i < N.size(); i++)
@@ -218,7 +208,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
             step.data_type_in = hhfft::StepDataType::data_out;
             step.data_type_out = hhfft::StepDataType::data_out;
             step.twiddle_factors = twiddle_factors[i].data();
-            step2.dif = use_dif;
+            step.dif = use_dif;
             HHFFT_1D_Complex_D_set_function(step, instruction_set);
             forward_steps.push_back(step);
         }
