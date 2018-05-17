@@ -52,16 +52,24 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
         throw(std::runtime_error("HHFFT error: maximum size for the fft size is 2^32 - 1!"));
     }
 
-    if (n == 1)
-    {
-        // TODO add a support to small radices with a single pass dft
-        throw(std::runtime_error("HHFFT error: fft size must be larger than 1!"));
-    }
-
     // Define instruction set if needed
     if (instruction_set == InstructionSet::automatic)
     {
         instruction_set = hhfft::get_best_instruction_set();
+    }
+
+    // Set the convolution function
+    convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
+
+    // For small problems, it is better to use a single level function
+    StepInfoD step_info_fft, step_info_ifft;
+    HHFFT_1D_Complex_D_set_small_function(step_info_fft, n, true, instruction_set);
+    HHFFT_1D_Complex_D_set_small_function(step_info_ifft, n, false, instruction_set);
+    if (step_info_fft.step_function && step_info_ifft.step_function)
+    {
+        forward_steps.push_back(step_info_fft);
+        inverse_steps.push_back(step_info_ifft);
+        return;
     }
 
     // Calculate factorization
@@ -140,14 +148,18 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
 
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
         inverse_steps.push_back(step);
-    }
-
-    // Set the convolution function
-    convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
+    }    
 }
 
 void HHFFT_1D_D::fft(const double *in, double *out)
 {
+    // If there is just one step, run it directly
+    if (forward_steps.size() == 1)
+    {
+        forward_steps[0].step_function(in,out,forward_steps[0]);
+        return;
+    }
+
     // Allocate some extra space if needed    
     hhfft::AlignedVector<double> temp_data(temp_data_size);
 
@@ -155,7 +167,7 @@ void HHFFT_1D_D::fft(const double *in, double *out)
     const double *data_in[3] = {in, out, temp_data.data()};
     double *data_out[3] = {nullptr, out, temp_data.data()};
 
-    // TESTING    
+    // Run all the steps
     for (auto &step: forward_steps)
     {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
@@ -166,7 +178,14 @@ void HHFFT_1D_D::fft(const double *in, double *out)
 }
 
 void HHFFT_1D_D::ifft(const double *in, double *out)
-{
+{    
+    // If there is just one step, run it directly
+    if (inverse_steps.size() == 1)
+    {
+        inverse_steps[0].step_function(in,out,inverse_steps[0]);
+        return;
+    }
+
     // Allocate some extra space if needed    
     hhfft::AlignedVector<double> temp_data(temp_data_size);
 
@@ -174,7 +193,7 @@ void HHFFT_1D_D::ifft(const double *in, double *out)
     const double *data_in[3] = {in, out, temp_data.data()};
     double *data_out[3] = {nullptr, out, temp_data.data()};
 
-    // TESTING    
+    // Run all the steps
     for (auto &step: inverse_steps)
     {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);

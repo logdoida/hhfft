@@ -51,13 +51,22 @@ public:
     void resize(size_t new_n);
 
     // Assignment
-    T& operator[](size_t index);
+    T& operator[](size_t index)
+    {
+        return array[index];
+    }
 
     // Direct access
-    T* data();
+    T* data()
+    {
+        return array;
+    }
 
     // Length of the vector
-    size_t size();
+    size_t size()
+    {
+        return n;
+    }
 
 private:
     size_t n;

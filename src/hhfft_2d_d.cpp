@@ -252,6 +252,7 @@ void HHFFT_2D_D::fft(const double *in, double *out)
     const double *data_in[3] = {in, out, temp_data.data()};
     double *data_out[3] = {nullptr, out, temp_data.data()};
 
+    // Run all the steps
     for (auto &step: forward_steps)
     {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
@@ -270,6 +271,7 @@ void HHFFT_2D_D::ifft(const double *in, double *out)
     const double *data_in[3] = {in, out, temp_data.data()};
     double *data_out[3] = {nullptr, out, temp_data.data()};
 
+    // Run all the steps
     for (auto &step: inverse_steps)
     {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);

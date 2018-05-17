@@ -63,7 +63,7 @@ template<size_t radix, bool forward>
                 multiply_twiddle<radix,forward>(x_temp_in, x_temp_in, twiddle_temp);
                 multiply_coeff<radix,forward>(x_temp_in, x_temp_out);
 
-                // Copy ouput data (un-squeeze)
+                // Copy output data (un-squeeze)
                 for (size_t j = 0; j < radix; j++)
                 {
                     store(x_temp_out[j], data_out +  2*j*stride*length + 2*i*length + 2*k);
@@ -97,7 +97,7 @@ template<size_t radix, bool forward>
             multiply_twiddle<radix,forward>(x_temp_in, x_temp_in, twiddle_temp);
             multiply_coeff<radix,forward>(x_temp_in, x_temp_out);
 
-            // Copy ouput data (un-squeeze)
+            // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
             {
                 store(x_temp_out[j], data_out +  2*j*stride*length + 2*i*length + 2*k);

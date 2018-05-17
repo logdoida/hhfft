@@ -441,6 +441,7 @@ void HHFFT_2D_REAL_D::fft(const double *in, double *out)
 
     for (auto &step: forward_steps)
     {
+        // Run all the steps
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
         // TESTING print        
@@ -459,6 +460,7 @@ void HHFFT_2D_REAL_D::ifft(const double *in, double *out)
 
     for (auto &step: inverse_steps)
     {
+        // Run all the steps
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
         // TESTING print

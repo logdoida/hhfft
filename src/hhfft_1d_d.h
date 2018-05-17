@@ -79,7 +79,7 @@ private:
     std::vector<StepInfoD> inverse_steps;
 
     // This is a pointer to a function that performs the convolution
-    void (*convolution_function)(const double *, const double *, double *, size_t n);
+    void (*convolution_function)(const double *, const double *, double *, size_t n) = nullptr;    
 };
 
 }

@@ -30,7 +30,10 @@ namespace hhfft
 void HHFFT_1D_Complex_D_set_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
 
 // This returns a pointer to correct convolution function based on instruction set
-void (*HHFFT_1D_Complex_D_set_convolution_function(hhfft::InstructionSet instruction_set))(const double *, const double *, double *, size_t n);
+void (*HHFFT_1D_Complex_D_set_convolution_function(hhfft::InstructionSet instruction_set))(const double *, const double *, double *, size_t);
+
+// This sets pointer to a one level fft/ifft function if such exists
+void HHFFT_1D_Complex_D_set_small_function(StepInfoD &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set);
 
 }
 

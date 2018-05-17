@@ -77,6 +77,10 @@ void fft_1d_complex_convolution_plain_d(const double *in1, const double *in2, do
 void fft_1d_complex_convolution_sse2_d(const double *in1, const double *in2, double *out, size_t n);
 void fft_1d_complex_convolution_avx_d(const double *in1, const double *in2, double *out, size_t n);
 
+// Small single level FFT
+template<size_t n, bool forward> void fft_1d_complex_1level_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<size_t n, bool forward> void fft_1d_complex_1level_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
 
 template<size_t radix, SizeType stride_type, bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
@@ -305,7 +309,7 @@ void hhfft::HHFFT_1D_Complex_D_set_function(StepInfoD &step_info, hhfft::Instruc
 }
 
 // This returns a pointer to correct convolution function based on instruction set
-void (*hhfft::HHFFT_1D_Complex_D_set_convolution_function(hhfft::InstructionSet instruction_set))(const double *, const double *, double *, size_t n)
+void (*hhfft::HHFFT_1D_Complex_D_set_convolution_function(hhfft::InstructionSet instruction_set))(const double *, const double *, double *, size_t)
 {
 #ifdef HHFFT_COMPILED_WITH_AVX512F
     if (instruction_set == hhfft::InstructionSet::avx512f)
@@ -327,4 +331,71 @@ void (*hhfft::HHFFT_1D_Complex_D_set_convolution_function(hhfft::InstructionSet 
     }
 
     return fft_1d_complex_convolution_plain_d;
+}
+
+// n = 1!
+void fft_1d_complex_n1_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    data_out[0] = data_in[0];
+    data_out[1] = data_in[1];
+}
+
+
+template<size_t n> void set_small_function_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set, bool forward)
+{
+#ifdef HHFFT_COMPILED_WITH_AVX
+    if (instruction_set == hhfft::InstructionSet::avx)
+    {
+        if(forward)
+            step_info.step_function = fft_1d_complex_1level_avx_d<n,true>;
+        else
+            step_info.step_function = fft_1d_complex_1level_avx_d<n,false>;
+        return;
+    }
+#endif
+
+    if (instruction_set == hhfft::InstructionSet::sse2)
+    {
+        if(forward)
+            step_info.step_function =  fft_1d_complex_1level_sse2_d<n,true>;
+        else
+            step_info.step_function =  fft_1d_complex_1level_sse2_d<n,false>;
+        return;
+    }
+
+    // This is needed in all architectures
+    if(n == 1)
+    {
+        step_info.step_function = fft_1d_complex_n1_d;
+    }    
+}
+
+void hhfft::HHFFT_1D_Complex_D_set_small_function(StepInfoD &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set)
+{
+    step_info.step_function = nullptr;
+
+    if(n == 1)
+    {
+        set_small_function_instruction_set_d<1>(step_info, instruction_set, forward);
+    } else if(n == 2)
+    {
+        set_small_function_instruction_set_d<2>(step_info, instruction_set, forward);
+    } else if(n == 3)
+    {
+        set_small_function_instruction_set_d<3>(step_info, instruction_set, forward);
+    } else if(n == 4)
+    {
+        set_small_function_instruction_set_d<4>(step_info, instruction_set, forward);
+    } else if(n == 5)
+    {
+        set_small_function_instruction_set_d<5>(step_info, instruction_set, forward);
+    } else if(n == 7)
+    {
+        set_small_function_instruction_set_d<7>(step_info, instruction_set, forward);
+    } else if(n == 8)
+    {
+        set_small_function_instruction_set_d<8>(step_info, instruction_set, forward);
+    }
+
+    return;
 }
