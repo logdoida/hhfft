@@ -52,7 +52,7 @@ template<typename T> struct StepInfo
 
     // Twiddle factors or reorder table might be used in function
     T *twiddle_factors = nullptr;
-    uint32_t *reorder_table = nullptr;
+    uint32_t *reorder_table = nullptr;    
     uint32_t *reorder_table_inplace = nullptr;
     size_t reorder_table_inplace_size = 0;
 

@@ -74,6 +74,9 @@ private:
     // Table that is used in the beginning to reorder the data.
     std::vector<uint32_t> reorder_table;
 
+    // Inverted reorder table
+    std::vector<uint32_t> reorder_table_inverse;
+
     // Table that is used to reorder the data in-place.
     std::vector<uint32_t> reorder_table_in_place;
 

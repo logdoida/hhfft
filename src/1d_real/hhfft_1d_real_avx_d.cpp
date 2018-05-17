@@ -31,12 +31,7 @@ template<bool forward>
     void fft_1d_complex_to_complex_packed_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     const double *packing_table = step_info.twiddle_factors;
-    size_t n = step_info.repeats; // n = number of original real numbers
-
-    // Needed only in inverse step
-    const double k = step_info.norm_factor;
-    ComplexD k128 = broadcast64(k);
-    ComplexD2 k256 = broadcast64_D2(k);
+    size_t n = 2*step_info.repeats; // n = number of original real numbers
 
     const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
     const ComplexD2 const2 = load(-0.0, 0.0, -0.0, 0.0);
@@ -54,17 +49,13 @@ template<bool forward>
     {
         double x_r = data_in[0];
         double x_i = data_in[n];
-        data_out[0] = 0.5*k*(x_r + x_i);
-        data_out[1] = 0.5*k*(x_r - x_i);
+        data_out[0] = 0.5*(x_r + x_i);
+        data_out[1] = 0.5*(x_r - x_i);
     }
 
     if (n%4 == 0)
     {
-        ComplexD x_in = load128(data_in + n/2);
-        if (!forward)
-        {
-            x_in *= k128;
-        }
+        ComplexD x_in = load128(data_in + n/2);        
         ComplexD x_out = change_sign(x_in, const1_128);
         store(x_out, data_out + n/2);
     }
@@ -78,9 +69,7 @@ template<bool forward>
 
         if(!forward)
         {
-            sssc = change_sign(sssc, const1);
-            x0_in *= k256;
-            x1_in *= k256;
+            sssc = change_sign(sssc, const1);           
         }
 
         ComplexD2 temp0 = x0_in + change_sign(x1_in, const2);
@@ -101,9 +90,7 @@ template<bool forward>
 
         if(!forward)
         {
-            sssc = change_sign(sssc, const1_128);
-            x0_in *= k128;
-            x1_in *= k128;
+            sssc = change_sign(sssc, const1_128);            
         }
 
         ComplexD temp0 = x0_in + change_sign(x1_in, const2_128);
@@ -114,6 +101,88 @@ template<bool forward>
 
         store(x0_out, data_out + i);
         store(x1_out, data_out + n - i);
+    }
+}
+
+// This is found in hhfft_1d_complex_avx_d.cpp
+template<bool scale> void fft_1d_complex_reorder_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+void fft_1d_complex_to_complex_packed_ifft_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    // If data_in == data_out,
+    if(data_in == data_out)
+    {
+        fft_1d_complex_to_complex_packed_avx_d<false>(data_in, data_out, step_info);
+        fft_1d_complex_reorder_avx_d<true>(data_out, data_out, step_info);
+        return;
+    }
+
+    const double *packing_table = step_info.twiddle_factors;
+    size_t n = step_info.repeats; // 2*n = number of original real numbers
+    uint32_t *reorder_table_inverse = step_info.reorder_table;
+
+    double k = step_info.norm_factor;
+    ComplexD k128 = broadcast64(k);
+    ComplexD2 k256 = broadcast64_D2(k);
+
+    const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
+    const ComplexD2 const2 = load(-0.0, 0.0, -0.0, 0.0);
+
+    double x_r = data_in[0];
+    double x_i = data_in[2*n];
+    data_out[0] = 0.5*k*(x_r + x_i);
+    data_out[1] = 0.5*k*(x_r - x_i);
+
+    if (n%2 == 0)
+    {
+        size_t i = reorder_table_inverse[n/2];
+
+        ComplexD x_in = load128(data_in + n);
+        ComplexD x_out = k128*change_sign(x_in, const1_128);
+        store(x_out, data_out + 2*i);
+    }
+
+    size_t i;
+    for (i = 1; i + 1 < (n+1)/2; i+=2)
+    {
+        ComplexD2 sssc = load(packing_table + 2*i);
+        sssc = change_sign(sssc, const1);
+        ComplexD2 x0_in = k256*load(data_in + 2*i);
+        ComplexD2 x1_in = k256*load_two_128(data_in + 2*(n - i), data_in + 2*(n - i) - 2);
+
+        ComplexD2 temp0 = x0_in + change_sign(x1_in, const2);
+        ComplexD2 temp1 = mul(sssc, temp0);
+
+        ComplexD2 x0_out = temp1 + x0_in;
+        ComplexD2 x1_out = change_sign(temp1, const2) + x1_in;
+
+        size_t i2 = reorder_table_inverse[i];
+        size_t i3 = reorder_table_inverse[i + 1];
+        size_t i4 = reorder_table_inverse[n - i];
+        size_t i5 = reorder_table_inverse[n - i - 1];
+
+        store_two_128(x0_out, data_out + 2*i2, data_out + 2*i3);
+        store_two_128(x1_out, data_out + 2*i4, data_out + 2*i5);
+    }
+
+    if (i < (n+1)/2)
+    {
+        ComplexD sssc = load128(packing_table + 2*i);
+        sssc = change_sign(sssc, const1_128);
+        ComplexD x0_in = k128*load128(data_in + 2*i);
+        ComplexD x1_in = k128*load128(data_in + 2*(n - i));
+
+        ComplexD temp0 = x0_in + change_sign(x1_in, const2_128);
+        ComplexD temp1 = mul(sssc, temp0);
+
+        ComplexD x0_out = temp1 + x0_in;
+        ComplexD x1_out = change_sign(temp1, const2_128) + x1_in;
+
+        size_t i2 = reorder_table_inverse[i];
+        size_t i3 = reorder_table_inverse[n - i];
+
+        store(x0_out, data_out + 2*i2);
+        store(x1_out, data_out + 2*i3);
     }
 }
 

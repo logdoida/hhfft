@@ -27,14 +27,16 @@
 using namespace hhfft;
 
 // Actual implementations are in different .cpp-files
-// No twiddle factors
 template<bool forward> void fft_1d_complex_to_complex_packed_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-
 template<bool forward> void fft_1d_complex_to_complex_packed_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-
 template<bool forward> void fft_1d_complex_to_complex_packed_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-
 template<bool forward> void fft_1d_complex_to_complex_packed_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+
+// Combines complex-packed-to-complex and reordering
+void fft_1d_complex_to_complex_packed_ifft_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_1d_complex_to_complex_packed_ifft_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_1d_complex_to_complex_packed_ifft_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 
 template<bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
@@ -60,9 +62,37 @@ template<bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::I
     }
 
     if (instruction_set == hhfft::InstructionSet::none)
-    {
+    {       
         step_info.step_function = fft_1d_complex_to_complex_packed_plain_d<forward>;
     }      
+}
+
+void set_instruction2_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+
+#ifdef HHFFT_COMPILED_WITH_AVX512F
+    if (instruction_set == hhfft::InstructionSet::avx512f)
+    {
+
+    }
+#endif
+
+#ifdef HHFFT_COMPILED_WITH_AVX
+    if (instruction_set == hhfft::InstructionSet::avx)
+    {
+        step_info.step_function = fft_1d_complex_to_complex_packed_ifft_avx_d;
+    }
+#endif
+
+    if (instruction_set == hhfft::InstructionSet::sse2)
+    {
+        step_info.step_function = fft_1d_complex_to_complex_packed_ifft_sse2_d;
+    }
+
+    if (instruction_set == hhfft::InstructionSet::none)
+    {
+        step_info.step_function = fft_1d_complex_to_complex_packed_ifft_plain_d;
+    }
 }
 
 // This set pointer to correct functions
@@ -70,10 +100,16 @@ void hhfft::HHFFT_1D_Real_D_set_complex_to_complex_packed_function(StepInfoD &st
 {
     step_info.step_function = nullptr;
 
-    if (step_info.forward)
-       set_instruction_set_d<true>(step_info, instruction_set);
-    else
-       set_instruction_set_d<false>(step_info, instruction_set);
+    if (step_info.reorder_table == nullptr)
+    {
+        if (step_info.forward)
+           set_instruction_set_d<true>(step_info, instruction_set);
+        else
+           set_instruction_set_d<false>(step_info, instruction_set);
+    } else
+    {
+        set_instruction2_d(step_info, instruction_set);
+    }
 
     if (step_info.step_function == nullptr)
     {

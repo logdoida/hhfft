@@ -138,6 +138,19 @@ std::vector<uint32_t> hhfft::calculate_reorder_table(const std::vector<size_t> &
     return reorder;
 }
 
+std::vector<uint32_t> hhfft::calculate_inverse_reorder_table(const std::vector<uint32_t> &reorder)
+{
+    size_t n = reorder.size();
+    std::vector<uint32_t> reorder_inverse(n);
+
+    for (size_t i = 0; i < n; i++)
+    {
+        reorder_inverse[reorder[i]] = i;
+    }
+
+    return reorder_inverse;
+}
+
 std::vector<uint32_t> hhfft::calculate_reorder_table_in_place(const std::vector<uint32_t> &reorder)
 {
     // Reordering by swapping
