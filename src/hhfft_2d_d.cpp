@@ -67,6 +67,9 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
         instruction_set = hhfft::get_best_instruction_set();
     }
 
+    // Set the convolution function
+    convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
+
     // Calculate factorization
     std::vector<size_t> N_columns = calculate_factorization(n);
     std::vector<size_t> N_rows = calculate_factorization(m);
@@ -83,11 +86,15 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
     reorder_table_in_place_columns = calculate_reorder_table_in_place(reorder_table_columns);
     reorder_table_in_place_rows = calculate_reorder_table_in_place(reorder_table_rows);
 
-    // TESTING print reorder tables
-    //std::cout << "reorder = " << std::endl;
-    //for (auto r: reorder_table)  { std::cout << r << " ";} std::cout << std::endl;
-    //std::cout << "reorder_table_in_place = " << std::endl;
-    //for (auto r: reorder_table_in_place)  { std::cout << r << " ";} std::cout << std::endl;
+    // TESTING print reorder tables    
+    //std::cout << "reorder_table_columns = " << std::endl;
+    //for (auto r: reorder_table_columns)  { std::cout << r << " ";} std::cout << std::endl;
+    //std::cout << "reorder_table_rows = " << std::endl;
+    //for (auto r: reorder_table_rows)  { std::cout << r << " ";} std::cout << std::endl;
+    //std::cout << "reorder_table_in_place_columns = " << std::endl;
+    //for (auto r: reorder_table_in_place_columns)  { std::cout << r << " ";} std::cout << std::endl;
+    //std::cout << "reorder_table_in_place_rows = " << std::endl;
+    //for (auto r: reorder_table_in_place_rows)  { std::cout << r << " ";} std::cout << std::endl;
 
     // Calculate twiddle factors
     // NOTE that a portion of these are always one and they could be removed to decrease memory requirements.
@@ -113,38 +120,25 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
 
     ///////// FFT column-wise /////////////
 
-    // Put reordering step if needed
-    // TODO it is not possible to skip this step because of scaling required in the inverse step!
-    //if (N_columns.size() > 1)
-    //{
-        // TODO reordering and first fft step could be combined
-        hhfft::StepInfoD step1;
-        step1.data_type_in = hhfft::StepDataType::data_in;
-        step1.data_type_out = hhfft::StepDataType::data_out;
-        step1.reorder_table = reorder_table_columns.data();
-        step1.reorder_table_inplace = reorder_table_in_place_columns.data(); // It is possible that data_in = data_out!
-        step1.repeats = reorder_table_in_place_columns.size();
-        step1.stride = n;
-        step1.size = m;
-        //step1.norm_factor = 1.0/(double(n*m));
-        HHFFT_2D_Complex_D_set_function_columns(step1, instruction_set);
-        forward_steps.push_back(step1);
+    // Reordering row- and columnwise, and first FFT-step combined here. And scaling in ifft
+    {
+        hhfft::StepInfoD step;
+        step.data_type_in = hhfft::StepDataType::data_in;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        step.reorder_table = reorder_table_columns.data();
+        step.reorder_table_inplace = reorder_table_in_place_columns.data(); // It is possible that data_in = data_out!
+        step.reorder_table_inplace_size = reorder_table_in_place_columns.size();
+        step.reorder_table2 = reorder_table_rows.data();
+        step.reorder_table2_inplace = reorder_table_in_place_rows.data(); // It is possible that data_in = data_out!
+        step.reorder_table2_inplace_size = reorder_table_in_place_rows.size();
+        step.stride = n;
+        step.size = m;
+        step.radix = N_columns[0];
+        step.repeats = n / step.radix;
+        HHFFT_2D_Complex_D_set_function_columns(step, instruction_set);
+        forward_steps.push_back(step);
         forward_step_columns.push_back(true);
-    //}
-
-    // Put first fft step
-    // NOTE actually 1D fft is used as no twiddle factors are involved
-    hhfft::StepInfoD step2;
-    step2.radix = N_columns[0];
-    step2.stride = m;
-    step2.repeats = n / step2.radix;
-    step2.data_type_in = hhfft::StepDataType::data_out;
-    //if (forward_steps.size() == 0)
-    //    step2.data_type_in = hhfft::StepDataType::data_in;
-    step2.data_type_out = hhfft::StepDataType::data_out;
-    HHFFT_2D_Complex_D_set_function_columns(step2, instruction_set);
-    forward_steps.push_back(step2);
-    forward_step_columns.push_back(true);
+    }
 
     // then put rest fft steps combined with twiddle factor
     for (size_t i = 1; i < N_columns.size(); i++)
@@ -154,7 +148,7 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
         step.radix = N_columns[i];
         step.stride = step_prev.stride * step_prev.radix;
         if (i == 1)
-            step.stride = step.stride / m;
+            step.stride = step_prev.size * step_prev.radix / m;
         step.repeats = step_prev.repeats / step.radix;
         step.size = m;
         step.data_type_in = hhfft::StepDataType::data_out;
@@ -167,35 +161,19 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
 
     ///////// FFT row-wise ////////////
 
-    // Put reordering step if needed
-    if (N_rows.size() > 1)
-    {
-        // TODO can these two reordering steps be combined?
-        hhfft::StepInfoD step3;
-        step3.data_type_in = hhfft::StepDataType::data_out;
-        step3.data_type_out = hhfft::StepDataType::data_out;
-        step3.reorder_table = nullptr; // Reordering is always done in-place
-        step3.reorder_table_inplace = reorder_table_in_place_rows.data();
-        step3.repeats = reorder_table_in_place_rows.size();
-        step3.stride = m;
-        step3.size = n;
-        step3.norm_factor = 1.0; // Scaling has been done in the first reordering step!
-        HHFFT_2D_Complex_D_set_function_rows(step3, instruction_set);
-        forward_steps.push_back(step3);
-        forward_step_columns.push_back(false);
-    }
-
     // Put first fft step
     // NOTE actually 1D fft is used as no twiddle factors are involved
-    hhfft::StepInfoD step4;
-    step4.radix = N_rows[0];
-    step4.stride = 1;
-    step4.repeats = m * n / step4.radix;
-    step4.data_type_in = hhfft::StepDataType::data_out;
-    step4.data_type_out = hhfft::StepDataType::data_out;
-    HHFFT_2D_Complex_D_set_function_rows(step4, instruction_set);
-    forward_steps.push_back(step4);
-    forward_step_columns.push_back(false);
+    {
+        hhfft::StepInfoD step;
+        step.radix = N_rows[0];
+        step.stride = 1;
+        step.repeats = m * n / step.radix;
+        step.data_type_in = hhfft::StepDataType::data_out;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        HHFFT_2D_Complex_D_set_function_rows(step, instruction_set);
+        forward_steps.push_back(step);
+        forward_step_columns.push_back(false);
+    }
 
     // then put rest fft steps combined with twiddle factor
     for (size_t i = 1; i < N_rows.size(); i++)
@@ -222,10 +200,10 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
 
         step.forward = false;
 
-        // Scaling is done in the first step
+        // Reordering + scaling is done in the first step
         if (i == 0)
         {
-            step.norm_factor = 1.0/(double(n*m));
+            step.norm_factor = 1.0/(double(n*m));            
         }
 
         if (forward_step_columns[i])
@@ -237,10 +215,7 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
         }
 
         inverse_steps.push_back(step);
-    }
-
-    // Set the convolution function
-    convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
+    }    
 }
 
 void HHFFT_2D_D::fft(const double *in, double *out)

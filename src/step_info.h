@@ -56,6 +56,10 @@ template<typename T> struct StepInfo
     uint32_t *reorder_table_inplace = nullptr;
     size_t reorder_table_inplace_size = 0;
 
+    uint32_t *reorder_table2 = nullptr;
+    uint32_t *reorder_table2_inplace = nullptr;
+    size_t reorder_table2_inplace_size = 0;
+
     // These tell what data is used and where does it start
     size_t start_index_in = 0;
     size_t start_index_out = 0;

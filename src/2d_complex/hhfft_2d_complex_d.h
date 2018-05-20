@@ -32,6 +32,8 @@ void HHFFT_2D_Complex_D_set_function_columns(StepInfoD &step_info, hhfft::Instru
 // For row-wise operations
 void HHFFT_2D_Complex_D_set_function_rows(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
 
+// For reordering
+void HHFFT_2D_Complex_D_set_function_reorder(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
 
 }
 
