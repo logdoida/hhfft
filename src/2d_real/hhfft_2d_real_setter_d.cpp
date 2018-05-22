@@ -27,96 +27,6 @@
 
 using namespace hhfft;
 
-// TODO implement different versions (plain/sse2/avx) of this?
-// Shuffles two rows into one and reorder columns
-void fft_2d_real_reorder_columns_forward_inplace_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
-    size_t n = step_info.stride;
-    size_t m = step_info.size;
-
-    // First suffle   
-    // TODO there is more efficient way, see below
-    hhfft::AlignedVector<double> temp(2*m);
-    double* temp_data = temp.data();
-    for (size_t i = 0; i < n; i++)
-    {
-        for (size_t j = 0; j < m; j++)
-        {
-            temp_data[2*j + 0] = data_in[2*i*m + j];
-            temp_data[2*j + 1] = data_in[(2*i+1)*m + j];
-
-        }
-
-        for (size_t j = 0; j < 2*m; j++)
-        {
-            data_out[2*i*m + j] = temp_data[j];
-
-        }
-    }
-
-    /*
-    hhfft::AlignedVector<double> temp(m);
-    double* temp_data = temp.data();
-    for (size_t i = 0; i < n; i++)
-    {
-        for (size_t j = 0; j < m; j++)
-        {
-            temp_data[j] = data_in[2*i*m + m + j];
-        }
-
-        for (size_t j = 0; j < m; j++)
-        {
-            data_out[2*i*m + 2*(m-j-1) + 0] = data_in[2*i*m + (m-j-1)];
-            data_out[2*i*m + 2*(m-j-1) + 1] = temp_data[(m-j-1)];
-        }
-    }
-    */
-
-    // Then reorder columns in-place
-    size_t reorder_table_size = step_info.reorder_table_inplace_size;
-    uint32_t *reorder_table = step_info.reorder_table_inplace;
-
-    for (size_t i = 0; i < reorder_table_size; i++)
-    {
-        size_t ind1 = i + 1; // First one has been omitted!
-        size_t ind2 = reorder_table[i];
-
-        for (size_t j = 0; j < 2*m; j++)
-        {
-            double temp = data_out[2*ind1*m + j];
-            data_out[2*ind1*m + j] = data_out[2*ind2*m + j];
-            data_out[2*ind2*m + j] = temp;
-        }
-    }
-}
-
-// TODO implement different versions (plain/sse2/avx) of this?
-// Shuffles two rows into one and reorder columns
-void fft_2d_real_reorder_columns_forward_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
-    // Check, if in-place should be done instead
-    if (data_in == data_out)
-    {        
-        fft_2d_real_reorder_columns_forward_inplace_d(data_in, data_out, step_info);
-        return;
-    }
-
-    size_t n = step_info.stride;
-    size_t m = step_info.size;
-    uint32_t *reorder_table = step_info.reorder_table;
-
-    for (size_t i = 0; i < n; i++)
-    {
-        size_t i2 = reorder_table[i];
-
-        for (size_t j = 0; j < m; j++)
-        {
-            data_out[2*i*m + 2*j + 0] = data_in[2*i2*m + j];
-            data_out[2*i*m + 2*j + 1] = data_in[(2*i2+1)*m + j];
-        }
-    }
-}
-
 // Shuffles one row into two rows
 void fft_2d_real_reorder_columns_inverse_inplace_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
@@ -147,11 +57,8 @@ void fft_2d_real_reorder_columns_inverse_inplace_d(const double *data_in, double
 
 void hhfft::HHFFT_2D_Real_D_set_reorder_column_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
-    if (step_info.forward)
-    {
-        step_info.step_function = fft_2d_real_reorder_columns_forward_d;
-    } else
-    {
+    if (!step_info.forward)
+    {        
         step_info.step_function = fft_2d_real_reorder_columns_inverse_inplace_d;
     }
 
@@ -229,6 +136,15 @@ void fft_2d_real_reorder2_forward_sse2_d(const double *data_in, double *data_out
 template<size_t radix>
 void fft_2d_real_reorder2_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
+template<size_t radix>
+void fft_2d_real_reorder2_inverse_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_reorder2_inverse_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
 
 template<size_t radix> void set_instruction_set_2d_real_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
@@ -243,18 +159,27 @@ template<size_t radix> void set_instruction_set_2d_real_d(StepInfoD &step_info, 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {
-       step_info.step_function = fft_2d_real_reorder2_forward_avx_d<radix>;
+        if(step_info.forward)
+            step_info.step_function = fft_2d_real_reorder2_forward_avx_d<radix>;
+        else
+            step_info.step_function = fft_2d_real_reorder2_inverse_avx_d<radix>;
     }
 #endif
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
-        step_info.step_function = fft_2d_real_reorder2_forward_sse2_d<radix>;
+        if(step_info.forward)
+            step_info.step_function = fft_2d_real_reorder2_forward_sse2_d<radix>;
+        else
+            step_info.step_function = fft_2d_real_reorder2_inverse_sse2_d<radix>;
     }
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
-       step_info.step_function = fft_2d_real_reorder2_forward_plain_d<radix>;
+        if(step_info.forward)
+            step_info.step_function = fft_2d_real_reorder2_forward_plain_d<radix>;
+        else
+            step_info.step_function = fft_2d_real_reorder2_inverse_plain_d<radix>;
     }
 }
 
