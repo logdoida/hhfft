@@ -23,6 +23,8 @@
 #include <assert.h>
 #include <cmath>
 
+#include "../common/hhfft_1d_complex_plain_common_d.h"
+
 #include <iostream> // TESTING
 
 using namespace hhfft;
@@ -104,7 +106,90 @@ template<bool forward>
     }
 }
 
+// Implemented elsewhere
+void fft_2d_real_reorder_columns_forward_inplace_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+// Column reordering, shuffling and first FFT step. Used as a first step in FFT 2D real
+template<size_t radix>
+    void fft_2d_real_reorder2_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    if (data_in == data_out)
+    {
+        // Reorder columns in-place
+        fft_2d_real_reorder_columns_forward_inplace_d(data_in, data_out, step_info);
+
+        // Perform FFT
+        size_t m = step_info.size;
+        size_t repeats = step_info.repeats;
+
+        for (size_t i = 0; i < repeats; i++)
+        {
+            double x_temp_in[2*radix];
+            double x_temp_out[2*radix];
+
+            for (size_t k = 0; k < m; k++)
+            {
+                // Copy input data (squeeze)
+                for (size_t j = 0; j < radix; j++)
+                {
+                    x_temp_in[2*j + 0] = data_out[2*i*radix*m + 2*j*m + 2*k + 0];
+                    x_temp_in[2*j + 1] = data_out[2*i*radix*m + 2*j*m + 2*k + 1];
+                }
+
+                multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+
+                // Copy input data (un-squeeze)
+                for (size_t j = 0; j < radix; j++)
+                {
+                    data_out[2*i*radix*m + 2*j*m + 2*k + 0] = x_temp_out[2*j + 0];
+                    data_out[2*i*radix*m + 2*j*m + 2*k + 1] = x_temp_out[2*j + 1];
+                }
+            }
+        }
+
+        return;
+    }
+
+    size_t m = step_info.size;
+    uint32_t *reorder_table = step_info.reorder_table;
+    size_t repeats = step_info.repeats;
+
+    // FFT and reordering
+    for (size_t i = 0; i < repeats; i++)
+    {
+        double x_temp_in[2*radix];
+        double x_temp_out[2*radix];
+
+        for (size_t k = 0; k < m; k++)
+        {
+            // Copy input data (squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                size_t j2 = reorder_table[i*radix + j];
+
+                x_temp_in[2*j + 0] = data_in[2*j2*m + k];
+                x_temp_in[2*j + 1] = data_in[(2*j2+1)*m + k];
+            }
+
+            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+
+            // Copy input data (un-squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                data_out[2*i*radix*m + 2*j*m + 2*k + 0] = x_temp_out[2*j + 0];
+                data_out[2*i*radix*m + 2*j*m + 2*k + 1] = x_temp_out[2*j + 1];
+            }
+        }
+    }
+}
+
 // Instantiations of the functions defined in this class
 template void fft_2d_complex_to_complex_packed_plain_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_to_complex_packed_plain_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
+template void fft_2d_real_reorder2_forward_plain_d<2>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_forward_plain_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_forward_plain_d<4>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_forward_plain_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_forward_plain_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_forward_plain_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

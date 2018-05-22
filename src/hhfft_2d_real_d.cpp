@@ -146,30 +146,19 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
     // FFT
     ///////// FFT column-wise /////////////
 
-    // Two rows are suffled into one and columns-reordered
+    // Two rows are suffled into one, reordering columnwise, and first FFT-step combined.
     {
         hhfft::StepInfoD step;
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table_columns.data();
         step.reorder_table_inplace = reorder_table_in_place_columns.data(); // It is possible that data_in = data_out!
-        step.repeats = reorder_table_in_place_columns.size();
+        step.reorder_table_inplace_size = reorder_table_in_place_columns.size();
         step.stride = n_complex;
         step.size = m;
-        HHFFT_2D_Real_D_set_reorder_column_function(step, instruction_set);
-        forward_steps.push_back(step);
-    }
-
-    // Put first fft step
-    // NOTE actually 1D fft is used as no twiddle factors are involved
-    {
-        hhfft::StepInfoD step;
         step.radix = N_columns[0];
-        step.stride = m;
         step.repeats = n_complex / step.radix;
-        step.data_type_in = hhfft::StepDataType::data_out;
-        step.data_type_out = hhfft::StepDataType::data_out;
-        HHFFT_2D_Complex_D_set_function_columns(step, instruction_set);
+        HHFFT_2D_Real_D_set_function(step, instruction_set);
         forward_steps.push_back(step);
     }
 
@@ -181,8 +170,8 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.radix = N_columns[i];
         step.stride = step_prev.stride * step_prev.radix;
         if (i == 1)
-            step.stride = step.stride / m;
-        step.repeats = step_prev.repeats / step.radix;
+            step.stride = step_prev.radix;
+        step.repeats = step_prev.repeats / step.radix;        
         step.size = m;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
@@ -215,9 +204,9 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = nullptr; // Reordering is always done in-place
         step.reorder_table_inplace = reorder_table_in_place_rows.data();
-        step.repeats = reorder_table_in_place_rows.size();
-        step.stride = m;
-        step.size = n_complex + 1;
+        step.reorder_table_inplace_size = reorder_table_in_place_rows.size();
+        step.stride = n_complex + 1;
+        step.size = m;
         HHFFT_2D_Complex_D_set_function_rows(step, instruction_set);
         forward_steps.push_back(step);
     }
@@ -265,9 +254,9 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table_rows.data();
         step.reorder_table_inplace = reorder_table_in_place_rows.data();
-        step.repeats = reorder_table_in_place_rows.size();
-        step.stride = m;
-        step.size = n_complex;
+        step.reorder_table_inplace_size = reorder_table_in_place_rows.size();
+        step.stride = n_complex;
+        step.size = m;
         step.norm_factor = 1.0 / (n_complex*m);
         step.forward = false;
         HHFFT_2D_Complex_D_set_function_rows(step, instruction_set);
@@ -372,7 +361,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = nullptr; // This is always in-place
         step.reorder_table_inplace = reorder_table_in_place_columns.data();
-        step.repeats = reorder_table_in_place_columns.size();
+        step.reorder_table_inplace_size = reorder_table_in_place_columns.size();
         step.stride = n_complex;
         step.size = m;
         step.norm_factor = 1.0; // normalization has been performed earlier
