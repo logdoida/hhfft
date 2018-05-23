@@ -137,6 +137,40 @@ template<size_t radix, bool forward> inline void multiply_twiddle(const double *
     }
 }
 
+// Packing tables to be used on small problems
+#define packing_a(i,n) (0.5*cos(2.0*M_PI*(2*i+n)/(4*n))-0.5)
+#define packing_b(i,n) (-0.5*sin(2.0*M_PI*(2*i+n)/(4*n)))
+const double packing_table_2[2] = {-0.5, -0.5};
+const double packing_table_4[2] = {-0.5, -0.5};
+const double packing_table_6[4] = {-0.5, -0.5, packing_a(2,6), packing_b(2,6)};
+const double packing_table_8[4] = {-0.5, -0.5, packing_a(2,8), packing_b(2,8)};
+const double packing_table_10[6] = {-0.5, -0.5, packing_a(2,10), packing_b(2,10), packing_a(4,10), packing_b(4,10)};
+const double packing_table_14[8] = {-0.5, -0.5, packing_a(2,14), packing_b(2,14), packing_a(4,14), packing_b(4,14), packing_a(6,14), packing_b(6,14)};
+const double packing_table_16[8] = {-0.5, -0.5, packing_a(2,16), packing_b(2,16), packing_a(4,16), packing_b(4,16), packing_a(6,16), packing_b(6,16)};
+
+template<size_t n> const double *get_packing_table()
+{
+    switch (n)
+    {
+        case 2:
+            return packing_table_2;
+        case 4:
+            return packing_table_4;
+        case 6:
+            return packing_table_6;
+        case 8:
+            return packing_table_8;
+        case 10:
+            return packing_table_10;
+        case 14:
+            return packing_table_14;
+        case 16:
+            return packing_table_16;
+    }
+
+    return nullptr;
+}
+
 // This function can help compiler to optimze the code
 template<hhfft::SizeType size_type> inline size_t get_size(size_t size)
 {

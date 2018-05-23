@@ -32,12 +32,14 @@ template<bool forward> void fft_1d_complex_to_complex_packed_sse2_d(const double
 template<bool forward> void fft_1d_complex_to_complex_packed_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template<bool forward> void fft_1d_complex_to_complex_packed_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-
 // Combines complex-packed-to-complex and reordering
 void fft_1d_complex_to_complex_packed_ifft_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 void fft_1d_complex_to_complex_packed_ifft_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 void fft_1d_complex_to_complex_packed_ifft_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
+// Small single level FFT
+template<size_t n, bool forward> void fft_1d_real_1level_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<size_t n, bool forward> void fft_1d_real_1level_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 template<bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
@@ -117,3 +119,69 @@ void hhfft::HHFFT_1D_Real_D_set_complex_to_complex_packed_function(StepInfoD &st
     }
 }
 
+// n = 1!
+void fft_1d_real_n1_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    data_out[0] = data_in[0];
+    data_out[1] = 0;
+}
+
+
+template<size_t n> void set_small_function_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set, bool forward)
+{
+#ifdef HHFFT_COMPILED_WITH_AVX
+    if (instruction_set == hhfft::InstructionSet::avx)
+    {        
+        if(forward)
+            step_info.step_function = fft_1d_real_1level_avx_d<n,true>;
+        else
+            step_info.step_function = fft_1d_real_1level_avx_d<n,false>;
+        return;        
+    }
+#endif
+
+    if (instruction_set == hhfft::InstructionSet::sse2)
+    {
+        if(forward)
+            step_info.step_function =  fft_1d_real_1level_sse2_d<n,true>;
+        else
+            step_info.step_function =  fft_1d_real_1level_sse2_d<n,false>;
+        return;
+    }
+
+    // This is needed in all architectures
+    if(n == 1)
+    {
+        step_info.step_function = fft_1d_real_n1_d;
+    }
+}
+
+void hhfft::HHFFT_1D_Real_D_set_small_function(StepInfoD &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set)
+{
+    step_info.step_function = nullptr;
+
+    if(n == 2)
+    {
+        set_small_function_instruction_set_d<2>(step_info, instruction_set, forward);
+    } else if(n == 4)
+    {
+        set_small_function_instruction_set_d<4>(step_info, instruction_set, forward);
+    } else if(n == 6)
+    {
+        set_small_function_instruction_set_d<6>(step_info, instruction_set, forward);
+    } else if(n == 8)
+    {
+        set_small_function_instruction_set_d<8>(step_info, instruction_set, forward);
+    } else if(n == 10)
+    {
+        set_small_function_instruction_set_d<10>(step_info, instruction_set, forward);
+    } else if(n == 14)
+    {
+        set_small_function_instruction_set_d<14>(step_info, instruction_set, forward);
+    } else if(n == 16)
+    {
+        set_small_function_instruction_set_d<16>(step_info, instruction_set, forward);
+    }
+
+    return;
+}

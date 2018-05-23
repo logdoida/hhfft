@@ -252,7 +252,7 @@ std::vector<size_t> hhfft::calculate_factorization(size_t n)
 // Calculates packing factors used for converting complex packed to real
 hhfft::AlignedVector<double> hhfft::calculate_packing_factors(size_t n)
 {
-    hhfft::AlignedVector<double> w(n);
+    hhfft::AlignedVector<double> w(n/2 + 1);
 
     for (size_t i = 0; i < n/2; i+=2)
     {

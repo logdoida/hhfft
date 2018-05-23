@@ -29,6 +29,9 @@ namespace hhfft
 // Sets pointer to correct function
 void HHFFT_1D_Real_D_set_complex_to_complex_packed_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
 
+// This sets pointer to a one level fft/ifft function if such exists
+void HHFFT_1D_Real_D_set_small_function(StepInfoD &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set);
+
 }
 
 #endif // HHFFT_1D_REAL_SETTER_D_H

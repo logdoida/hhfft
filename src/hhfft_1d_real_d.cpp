@@ -76,6 +76,17 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n, InstructionSet instruction_set)
     // Set the convolution function
     convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
 
+    // For small problems, it is better to use a single level function
+    StepInfoD step_info_fft, step_info_ifft;
+    HHFFT_1D_Real_D_set_small_function(step_info_fft, n, true, instruction_set);
+    HHFFT_1D_Real_D_set_small_function(step_info_ifft, n, false, instruction_set);
+    if (step_info_fft.step_function && step_info_ifft.step_function)
+    {
+        forward_steps.push_back(step_info_fft);
+        inverse_steps.push_back(step_info_ifft);
+        return;
+    }
+
     if (n%2 == 0)
     {
         plan_even(instruction_set);
@@ -180,39 +191,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
 
     ///////// IFFT /////////////
 
-    /*
-    // Add complex-to-complex-packed step to ifft as the first step
-    {
-        hhfft::StepInfo<double> step;
-        step.repeats = n_complex;
-        step.twiddle_factors = twiddle_factors[0].data();
-        step.data_type_in = hhfft::StepDataType::data_in;
-        step.data_type_out = hhfft::StepDataType::data_out;
-        step.forward = false;
-        HHFFT_1D_Real_D_set_complex_to_complex_packed_function(step, instruction_set);
-        inverse_steps.push_back(step);
-    }
-
-    // Put first ifft step combined with reordering
-    {
-        hhfft::StepInfoD step;
-        step.radix = N[0];
-        step.stride = 1;
-        step.repeats = n_complex / step.radix;
-        step.data_type_in = hhfft::StepDataType::data_out;
-        step.data_type_out = hhfft::StepDataType::data_out;
-        step.reorder_table = nullptr;
-        step.reorder_table_inplace = reorder_table_in_place.data(); // data_in = data_out!
-        step.reorder_table_inplace_size = reorder_table_in_place.size();
-        step.forward = false;
-        step.norm_factor = 1.0/(double(n_complex));
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
-        inverse_steps.push_back(step);
-    }
-    */
-
-    // Combined complex-packed-to-complex, reordering
-    //*
+    // Combined complex-packed-to-complex, reordering    
     {
         hhfft::StepInfoD step;
         step.repeats = n_complex;
@@ -241,7 +220,6 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
-    //*/
 
     // then put rest ifft steps combined with twiddle factor
     for (size_t i = 1; i < N.size(); i++)
@@ -264,6 +242,13 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
 
 void HHFFT_1D_REAL_D::fft(const double *in, double *out)
 {
+    // If there is just one step, run it directly
+    if (forward_steps.size() == 1)
+    {
+        forward_steps[0].step_function(in,out,forward_steps[0]);
+        return;
+    }
+
     // Allocate some extra space if needed    
     hhfft::AlignedVector<double> temp_data(temp_data_size);
 
@@ -283,6 +268,13 @@ void HHFFT_1D_REAL_D::fft(const double *in, double *out)
 
 void HHFFT_1D_REAL_D::ifft(const double *in, double *out)
 {
+    // If there is just one step, run it directly
+    if (inverse_steps.size() == 1)
+    {
+        inverse_steps[0].step_function(in,out,inverse_steps[0]);
+        return;
+    }
+
     // Allocate some extra space if needed    
     hhfft::AlignedVector<double> temp_data(temp_data_size);
 
