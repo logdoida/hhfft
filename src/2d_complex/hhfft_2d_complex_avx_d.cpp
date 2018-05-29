@@ -324,6 +324,74 @@ template<size_t radix, bool forward, bool scale>
     }
 }
 
+// Combine reordering and first row wise FFT
+template<size_t radix> void fft_2d_complex_reorder2_rows_forward_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    // Only out of place reordering supported
+    assert(data_in != data_out);
+
+    size_t n = step_info.size;
+    size_t m = step_info.repeats * radix;
+    size_t repeats = step_info.repeats;
+    uint32_t *reorder_table_columns = step_info.reorder_table;
+    uint32_t *reorder_table_rows = step_info.reorder_table2;
+
+    // FFT and reordering
+    for (size_t i = 0; i < n; i++)
+    {
+        size_t i2 = reorder_table_columns[i];
+
+        size_t j = 0;
+
+        // First use 256-bit variables as many times as possible
+        for (j = 0; j+1 < repeats; j+=2)
+        {
+            ComplexD2 x_temp_in[radix];
+            ComplexD2 x_temp_out[radix];
+
+            // Copy input data (squeeze)
+            for (size_t k = 0; k < radix; k++)
+            {
+                size_t j2 = reorder_table_rows[j*radix + k];
+                size_t j3 = reorder_table_rows[(j+1)*radix + k];
+
+                x_temp_in[k] = load_two_128(data_in + 2*i2*m + 2*j2, data_in + 2*i2*m + 2*j3);
+            }
+
+            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+
+            // Copy output data (un-squeeze)
+            for (size_t k = 0; k < radix; k++)
+            {
+                store_two_128(x_temp_out[k], data_out + 2*i*m + 2*j*radix + 2*k, data_out + 2*i*m + 2*(j+1)*radix + 2*k);
+            }
+        }
+
+        // Then use 128-bit variables
+        if (j < repeats)
+        {
+            ComplexD x_temp_in[radix];
+            ComplexD x_temp_out[radix];
+
+            // Copy input data (squeeze)
+            for (size_t k = 0; k < radix; k++)
+            {
+                size_t j2 = reorder_table_rows[j*radix + k];
+
+                x_temp_in[k] = load128(data_in + 2*i2*m + 2*j2);
+            }
+
+            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+
+            // Copy output data (un-squeeze)
+            for (size_t k = 0; k < radix; k++)
+            {
+                store(x_temp_out[k], data_out + 2*i*m + 2*j*radix + 2*k);
+            }
+        }
+    }
+}
+
 // Instantiations of the functions defined in this class
 template void fft_2d_complex_column_twiddle_dit_avx_d<2, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_column_twiddle_dit_avx_d<2, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
@@ -375,3 +443,11 @@ template void fft_2d_complex_reorder2_avx_d<8, true, false>(const double *data_i
 template void fft_2d_complex_reorder2_avx_d<8, true, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_avx_d<8, false, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_avx_d<8, false, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_2d_complex_reorder2_rows_forward_avx_d<2>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_avx_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_avx_d<4>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_avx_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_avx_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_avx_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+

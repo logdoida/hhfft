@@ -34,105 +34,105 @@ template<bool forward>
     size_t n = step_info.repeats; // n = number of original real rows
     size_t m = step_info.size;    // m = number of original real columns
 
-    // Input/output way
+    // In forward the input is n x (m/2), output is n x (m/2 + 1) complex numbers
     if (forward)
     {
-        for (size_t j = 0; j < 2*m; j+=2)
+        size_t m2 = m + 2;
+
+        // First copy data so that row size increases from m/2 to m/2 + 1
+        for (size_t i = 0; i < n; i++)
         {
-            double x_r = data_in[j + 0];
-            double x_i = data_in[j + 1];
-            data_out[j + 0] = x_r + x_i;
-            data_out[j + 1] = 0.0;
-            data_out[j + n*m + 0] = x_r - x_i;
-            data_out[j + n*m + 1] = 0.0;
+            size_t i2 = n - i - 1;
+            for (size_t j = 0; j < m; j+=2)
+            {
+                size_t j2 = m - j - 2;
+                ComplexD x = load128(data_out + i2*m + j2);
+                store(x, data_out + i2*m2 + j2);
+            }
         }
+
+        // First / Last column
+        for (size_t i = 0; i < n; i++)
+        {
+            double x_r = data_in[i*m2 + 0];
+            double x_i = data_in[i*m2 + 1];
+            data_out[i*m2 + 0] = x_r + x_i;
+            data_out[i*m2 + 1] = 0.0;
+            data_out[i*m2 + m + 0] = x_r - x_i;
+            data_out[i*m2 + m + 1] = 0.0;
+        }
+
+        if (m%4 == 0)
+        {
+            for (size_t i = 0; i < n; i++)
+            {
+                ComplexD x_in = load128(data_in + i*m2 + m/2);
+                ComplexD x_out = change_sign(x_in, const1_128);
+                store(x_out, data_out + i*m2 + m/2);
+            }
+        }
+
+        for (size_t i = 0; i < n; i++)
+        {
+            for (size_t j = 2; j < m/2; j+=2)
+            {
+                ComplexD k = load128(packing_table + j);
+
+                ComplexD x0_in = load128(data_in + i*m2 + j);
+                ComplexD x1_in = load128(data_in + i*m2 + (m-j));
+
+                ComplexD temp0 = x0_in + change_sign(x1_in, const2_128);
+                ComplexD temp1 = mul(k, temp0);
+
+                ComplexD x0_out = temp1 + x0_in;
+                ComplexD x1_out = change_sign(temp1, const2_128) + x1_in;
+
+                store(x0_out, data_out + i*m2 + j);
+                store(x1_out, data_out + i*m2 + (m-j));
+            }
+        }
+
     } else
     {
-        // For inverse data_in = last row (temporary variable), data_out is actually both input and output!
-        for (size_t j = 0; j < 2*m; j+=2)
+        // In inverse the input is n x (m/2) and n x 1, output is n x (m/2)
+
+        // First / Last column
+        for (size_t i = 0; i < n; i++)
         {
-            double x_r = data_out[j];
-            double x_i = data_in[j];
-            data_out[j + 0] = 0.5*(x_r + x_i);
-            data_out[j + 1] = 0.5*(x_r - x_i);
+            double x_r = data_out[i*m + 0];
+            double x_i = data_in[2*i + 0];  // temp column
+            data_out[i*m + 0] = 0.5*(x_r + x_i);
+            data_out[i*m + 1] = 0.5*(x_r - x_i);
         }
 
-        // !
-        data_in = data_out;
-    }
-
-    if (n%4 == 0)
-    {
-        for (size_t j = 0; j < 2*m; j+=2)
+        if (m%4 == 0)
         {
-            ComplexD x_in = load128(data_in + j + n*m/2);
-            ComplexD x_out = change_sign(x_in, const1_128);
-            store(x_out, data_out + j + n*m/2);
-        }
-    }
-
-    for (size_t i = 2; i < n/2; i+=2)
-    {
-        ComplexD k = load128(packing_table + i);
-
-        if(!forward)
-        {
-            k = change_sign(k, const1_128);
-        }
-
-        for (size_t j = 0; j < 2*m; j+=2)
-        {
-            ComplexD x0_in = load128(data_in + i*m + j);
-            ComplexD x1_in = load128(data_in + (n - i)*m + j);
-
-            ComplexD temp0 = x0_in + change_sign(x1_in, const2_128);
-            ComplexD temp1 = mul(k, temp0);
-
-            ComplexD x0_out = temp1 + x0_in;
-            ComplexD x1_out = change_sign(temp1, const2_128) + x1_in;
-
-            store(x0_out, data_out + i*m + j);
-            store(x1_out, data_out + (n - i)*m + j);
-        }
-    }
-}
-
-// Column reordering, shuffling and first FFT step. Used as a first step in FFT 2D real
-template<size_t radix>
-    void fft_2d_real_reorder2_forward_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
-    // In-place not supported
-    assert (data_in != data_out);
-
-    size_t m = step_info.size;
-    uint32_t *reorder_table_columns = step_info.reorder_table;
-    uint32_t *reorder_table_rows = step_info.reorder_table2;
-    size_t repeats = step_info.repeats;
-
-    // FFT and reordering
-    for (size_t i = 0; i < repeats; i++)
-    {
-        ComplexD x_temp_in[radix];
-        ComplexD x_temp_out[radix];
-
-        for (size_t k = 0; k < m; k++)
-        {
-            size_t k2 = reorder_table_rows[k];
-
-            // Copy input data (squeeze)
-            for (size_t j = 0; j < radix; j++)
+            for (size_t i = 0; i < n; i++)
             {
-                size_t j2 = reorder_table_columns[i*radix + j];
-
-                x_temp_in[j] = load(data_in[2*j2*m + k2], data_in[(2*j2+1)*m + k2]);
+                ComplexD x_in = load128(data_out + i*m + m/2);
+                ComplexD x_out = change_sign(x_in, const1_128);
+                store(x_out, data_out + i*m + m/2);
             }
+        }
 
-            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
-
-            // Copy input data (un-squeeze)
-            for (size_t j = 0; j < radix; j++)
+        for (size_t i = 0; i < n; i++)
+        {
+            for (size_t j = 2; j < m/2; j+=2)
             {
-                store(x_temp_out[j], data_out + 2*i*radix*m + 2*j*m + 2*k);
+                ComplexD k = load128(packing_table + j);
+                k = change_sign(k, const1_128);
+
+                ComplexD x0_in = load128(data_out + i*m + j);
+                ComplexD x1_in = load128(data_out + i*m + (m-j));
+
+                ComplexD temp0 = x0_in + change_sign(x1_in, const2_128);
+                ComplexD temp1 = mul(k, temp0);
+
+                ComplexD x0_out = temp1 + x0_in;
+                ComplexD x1_out = change_sign(temp1, const2_128) + x1_in;
+
+                store(x0_out, data_out + i*m + j);
+                store(x1_out, data_out + i*m + (m-j));
             }
         }
     }
@@ -144,34 +144,67 @@ void fft_2d_real_reorder2_inverse_sse2_d(const double *data_in, double *data_out
     // In-place not supported
     assert (data_in != data_out);
 
-    size_t n = step_info.stride; // number of rows
-    size_t m = step_info.size; // number of columns
+    size_t m = step_info.stride; // number of columns
+    size_t m2 = m + 1;           // number of columns in input
     size_t repeats = step_info.repeats;
-    uint32_t *reorder_table_rows = step_info.reorder_table2;
-    ComplexD norm_factor = broadcast64(step_info.norm_factor);
+    uint32_t *reorder_table_columns = step_info.reorder_table;
+    double norm_factor = step_info.norm_factor;
 
     ComplexD x_temp_in[radix];
     ComplexD x_temp_out[radix];
 
-    for (size_t i = 0; i < n; i++)
+    for (size_t i = 0; i < repeats; i++)
     {
-        for (size_t j = 0; j < repeats; j++)
+        for (size_t k = 0; k < m; k++)
         {
-            // Copy input data
-            for (size_t k = 0; k < radix; k++)
+            // Copy input data (squeeze)
+            for (size_t j = 0; j < radix; j++)
             {
-                size_t j2 = reorder_table_rows[j*radix + k];
-
-                x_temp_in[k] = norm_factor*load128(data_in + 2*i*m + 2*j2);
+                size_t j2 = reorder_table_columns[i*radix + j];
+                x_temp_in[j] = norm_factor*load128(data_in + 2*j2*m2 + 2*k);
             }
 
             multiply_coeff<radix,false>(x_temp_in, x_temp_out);
 
-            // Copy input data (un-squeeze)
-            for (size_t k = 0; k < radix; k++)
+            // Copy output data (un-squeeze)
+            for (size_t j = 0; j < radix; j++)
             {
-                store(x_temp_out[k], data_out + 2*i*m + 2*(j*radix + k));
+                store(x_temp_out[j], data_out + 2*i*radix*m + 2*j*m + 2*k);
             }
+        }
+    }
+}
+
+template<size_t radix>
+void fft_2d_real_reorder_last_column_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    // In-place not supported
+    assert (data_in != data_out);
+
+    size_t m = step_info.stride; // number of columns
+    size_t m2 = m + 1;           // number of columns in input
+    size_t repeats = step_info.repeats;
+    uint32_t *reorder_table_columns = step_info.reorder_table;
+    double norm_factor = step_info.norm_factor;
+
+    ComplexD x_temp_in[radix];
+    ComplexD x_temp_out[radix];
+
+    for (size_t i = 0; i < repeats; i++)
+    {
+        // Copy input data (squeeze)
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t j2 = reorder_table_columns[i*radix + j];
+            x_temp_in[j] = norm_factor*load128(data_in + 2*j2*m2 + 2*m);
+        }
+
+        multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+
+        // Copy output data (un-squeeze)
+        for (size_t j = 0; j < radix; j++)
+        {
+            store(x_temp_out[j], data_out + 2*i*radix + 2*j);
         }
     }
 }
@@ -180,16 +213,16 @@ void fft_2d_real_reorder2_inverse_sse2_d(const double *data_in, double *data_out
 template void fft_2d_complex_to_complex_packed_sse2_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_to_complex_packed_sse2_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template void fft_2d_real_reorder2_forward_sse2_d<2>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_forward_sse2_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_forward_sse2_d<4>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_forward_sse2_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_forward_sse2_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_forward_sse2_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-
 template void fft_2d_real_reorder2_inverse_sse2_d<2>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_sse2_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_sse2_d<4>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_sse2_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_sse2_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_sse2_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_2d_real_reorder_last_column_sse2_d<2>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder_last_column_sse2_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder_last_column_sse2_d<4>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder_last_column_sse2_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder_last_column_sse2_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder_last_column_sse2_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

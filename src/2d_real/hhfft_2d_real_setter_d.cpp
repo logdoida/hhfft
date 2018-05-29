@@ -126,16 +126,7 @@ void hhfft::HHFFT_2D_Real_D_set_complex_to_complex_packed_function(StepInfoD &st
 
 
 
-// Reorder both rows and columns and do FFT
-template<size_t radix>
-void fft_2d_real_reorder2_forward_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-
-template<size_t radix>
-void fft_2d_real_reorder2_forward_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-
-template<size_t radix>
-void fft_2d_real_reorder2_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-
+// Reorder ansd do FFT
 template<size_t radix>
 void fft_2d_real_reorder2_inverse_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
@@ -159,26 +150,20 @@ template<size_t radix> void set_instruction_set_2d_real_d(StepInfoD &step_info, 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {
-        if(step_info.forward)
-            step_info.step_function = fft_2d_real_reorder2_forward_avx_d<radix>;
-        else
+        if(!step_info.forward)
             step_info.step_function = fft_2d_real_reorder2_inverse_avx_d<radix>;
     }
 #endif
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
-        if(step_info.forward)
-            step_info.step_function = fft_2d_real_reorder2_forward_sse2_d<radix>;
-        else
+        if(!step_info.forward)
             step_info.step_function = fft_2d_real_reorder2_inverse_sse2_d<radix>;
     }
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
-        if(step_info.forward)
-            step_info.step_function = fft_2d_real_reorder2_forward_plain_d<radix>;
-        else
+        if(!step_info.forward)
             step_info.step_function = fft_2d_real_reorder2_inverse_plain_d<radix>;
     }
 }
@@ -213,10 +198,95 @@ void hhfft::HHFFT_2D_Real_D_set_function(StepInfoD &step_info, hhfft::Instructio
 {
     step_info.step_function = nullptr;
 
-    if (step_info.radix != 1
-       && (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr))
+    if (step_info.radix != 1 && (step_info.reorder_table != nullptr))
     {
         set_radix_2d_real_d(step_info, instruction_set);
+
+        return;
+    }
+
+    if (step_info.step_function == nullptr)
+    {
+        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+    }
+}
+
+
+
+
+template<size_t radix>
+void fft_2d_real_reorder_last_column_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_reorder_last_column_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_reorder_last_column_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+
+
+template<size_t radix> void set_instruction_set_2d_real_last_column_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+
+#ifdef HHFFT_COMPILED_WITH_AVX512F
+    if (instruction_set == hhfft::InstructionSet::avx512f)
+    {
+
+    }
+#endif
+
+#ifdef HHFFT_COMPILED_WITH_AVX
+    if (instruction_set == hhfft::InstructionSet::avx)
+    {
+        step_info.step_function = fft_2d_real_reorder_last_column_avx_d<radix>;
+    }
+#endif
+
+    if (instruction_set == hhfft::InstructionSet::sse2)
+    {
+        step_info.step_function = fft_2d_real_reorder_last_column_sse2_d<radix>;
+    }
+
+    if (instruction_set == hhfft::InstructionSet::none)
+    {
+        step_info.step_function = fft_2d_real_reorder_last_column_plain_d<radix>;
+    }
+}
+
+
+void set_radix_2d_real_last_column_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    size_t radix = step_info.radix;
+
+    if (radix == 2)
+    {
+        set_instruction_set_2d_real_last_column_d<2>(step_info, instruction_set);
+    } if (radix == 3)
+    {
+        set_instruction_set_2d_real_last_column_d<3>(step_info, instruction_set);
+    } if (radix == 4)
+    {
+        set_instruction_set_2d_real_last_column_d<4>(step_info, instruction_set);
+    } if (radix == 5)
+    {
+        set_instruction_set_2d_real_last_column_d<5>(step_info, instruction_set);
+    } if (radix == 7)
+    {
+        set_instruction_set_2d_real_last_column_d<7>(step_info, instruction_set);
+    } if (radix == 8)
+    {
+       set_instruction_set_2d_real_last_column_d<8>(step_info, instruction_set);
+    }
+}
+
+// Used for setting the first step for last column where reordering and first fft are combined
+void hhfft::HHFFT_2D_Real_D_set_function_last_column(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    step_info.step_function = nullptr;
+
+    if (step_info.radix != 1 && (step_info.reorder_table != nullptr))
+    {
+        set_radix_2d_real_last_column_d(step_info, instruction_set);
 
         return;
     }

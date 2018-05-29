@@ -164,7 +164,7 @@ template<size_t radix, bool forward>
     void fft_1d_complex_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     size_t stride = step_info.stride;
-    size_t repeats = step_info.repeats;
+    size_t repeats = step_info.repeats;    
 
     for (size_t i = 0; i < repeats; i++)
     {
