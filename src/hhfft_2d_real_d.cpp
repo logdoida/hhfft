@@ -178,7 +178,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         forward_steps.push_back(step);        
     }
 
-    // Convert from complex packed to complex. One new column is added.
+    // Convert from complex packed to complex.
     {
         hhfft::StepInfo<double> step;
         step.repeats = n;
@@ -198,7 +198,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         hhfft::StepInfoD step;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
-        step.stride = m_complex + 1;
+        step.stride = m_complex;
         step.radix = N_columns[0];
         step.repeats = n / step.radix;
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
@@ -215,22 +215,29 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         if (i == 1)
             step.stride = step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;
-        step.size = m_complex + 1;
+        step.size = m_complex;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors_columns[i].data();
         HHFFT_2D_Complex_D_set_function_columns(step, instruction_set);
-        forward_steps.push_back(step);        
+        forward_steps.push_back(step);
     }
 
+    // Add new column to the end, and recalculate first and last column
+    {
+        hhfft::StepInfoD step;
+        step.repeats = n;
+        step.size = m;
+        step.data_type_in = hhfft::StepDataType::data_out;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        step.forward = true;
+        HHFFT_2D_Real_D_set_complex_to_complex_packed_first_column_function(step, instruction_set);
+        forward_steps.push_back(step);
+    }
 
-
-    // IFFT
     ///////// IFFT column-wise /////////////
-    // Last column is processed in a temporary array
-    temp_data_size = 2*n;
 
-    // Reordering column-wise and first FFT-step combined.
+    // Reordering column-wise and first FFT-step combined. Also, the extra column from the end is removed
     {
         hhfft::StepInfoD step;
         step.data_type_in = hhfft::StepDataType::data_in;
@@ -265,48 +272,13 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         inverse_steps.push_back(step);
     }
 
-    ///////// IFFT column-wise for last column /////////////
-    // Reordering column-wise and first FFT-step combined.
-    {
-        hhfft::StepInfoD step;
-        step.data_type_in = hhfft::StepDataType::data_in;
-        step.data_type_out = hhfft::StepDataType::temp_data;
-        step.reorder_table = reorder_table_columns.data();
-        step.stride = m_complex;
-        step.size = n;
-        step.radix = N_columns[0];
-        step.repeats = n / step.radix;
-        step.norm_factor = 1.0 / (m_complex*n);
-        step.forward = false;
-        HHFFT_2D_Real_D_set_function_last_column(step, instruction_set);
-        inverse_steps.push_back(step);
-    }
-
-    // then put rest fft steps combined with twiddle factor
-    for (size_t i = 1; i < N_columns.size(); i++)
-    {
-        hhfft::StepInfoD step;
-        hhfft::StepInfoD &step_prev = inverse_steps.back();
-        step.radix = N_columns[i];
-        step.stride = step_prev.stride * step_prev.radix;
-        if (i == 1)
-            step.stride = step_prev.radix;
-        step.repeats = step_prev.repeats / step.radix;
-        step.data_type_in = hhfft::StepDataType::temp_data;
-        step.data_type_out = hhfft::StepDataType::temp_data;
-        step.twiddle_factors = twiddle_factors_columns[i].data();
-        step.forward = false;
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
-        inverse_steps.push_back(step);
-    }
-
-    // Convert from complex to complex complex packed. The temp column disappears here
+    // Convert from complex to complex complex packed.
     {
         hhfft::StepInfo<double> step;
         step.repeats = n;
         step.size = m;
         step.twiddle_factors = twiddle_factors_rows[0].data();
-        step.data_type_in = hhfft::StepDataType::temp_data; // NOTE!
+        step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.forward = false;
         HHFFT_2D_Real_D_set_complex_to_complex_packed_function(step, instruction_set);
@@ -385,6 +357,7 @@ void HHFFT_2D_REAL_D::fft(const double *in, double *out)
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
         // TESTING print        
+        //print_complex_matrix(data_out[step.data_type_out], n, m/2);
         //print_complex_matrix(data_out[step.data_type_out], n, m/2 + 1);
     }
 }
@@ -412,11 +385,8 @@ void HHFFT_2D_REAL_D::ifft(const double *in, double *out)
         // Run all the steps
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
-        // TESTING print
-        //if (step.data_type_out == hhfft::StepDataType::temp_data)
-        //    print_complex_matrix(data_out[step.data_type_out], temp_data_size/2, 1);
-        //else
-        //    print_complex_matrix(data_out[step.data_type_out], n, m/2);
+        // TESTING print        
+        //print_complex_matrix(data_out[step.data_type_out], n, m/2);
     }
 }
 

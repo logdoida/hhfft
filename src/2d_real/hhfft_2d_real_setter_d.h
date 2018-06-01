@@ -33,6 +33,9 @@ void HHFFT_2D_Real_D_set_reorder_column_function(StepInfoD &step_info, hhfft::In
 void HHFFT_2D_Real_D_set_complex_to_complex_packed_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
 
 // Sets pointer to correct function
+void HHFFT_2D_Real_D_set_complex_to_complex_packed_first_column_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
+
+// Sets pointer to correct function
 void HHFFT_2D_Real_D_set_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
 
 // Sets pointer to correct function

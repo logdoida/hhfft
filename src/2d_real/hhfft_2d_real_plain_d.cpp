@@ -23,11 +23,79 @@
 #include <assert.h>
 #include <cmath>
 
-#include "../common/hhfft_1d_complex_plain_common_d.h"
-
 #include <iostream> // TESTING
 
+#include "../common/hhfft_1d_complex_plain_common_d.h"
+
 using namespace hhfft;
+
+// Recalculate first column and add last column
+void fft_2d_complex_to_complex_packed_first_column_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    //const double *packing_table = step_info.twiddle_factors;
+    size_t n = step_info.repeats; // n = number of original real rows
+    size_t m = step_info.size;    // m = number of original real columns
+
+    size_t m2 = m + 2;
+
+    // First copy data so that row size increases from m/2 to m/2 + 1
+    for (size_t i = 0; i < n; i++)
+    {
+        size_t i2 = n - i - 1;
+        for (size_t j = 0; j < m; j++)
+        {
+            size_t j2 = m - j - 1;
+            data_out[i2*m2 + j2] = data_in[i2*m + j2];
+        }
+    }
+
+    // Re-calculate first and last columns
+
+    // First
+    {
+        double x_r = data_in[0];
+        double x_i = data_in[1];
+        data_out[0] = x_r + x_i;
+        data_out[1] = 0.0;
+        data_out[m + 0] = x_r - x_i;
+        data_out[m + 1] = 0.0;
+    }
+
+    // Middle
+    if (n%2 == 0)
+    {
+        double x_r = data_in[n/2*m2 + 0];
+        double x_i = data_in[n/2*m2 + 1];
+        data_out[n/2*m2 + 0] = x_r + x_i;
+        data_out[n/2*m2 + 1] = 0.0;
+        data_out[n/2*m2 + m + 0] = x_r - x_i;
+        data_out[n/2*m2 + m + 1] = 0.0;
+    }
+
+    // Others
+    for (size_t i = 1; i < (n+1)/2; i++)
+    {
+        size_t i2 = n - i;
+        double x0_r = data_in[i*m2 + 0];
+        double x0_i = data_in[i*m2 + 1];
+        double x1_r = data_in[i2*m2 + 0];
+        double x1_i = data_in[i2*m2 + 1];
+
+        double t1 = 0.5*(x0_r + x1_r);
+        double t2 = 0.5*(x0_r - x1_r);
+        double t3 = 0.5*(x0_i + x1_i);
+        double t4 = 0.5*(x0_i - x1_i);
+
+        data_out[i*m2 + 0] = t1 + t3;
+        data_out[i*m2 + 1] = t4 - t2;
+        data_out[i*m2 + m + 0] = t1 - t3;
+        data_out[i*m2 + m + 1] = t2 + t4;
+        data_out[i2*m2 + 0] = t1 + t3;
+        data_out[i2*m2 + 1] = -(t4 - t2);
+        data_out[i2*m2 + m + 0] = t1 - t3;
+        data_out[i2*m2 + m + 1] = -(t2 + t4);
+    }
+}
 
 template<bool forward>
     void fft_2d_complex_to_complex_packed_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
@@ -36,42 +104,18 @@ template<bool forward>
     size_t n = step_info.repeats; // n = number of original real rows
     size_t m = step_info.size;    // m = number of original real columns
 
-    // In forward the input is n x (m/2), output is n x (m/2 + 1) complex numbers
+    // TODO these two can be combined! Only a small difference
     if (forward)
     {
-        size_t m2 = m + 2;
-
-        // First copy data so that row size increases from m/2 to m/2 + 1
-        for (size_t i = 0; i < n; i++)
-        {
-            size_t i2 = n - i - 1;
-            for (size_t j = 0; j < m; j++)
-            {
-                size_t j2 = m - j - 1;
-                data_out[i2*m2 + j2] = data_in[i2*m + j2];
-            }
-        }
-
-        // First / Last column
-        for (size_t i = 0; i < n; i++)
-        {
-            double x_r = data_in[i*m2 + 0];
-            double x_i = data_in[i*m2 + 1];
-            data_out[i*m2 + 0] = x_r + x_i;
-            data_out[i*m2 + 1] = 0.0;
-            data_out[i*m2 + m + 0] = x_r - x_i;
-            data_out[i*m2 + m + 1] = 0.0;
-        }
-
         if (m%4 == 0)
         {
             for (size_t i = 0; i < n; i++)
             {
-                double x_r = data_in[i*m2 + m/2 + 0];
-                double x_i = data_in[i*m2 + m/2 + 1];
+                double x_r = data_in[i*m + m/2 + 0];
+                double x_i = data_in[i*m + m/2 + 1];
 
-                data_out[i*m2 + m/2 + 0] =  x_r;
-                data_out[i*m2 + m/2 + 1] = -x_i;
+                data_out[i*m + m/2 + 0] =  x_r;
+                data_out[i*m + m/2 + 1] = -x_i;
             }
         }
 
@@ -82,10 +126,10 @@ template<bool forward>
                 double ss = -packing_table[j + 0];
                 double sc = -packing_table[j + 1];
 
-                double x0_r = data_in[i*m2 + j + 0];
-                double x0_i = data_in[i*m2 + j + 1];
-                double x1_r = data_in[i*m2 + (m-j) + 0];
-                double x1_i = data_in[i*m2 + (m-j) + 1];
+                double x0_r = data_in[i*m + j + 0];
+                double x0_i = data_in[i*m + j + 1];
+                double x1_r = data_in[i*m + (m-j) + 0];
+                double x1_i = data_in[i*m + (m-j) + 1];
 
                 //std::cout << "x0_r = " << x0_r << ", x0_i = " << x0_i << std::endl;
                 //std::cout << "x1_r = " << x1_r << ", x1_i = " << x1_i << std::endl;
@@ -93,26 +137,15 @@ template<bool forward>
                 double temp0 = -ss*(x0_r - x1_r) + sc*(x0_i + x1_i);
                 double temp1 = -sc*(x0_r - x1_r) - ss*(x0_i + x1_i);
 
-                data_out[i*m2 + j + 0]     = temp0 + x0_r;
-                data_out[i*m2 + j + 1]     = temp1 + x0_i;
-                data_out[i*m2 + (m-j) + 0] = -temp0 + x1_r;
-                data_out[i*m2 + (m-j) + 1] = temp1 + x1_i;
+                data_out[i*m + j + 0]     = temp0 + x0_r;
+                data_out[i*m + j + 1]     = temp1 + x0_i;
+                data_out[i*m + (m-j) + 0] = -temp0 + x1_r;
+                data_out[i*m + (m-j) + 1] = temp1 + x1_i;
             }
         }
 
     } else
-    {
-        // In inverse the input is n x (m/2) and n x 1, output is n x (m/2)
-
-        // First / Last column
-        for (size_t i = 0; i < n; i++)
-        {
-            double x_r = data_out[i*m + 0];
-            double x_i = data_in[2*i + 0];  // temp column
-            data_out[i*m + 0] = 0.5*(x_r + x_i);
-            data_out[i*m + 1] = 0.5*(x_r - x_i);
-        }
-
+    {        
         if (m%4 == 0)
         {
             for (size_t i = 0; i < n; i++)
@@ -154,12 +187,12 @@ template<bool forward>
 
 template<size_t radix>
 void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
+{    
     // In-place not supported
     assert (data_in != data_out);
 
-    size_t m = step_info.stride; // number of columns
-    size_t m2 = m + 1;           // number of columns in input
+    size_t m = step_info.stride;  // number of columns
+    size_t m2 = m + 1;            // number of columns in input
     size_t repeats = step_info.repeats;
     uint32_t *reorder_table_columns = step_info.reorder_table;
     double norm_factor = step_info.norm_factor;
@@ -169,7 +202,37 @@ void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_ou
 
     for (size_t i = 0; i < repeats; i++)
     {
-        for (size_t k = 0; k < m; k++)
+        // The first column is is calculated from first and last column
+        {
+            // Copy input data (squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                size_t j2 = reorder_table_columns[i*radix + j];
+                double x0_r = data_in[2*j2*m2 + 0];
+                double x0_i = data_in[2*j2*m2 + 1];
+                double x1_r = data_in[2*j2*m2 + 2*m + 0];
+                double x1_i = data_in[2*j2*m2 + 2*m + 1];
+
+                double t1 = 0.5*(x0_r + x1_r);
+                double t2 = 0.5*(x1_i - x0_i);
+                double t3 = 0.5*(x0_r - x1_r);
+                double t4 = 0.5*(x0_i + x1_i);
+
+                x_temp_in[2*j + 0] = t1 + t2;
+                x_temp_in[2*j + 1] = t3 + t4;
+            }
+
+            multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+
+            // Copy output data (un-squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                data_out[2*i*radix*m + 2*j*m + 0] = norm_factor*x_temp_out[2*j + 0];
+                data_out[2*i*radix*m + 2*j*m + 1] = norm_factor*x_temp_out[2*j + 1];
+            }
+        }
+
+        for (size_t k = 1; k < m; k++)
         {
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
@@ -246,4 +309,6 @@ template void fft_2d_real_reorder_last_column_plain_d<4>(const double *data_in, 
 template void fft_2d_real_reorder_last_column_plain_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder_last_column_plain_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder_last_column_plain_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+
 

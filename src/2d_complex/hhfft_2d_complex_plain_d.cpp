@@ -172,7 +172,7 @@ template<size_t radix, bool forward, bool scale>
 // Combine reordering and first column wise FFT
 template<size_t radix, bool forward, bool scale>
     void fft_2d_complex_reorder2_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
+{    
     if (data_in == data_out)
     {
         fft_2d_complex_reorder2_inplace_plain_d<radix, forward, scale>(data_in, data_out, step_info);
@@ -203,7 +203,7 @@ template<size_t radix, bool forward, bool scale>
                 size_t j2 = reorder_table_columns[i*radix + j];
 
                 x_temp_in[2*j + 0] = data_in[2*j2*m + 2*k2 + 0];
-                x_temp_in[2*j + 1] = data_in[2*j2*m + 2*k2 + 1];
+                x_temp_in[2*j + 1] = data_in[2*j2*m + 2*k2 + 1];                
             }
 
             multiply_coeff<radix,forward>(x_temp_in, x_temp_out);
@@ -229,7 +229,7 @@ template<size_t radix, bool forward, bool scale>
 
 // Combine reordering and first row wise FFT
 template<size_t radix> void fft_2d_complex_reorder2_rows_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
+{    
     // Only out of place reordering supported
     assert(data_in != data_out);
 

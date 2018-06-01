@@ -125,8 +125,56 @@ void hhfft::HHFFT_2D_Real_D_set_complex_to_complex_packed_function(StepInfoD &st
 
 
 
+void fft_2d_complex_to_complex_packed_first_column_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_2d_complex_to_complex_packed_first_column_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_2d_complex_to_complex_packed_first_column_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-// Reorder ansd do FFT
+void set_instruction_set_first_column_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+
+#ifdef HHFFT_COMPILED_WITH_AVX512F
+    if (instruction_set == hhfft::InstructionSet::avx512f)
+    {
+
+    }
+#endif
+
+#ifdef HHFFT_COMPILED_WITH_AVX
+    if (instruction_set == hhfft::InstructionSet::avx)
+    {
+       //step_info.step_function = fft_2d_complex_to_complex_packed_first_column_avx_d;
+       step_info.step_function = fft_2d_complex_to_complex_packed_first_column_plain_d; //TESTING
+    }
+#endif
+
+    if (instruction_set == hhfft::InstructionSet::sse2)
+    {
+        //step_info.step_function = fft_2d_complex_to_complex_packed_first_column_sse2_d;
+    }
+
+    if (instruction_set == hhfft::InstructionSet::none)
+    {
+        step_info.step_function = fft_2d_complex_to_complex_packed_first_column_plain_d;
+    }
+}
+
+// This set pointer to correct functions
+void hhfft::HHFFT_2D_Real_D_set_complex_to_complex_packed_first_column_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    step_info.step_function = nullptr;
+
+    if (step_info.forward)
+       set_instruction_set_first_column_d(step_info, instruction_set);
+
+    if (step_info.step_function == nullptr)
+    {
+        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+    }
+}
+
+
+
+// Reorder and do FFT
 template<size_t radix>
 void fft_2d_real_reorder2_inverse_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
