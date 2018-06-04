@@ -23,93 +23,9 @@
 #include <assert.h>
 #include <cmath>
 
-#include <iostream> //TESTING
-
 using namespace hhfft;
 
 //////////////////////// reorder ////////////////////////////////////
-
-// TODO can be removed after 2d complex nor 2d real need them...
-template<bool scale> void fft_2d_complex_reorder_rows_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
-    size_t n = step_info.stride; // number of rows
-    size_t m = step_info.size; // number of columns
-    size_t reorder_table_size = step_info.reorder_table_inplace_size;
-    uint32_t *reorder_table = step_info.reorder_table_inplace;
-
-    // In-place algorithm
-    assert (data_in == data_out);
-
-    for (size_t i = 0; i < n; i++)
-    {
-        for (size_t j = 0; j < reorder_table_size; j++)
-        {
-            size_t ind1 = j + 1; // First one has been omitted!
-            size_t ind2 = reorder_table[j];
-
-            // Swap two doubles at a time
-            /*
-            __m128d temp1 = _mm_loadu_pd(data_in + 2*i*m + 2*ind1);
-            __m128d temp2 = _mm_loadu_pd(data_in + 2*i*m + 2*ind2);
-            _mm_storeu_pd(data_out + 2*i*m + 2*ind2, temp1);
-            _mm_storeu_pd(data_out + 2*i*m + 2*ind1, temp2);
-            */
-
-            double r_temp = data_out[2*i*m + 2*ind1+0];
-            double c_temp = data_out[2*i*m + 2*ind1+1];
-            data_out[2*i*m + 2*ind1+0] = data_out[2*i*m + 2*ind2+0];
-            data_out[2*i*m + 2*ind1+1] = data_out[2*i*m + 2*ind2+1];
-            data_out[2*i*m + 2*ind2+0] = r_temp;
-            data_out[2*i*m + 2*ind2+1] = c_temp;
-        }
-    }
-
-    // Scaling can be needed for real-fft    
-    if (scale)
-    {
-        // Needed only in ifft. Equal to 1/N
-        double k = step_info.norm_factor;
-
-        for (size_t i = 0; i < 2*m*n; i++)
-        {
-            data_out[i] *= k;
-        }
-    }    
-}
-
-// TODO can be removed after 2d complex nor 2d real need them...
-template<bool scale> void fft_2d_complex_reorder_rows_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
-    // Check, if in-place should be done instead
-    if (data_in == data_out)
-    {
-        fft_2d_complex_reorder_rows_in_place_d<scale>(data_in, data_out, step_info);
-        return;
-    }
-
-    size_t n = step_info.stride; // number of rows
-    size_t m = step_info.size; // number of columns
-    uint32_t *reorder_table = step_info.reorder_table;
-
-    // Needed only in ifft. Equal to 1/(n*m)
-    double k = step_info.norm_factor;    
-
-    for (size_t i = 0; i < n; i++)
-    {
-        for (size_t j = 0; j < m; j++)
-        {
-            size_t j2 = reorder_table[j];
-            if (scale)
-            {
-                data_out[2*i*m + 2*j + 0] = k*data_in[2*i*m + 2*j2 + 0];
-                data_out[2*i*m + 2*j + 1] = k*data_in[2*i*m + 2*j2 + 1];
-            } else {
-                data_out[2*i*m + 2*j + 0] = data_in[2*i*m + 2*j2 + 0];
-                data_out[2*i*m + 2*j + 1] = data_in[2*i*m + 2*j2 + 1];
-            }
-        }
-    }
-}
 
 // TODO can be removed after 2d complex nor 2d real need them...
 template<bool scale> void fft_2d_complex_reorder_columns_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
@@ -575,18 +491,11 @@ void hhfft::HHFFT_2D_Complex_D_set_function_rows(StepInfoD &step_info, hhfft::In
 
     if (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr)
     {        
-        if (step_info.radix == 1)
-        {
-            if (step_info.norm_factor != 1.0)
-                step_info.step_function = fft_2d_complex_reorder_rows_d<true>;
-            else
-                step_info.step_function = fft_2d_complex_reorder_rows_d<false>;
-        } else
+        if (step_info.radix != 1)
         {
             set_radix_2d_rows_d(step_info, instruction_set);
+            return;
         }
-
-        return;
     }
 
     // 1D FFT is used here instead!

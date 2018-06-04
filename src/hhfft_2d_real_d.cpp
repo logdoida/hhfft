@@ -287,7 +287,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
 
     ///////// IFFT row-wise ////////////
 
-    // Reorder rows if needed
+    // Reorder rows in-place if needed
     if (N_rows.size() > 1)
     {
         hhfft::StepInfoD step;
@@ -298,7 +298,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.stride = n;
         step.size = m_complex;
         step.forward = false;
-        HHFFT_2D_Complex_D_set_function_rows(step, instruction_set);
+        HHFFT_2D_Real_D_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
 

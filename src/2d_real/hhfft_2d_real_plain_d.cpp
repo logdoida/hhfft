@@ -29,6 +29,30 @@
 
 using namespace hhfft;
 
+void fft_2d_real_reorder_rows_in_place_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t n = step_info.stride; // number of rows
+    size_t m = step_info.size; // number of columns
+    size_t reorder_table_size = step_info.reorder_table_inplace_size;
+    uint32_t *reorder_table = step_info.reorder_table_inplace;
+
+    for (size_t i = 0; i < n; i++)
+    {
+        for (size_t j = 0; j < reorder_table_size; j++)
+        {
+            size_t ind1 = j + 1; // First one has been omitted!
+            size_t ind2 = reorder_table[j];
+
+            double r_temp = data_out[2*i*m + 2*ind1+0];
+            double c_temp = data_out[2*i*m + 2*ind1+1];
+            data_out[2*i*m + 2*ind1+0] = data_out[2*i*m + 2*ind2+0];
+            data_out[2*i*m + 2*ind1+1] = data_out[2*i*m + 2*ind2+1];
+            data_out[2*i*m + 2*ind2+0] = r_temp;
+            data_out[2*i*m + 2*ind2+1] = c_temp;
+        }
+    }
+}
+
 // Recalculate first column and add last column
 void fft_2d_complex_to_complex_packed_first_column_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
