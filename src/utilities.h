@@ -1,5 +1,5 @@
 /*
-*   Copyright Jouko Kalmari 2017
+*   Copyright Jouko Kalmari 2017-2018
 *
 *   This file is part of HHFFT.
 *

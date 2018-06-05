@@ -1,5 +1,5 @@
 /*
-*   Copyright Jouko Kalmari 2017
+*   Copyright Jouko Kalmari 2017-2018
 *
 *   This file is part of HHFFT.
 *
@@ -19,20 +19,6 @@
 
 #ifndef HHFFT_ARCHITECTURE
 #define HHFFT_ARCHITECTURE
-
-// These macros are used to determine what is supported in single source file
-// NOTE these are not same as HHFFT_COMPILED_WITH_AVX etc that tell what versions are compiled for the whole project
-#ifdef __SSE2__
-#define HHFFT_SSE2
-#endif
-
-#ifdef __AVX__
-#define HHFFT_AVX
-#endif
-
-#ifdef __AVX512F__
-#define HHFFT_AVX512F
-#endif
 
 namespace hhfft
 {

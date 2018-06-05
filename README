@@ -1,10 +1,10 @@
 HHFFT
 
-Copyright Jouko Kalmari 2017
+Copyright Jouko Kalmari 2017-2018
 
 0. Introduction
 
-HHFFT is library for performing Fast Fourier Transform (FFT) for 2D matrices that have dimension that are powers of two. HHFFT is still under devolpment 
+HHFFT is library for performing Fast Fourier Transform (FFT) for vectors and matrices. HHFFT is still under devolpment 
 
 
 1.0 License
@@ -14,7 +14,13 @@ HHFFT is released under GNU Lesser General Public License (LGPL) version 3. See 
 HHFFT is free software: you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version. HHFFT is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser General Public License for more details. You should have received a copy of the GNU Lesser General Public License along with HHFFT. If not, see <http://www.gnu.org/licenses/>.
 
 
-2.0 Installation and testing
+2.0 Description
+HHFFT is able to perform FFT an IFFT for real and complex inputs. Both vectors (1D) and matrices (2D) are supported. The dimensions must be composed of prime factors 2,3,5 or 7. In addition, real inputs must must have odd size.
+
+HHFFT has been optimized for sse2 and avx instruction sets. The correct instruction set is detected run-time.
+
+
+3.0 Installation and testing
 
 To compile the library start terminal go to the directory where HHFFT is uncompressed and type:
 
@@ -36,7 +42,7 @@ To test that the compilation has been succesful, run the test1
 on the last line of the output should read "Test passed!"
 
 
-3.0 Linking library to your project
+4.0 Linking library to your project
 
 To link with HHFFT use -lhhfft flag in compiler.
 If the library is not found when running the program try to call:
