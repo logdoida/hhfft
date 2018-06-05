@@ -50,8 +50,7 @@ template<bool scale> void fft_2d_complex_reorder_columns_in_place_d(const double
         }
     }
 
-    // Scaling needs to be done as a separate step as some data might be copied twice or zero times
-    // TODO this is not very efficient. Scaling could be done at some other step (first/last)
+    // Scaling needs to be done as a separate step as some data might be copied twice or zero times    
     // Scaling needs to be done as a separate step as some data might be copied twice or zero times        
     size_t n2 = step_info.stride;
     double k = step_info.norm_factor;
@@ -99,7 +98,6 @@ template<bool scale> void fft_2d_complex_reorder_columns_d(const double *data_in
     }
 }
 
-// TODO implement different versions (plain/sse2/avx) of this!
 template<bool scale> void fft_2d_complex_reorder_inplace_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     size_t n = step_info.stride;
@@ -159,7 +157,6 @@ template<bool scale> void fft_2d_complex_reorder_inplace_d(const double *data_in
     }
 }
 
-// TODO implement different versions (plain/sse2/avx) of this!
 template<bool scale> void fft_2d_complex_reorder_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     if (data_in == data_out)

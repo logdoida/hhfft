@@ -23,8 +23,6 @@
 #include <assert.h>
 #include <cmath>
 
-#include <iostream> // For testing
-
 #include "../common/hhfft_1d_complex_plain_common_d.h"
 
 using namespace hhfft;

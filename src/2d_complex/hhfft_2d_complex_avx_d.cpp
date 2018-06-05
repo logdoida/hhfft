@@ -23,8 +23,6 @@
 #include <assert.h>
 #include <cmath>
 
-#include <iostream> // TESTING
-
 #include "../common/hhfft_1d_complex_avx_common_d.h"
 
 using namespace hhfft;
@@ -71,7 +69,7 @@ template<size_t radix, bool forward>
             }
         }
 
-        //TODO
+        // NOTE slightly more performance could be gain by this
         //if (length_type is divisible by 2)
         //    return;
 

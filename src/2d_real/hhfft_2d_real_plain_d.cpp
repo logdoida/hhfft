@@ -23,8 +23,6 @@
 #include <assert.h>
 #include <cmath>
 
-#include <iostream> // TESTING
-
 #include "../common/hhfft_1d_complex_plain_common_d.h"
 
 using namespace hhfft;
@@ -156,9 +154,6 @@ template<bool forward>
             double x0_i = data_out[i*m + j + 1];
             double x1_r = data_out[i*m + (m-j) + 0];
             double x1_i = data_out[i*m + (m-j) + 1];
-
-            //std::cout << "x0_r = " << x0_r << ", x0_i = " << x0_i << std::endl;
-            //std::cout << "x1_r = " << x1_r << ", x1_i = " << x1_i << std::endl;
 
             double temp0 = -ss*(x0_r - x1_r) + sc*(x0_i + x1_i);
             double temp1 = -sc*(x0_r - x1_r) - ss*(x0_i + x1_i);

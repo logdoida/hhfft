@@ -22,8 +22,6 @@
 #include <assert.h>
 #include <cmath>
 
-#include <iostream> //TESTING
-
 using namespace hhfft;
 
 // Actual implementations are in different .cpp-files

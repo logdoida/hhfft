@@ -48,8 +48,7 @@ template<bool scale> inline __attribute__((always_inline)) void fft_1d_complex_r
         store(x_in1, data_out + 2*ind1);
     }
 
-    // Scaling needs to be done as a separate step as some data might be copied twice or zero times
-    // TODO this is not very efficient. Scaling could be done at some other step (first/last)    
+    // Scaling needs to be done as a separate step as some data might be copied twice or zero times    
     if (scale)
     {
         size_t n2 = step_info.radix*step_info.repeats;
@@ -261,7 +260,7 @@ template<size_t radix, SizeType stride_type, bool forward>
         }
     }
 
-    //TODO
+    // NOTE slightly more performance could be gain by this
     //if (strid_type is divisible by 2)
     //    return;
 
@@ -311,7 +310,7 @@ template<size_t radix, SizeType stride_type, bool forward>
             // Copy twiddle factors (squeeze)
             for (size_t j = 0; j < radix; j++)
             {                
-                // TODO aligned load can be used here if stride%2 == 0
+                // NOTE aligned load can be used here if stride%2 == 0
                 twiddle_temp[j] = load(twiddle_factors + 2*k + 2*j*stride);
             }
 
@@ -326,7 +325,7 @@ template<size_t radix, SizeType stride_type, bool forward>
         }
     }
 
-    //TODO
+    //NOTE slightly more performance could be gain by this
     //if (stride_type is divisible by 2)
     //    return;    
 

@@ -23,8 +23,6 @@
 #include <assert.h>
 #include <cmath>
 
-#include <iostream> //TESTING
-
 using namespace hhfft;
 
 // Shuffles one row into two rows

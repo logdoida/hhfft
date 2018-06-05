@@ -63,7 +63,7 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n, InstructionSet instruction_set)
 
     if (n == 1)
     {
-        // TODO add a support to small radices with a single pass dft
+        // TODO add a support for n = 1
         throw(std::runtime_error("HHFFT error: fft size must be larger than 1!"));
     }
 

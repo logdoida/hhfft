@@ -48,8 +48,7 @@ template<bool scale> inline void fft_1d_complex_reorder_in_place_sse2_d(const do
         store(x_in1, data_out + 2*ind1);
     }
 
-    // Scaling needs to be done as a separate step as some data might be copied twice or zero times
-    // TODO this is not very efficient. Scaling could be done at some other step (first/last)
+    // Scaling needs to be done as a separate step as some data might be copied twice or zero times    
     if (scale)
     {
         size_t n2 = step_info.radix*step_info.repeats;

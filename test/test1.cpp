@@ -23,24 +23,26 @@
 #include <vector>
 #include <random>
 
-#include "hhfft.h"
+#include "hhfft_2d_real_d.h"
 
 using namespace hhfft;
 
 int main()
 {    
-    // Print some information about how HHFFT works on your system
-    std::cout << "HHFFT supports AVX512f on your computer: " << (HHFFT_D::avx512f_support_on() ? "YES" : "NO") << std::endl;
-    std::cout << "HHFFT supports AVX on your computer: " << (HHFFT_D::avx_support_on() ? "YES" : "NO") << std::endl;
+    // Print some information about how HHFFT works on your system    
+    CPUID_info instructions = get_supported_instructions();
+
+    std::cout << "HHFFT supports SSE2 on your computer: " << (instructions.sse2 ? "YES" : "NO") << std::endl;
+    std::cout << "HHFFT supports AVX on your computer: " << (instructions.avx ? "YES" : "NO") << std::endl;
 
     size_t n = 16, m = 32;
 
-    HHFFT_D hhfft(n, m);
+    HHFFT_2D_REAL_D hhfft_2d_real(n, m);
 
-    // Initialize data
-    std::vector<double> x(n*m); // Real input
-    std::vector<double> x_fft((n+2)*m); // Output from fft
-    std::vector<double> x_ifft((n+2)*m); // Output from ifft
+    // Allocate data
+    double *x       = hhfft_2d_real.allocate_memory(); // Real input
+    double *x_fft   = hhfft_2d_real.allocate_memory(); // Real input
+    double *x_ifft  = hhfft_2d_real.allocate_memory(); // Real input
 
     // Initialize x with random numbers
     std::mt19937 gen(12345);
@@ -48,10 +50,10 @@ int main()
     for (size_t i = 0; i < n*m; i++) x[i] = dis(gen);
 
     // do FFT
-    hhfft.fft_real(x.data(), x_fft.data());
+    hhfft_2d_real.fft(x, x_fft);
 
     // do IFFT
-    hhfft.ifft_real(x_fft.data(), x_ifft.data());
+    hhfft_2d_real.ifft(x_fft, x_ifft);
 
     // Check that the result is correct
     double max_err = 0.0;
@@ -69,5 +71,10 @@ int main()
         std::cout << "Test fails!" << std::endl;
         return 1;
     }
+
+    // Free data
+    hhfft_2d_real.free_memory(x);
+    hhfft_2d_real.free_memory(x_fft);
+    hhfft_2d_real.free_memory(x_ifft);
 }
 

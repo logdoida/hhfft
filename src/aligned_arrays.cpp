@@ -21,7 +21,6 @@
 
 #include <stdlib.h>
 #include <algorithm>
-#include <iostream> // TESTING
 
 using namespace hhfft;
 

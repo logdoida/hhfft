@@ -21,8 +21,6 @@
 #include <array>
 #include <algorithm>
 #include <assert.h>
-#include <iostream> //TESTING
-
 
 // calculates cos and -sin for a = 2*M_PI*a/b
 inline void calculate_cos_sin(size_t a, size_t b, double &c, double &s)
@@ -163,7 +161,7 @@ std::vector<uint32_t> hhfft::calculate_reorder_table_in_place(const std::vector<
         indices[i] = i;
     }
 
-    // TODO this could be done more efficiently with the help of another table pointing where each index can be found
+    // NOTE this could be done more efficiently with the help of another table pointing where each index can be found
     for (size_t i = 1; i < N_tot - 1; i++)
     {
         size_t i2 = std::find(indices.begin(), indices.end(), reorder[i]) - indices.begin();
