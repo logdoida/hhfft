@@ -46,6 +46,15 @@ static const double coeff_radix_5[50] = {
     1, 0, -k3,  k4,  k1, -k2,  k1,  k2, -k3, -k4,
     1, 0,  k1,  k2, -k3,  k4, -k3, -k4,  k1, -k2};
 
+static const double coeff_radix_6[72] = {
+    1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
+    1, 0, 0.5, -k0, -0.5, -k0, -1, 0, -0.5, k0, 0.5, k0,
+    1, 0, -0.5, -k0, -0.5, k0, 1, 0, -0.5, -k0, -0.5, k0,
+    1, 0, -1, 0, 1, 0, -1, 0, 1, 0, -1, -2.3887e-15,
+    1, 0, -0.5, k0, -0.5, -k0, 1, 0, -0.5, k0, -0.5, -k0,
+    1, 0, 0.5, k0, -0.5, k0, -1, 0, -0.5, -k0, 0.5, -k0,
+};
+
 static const double k5 = cos(2.0*M_PI*1.0/7.0);
 static const double k6 = sin(2.0*M_PI*1.0/7.0);
 static const double k7 = -cos(2.0*M_PI*2.0/7.0);
@@ -89,6 +98,9 @@ template<size_t radix, bool forward> inline void multiply_coeff(const double *x_
     } else if (radix == 5)
     {
         coeff = coeff_radix_5;
+    } else if (radix == 6)
+    {
+        coeff = coeff_radix_6;
     } else if (radix == 7)
     {
         coeff = coeff_radix_7;
@@ -145,6 +157,7 @@ const double packing_table_4[2] = {-0.5, -0.5};
 const double packing_table_6[4] = {-0.5, -0.5, packing_a(2,6), packing_b(2,6)};
 const double packing_table_8[4] = {-0.5, -0.5, packing_a(2,8), packing_b(2,8)};
 const double packing_table_10[6] = {-0.5, -0.5, packing_a(2,10), packing_b(2,10), packing_a(4,10), packing_b(4,10)};
+const double packing_table_12[6] = {-0.5, -0.5, packing_a(2,12), packing_b(2,12), packing_a(4,12), packing_b(4,12)};
 const double packing_table_14[8] = {-0.5, -0.5, packing_a(2,14), packing_b(2,14), packing_a(4,14), packing_b(4,14), packing_a(6,14), packing_b(6,14)};
 const double packing_table_16[8] = {-0.5, -0.5, packing_a(2,16), packing_b(2,16), packing_a(4,16), packing_b(4,16), packing_a(6,16), packing_b(6,16)};
 
@@ -162,6 +175,8 @@ template<size_t n> const double *get_packing_table()
             return packing_table_8;
         case 10:
             return packing_table_10;
+        case 12:
+            return packing_table_12;
         case 14:
             return packing_table_14;
         case 16:

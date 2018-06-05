@@ -356,6 +356,9 @@ void set_radix_2d_colums_d(StepInfoD &step_info, hhfft::InstructionSet instructi
     } if (radix == 5)
     {
         set_stride_type_2d_columns_d<5>(step_info, instruction_set);
+    } if (radix == 6)
+    {
+        set_stride_type_2d_columns_d<6>(step_info, instruction_set);
     } if (radix == 7)
     {
         set_stride_type_2d_columns_d<7>(step_info, instruction_set);
@@ -475,6 +478,9 @@ void set_radix_2d_rows_d(StepInfoD &step_info, hhfft::InstructionSet instruction
     } if (radix == 5)
     {
         set_instruction_set_rows_2d_d<5>(step_info, instruction_set);
+    } if (radix == 6)
+    {
+        set_instruction_set_rows_2d_d<6>(step_info, instruction_set);
     } if (radix == 7)
     {
         set_instruction_set_rows_2d_d<7>(step_info, instruction_set);

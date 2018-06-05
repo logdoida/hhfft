@@ -246,6 +246,9 @@ void set_radix_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
     } if (radix == 5)
     {
         set_stride_type_d<5>(step_info, instruction_set);
+    } if (radix == 6)
+    {
+        set_stride_type_d<6>(step_info, instruction_set);
     } if (radix == 7)
     {
         set_stride_type_d<7>(step_info, instruction_set);
@@ -389,6 +392,9 @@ void hhfft::HHFFT_1D_Complex_D_set_small_function(StepInfoD &step_info, size_t n
     } else if(n == 5)
     {
         set_small_function_instruction_set_d<5>(step_info, instruction_set, forward);
+    } else if(n == 6)
+    {
+        set_small_function_instruction_set_d<6>(step_info, instruction_set, forward);
     } else if(n == 7)
     {
         set_small_function_instruction_set_d<7>(step_info, instruction_set, forward);

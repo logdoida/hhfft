@@ -299,6 +299,7 @@ template void fft_1d_real_1level_avx_d<4, false>(const double *data_in, double *
 template void fft_1d_real_1level_avx_d<6, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<8, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<10, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_avx_d<12, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<14, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<16, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<2, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
@@ -306,5 +307,6 @@ template void fft_1d_real_1level_avx_d<4, true>(const double *data_in, double *d
 template void fft_1d_real_1level_avx_d<6, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<8, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<10, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_avx_d<12, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<14, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<16, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

@@ -280,6 +280,8 @@ template void fft_2d_complex_column_twiddle_dit_plain_d<4, false>(const double *
 template void fft_2d_complex_column_twiddle_dit_plain_d<4, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_column_twiddle_dit_plain_d<5, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_column_twiddle_dit_plain_d<5, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_plain_d<6, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_plain_d<6, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_column_twiddle_dit_plain_d<7, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_column_twiddle_dit_plain_d<7, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_column_twiddle_dit_plain_d<8, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
@@ -301,6 +303,10 @@ template void fft_2d_complex_reorder2_plain_d<5, true, false>(const double *data
 template void fft_2d_complex_reorder2_plain_d<5, true, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_plain_d<5, false, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_plain_d<5, false, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_plain_d<6, true, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_plain_d<6, true, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_plain_d<6, false, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_plain_d<6, false, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_plain_d<7, true, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_plain_d<7, true, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_plain_d<7, false, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
@@ -314,5 +320,6 @@ template void fft_2d_complex_reorder2_rows_forward_plain_d<2>(const double *data
 template void fft_2d_complex_reorder2_rows_forward_plain_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_rows_forward_plain_d<4>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_rows_forward_plain_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_plain_d<6>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_rows_forward_plain_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_rows_forward_plain_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

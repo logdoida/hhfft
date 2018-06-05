@@ -222,9 +222,8 @@ std::vector<size_t> hhfft::calculate_factorization(size_t n)
     std::vector<size_t> factors;
 
     // This list is the supported factorizations in order of preference
-    std::array<size_t, 6> radices = {8,4,2,3,5,7};
-    //std::array<size_t, 5> radices = {4,2,3,5,7}; // for TESTING use 4 instead of 8
-    //std::array<size_t, 4> radices = {2,3,5,7}; // for TESTING use 2 instead of 4 or 8
+    std::array<size_t, 7> radices = {6,8,4,2,3,5,7};
+    //std::array<size_t, 4> radices = {2,3,5,7}; // for TESTING use 2 and 3 instead of 4 or 8 or 6
 
     while(n > 1)
     {

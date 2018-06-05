@@ -220,6 +220,9 @@ void set_radix_2d_real_d(StepInfoD &step_info, hhfft::InstructionSet instruction
     } if (radix == 5)
     {
         set_instruction_set_2d_real_d<5>(step_info, instruction_set);
+    } if (radix == 6)
+    {
+        set_instruction_set_2d_real_d<6>(step_info, instruction_set);
     } if (radix == 7)
     {
         set_instruction_set_2d_real_d<7>(step_info, instruction_set);

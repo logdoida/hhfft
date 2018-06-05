@@ -175,6 +175,9 @@ void hhfft::HHFFT_1D_Real_D_set_small_function(StepInfoD &step_info, size_t n, b
     } else if(n == 10)
     {
         set_small_function_instruction_set_d<10>(step_info, instruction_set, forward);
+    } else if(n == 12)
+    {
+        set_small_function_instruction_set_d<12>(step_info, instruction_set, forward);
     } else if(n == 14)
     {
         set_small_function_instruction_set_d<14>(step_info, instruction_set, forward);

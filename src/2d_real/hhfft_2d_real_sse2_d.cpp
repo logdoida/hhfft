@@ -238,5 +238,6 @@ template void fft_2d_real_reorder2_inverse_sse2_d<2>(const double *data_in, doub
 template void fft_2d_real_reorder2_inverse_sse2_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_sse2_d<4>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_sse2_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_inverse_sse2_d<6>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_sse2_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_sse2_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

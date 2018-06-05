@@ -240,6 +240,38 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         return;
     }
 
+    // Implementation for radix = 6
+    if (radix == 6)
+    {
+        const ComplexD2 k0 = broadcast64_D2(0.5);
+        ComplexD2 k1;
+        if (forward)
+            k1 = broadcast64_D2(0.5*sqrt(3.0));
+        else
+            k1 = broadcast64_D2(-0.5*sqrt(3.0));
+
+        ComplexD2 t6 = x_in[2] + x_in[4];
+        ComplexD2 t7 = x_in[1] + x_in[5];
+        ComplexD2 t8 = x_in[0] - k0*t6;
+        ComplexD2 t9 = x_in[3] - k0*t7;
+        ComplexD2 t10 = mul_i(k1*(x_in[4] - x_in[2]));
+        ComplexD2 t11 = mul_i(k1*(x_in[5] - x_in[1]));
+        ComplexD2 t0 = x_in[0] + t6;
+        ComplexD2 t1 = x_in[3] + t7;
+        ComplexD2 t2 = t8 + t10;
+        ComplexD2 t3 = t11 - t9;
+        ComplexD2 t4 = t8 - t10;
+        ComplexD2 t5 = t9 + t11;
+        x_out[0] = t0 + t1;
+        x_out[1] = t2 + t3;
+        x_out[2] = t4 + t5;
+        x_out[3] = t0 - t1;
+        x_out[4] = t2 - t3;
+        x_out[5] = t4 - t5;
+
+        return;
+    }
+
     // Implementation for radix = 8
     if (radix == 8)
     {
