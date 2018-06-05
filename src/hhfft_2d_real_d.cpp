@@ -368,9 +368,10 @@ void HHFFT_2D_REAL_D::ifft(const double *in, double *out)
     hhfft::AlignedVector<double> temp_data_in;
     if (in == out)
     {
-        temp_data_in.resize(2*((n/2)+1)*m);
-        std::copy(in, in + 2*((n/2)+1)*m, temp_data_in.data());
-        in = temp_data_in.data();
+        size_t nn = 2*n*((m/2)+1);
+        temp_data_in.resize(nn);
+        std::copy(in, in + nn, temp_data_in.data());
+        in = temp_data_in.data();        
     }
 
     // Allocate some extra space if needed    
