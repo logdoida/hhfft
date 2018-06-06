@@ -29,48 +29,48 @@
 typedef __m128d ComplexD;
 
 // Read complex numbers
-inline ComplexD load(double r, double i)
+inline ComplexD load_D(double r, double i)
 {
     return _mm_setr_pd(r,i);
 }
-inline const ComplexD load128(const double *v)
+inline const ComplexD load_D(const double *v)
 {
     return _mm_loadu_pd(v);
 }
-inline ComplexD broadcast64(double x)
+inline ComplexD broadcast64_D(double x)
 {
     return _mm_setr_pd(x,x);
 }
 
 // Store
-inline void store(ComplexD val, double &r, double &i)
+inline void store_D(ComplexD val, double &r, double &i)
 {
     double v[2];
     _mm_storeu_pd(v, val);
     r = val[0]; i = val[1];
 }
-inline void store(ComplexD val, double *v)
+inline void store_D(ComplexD val, double *v)
 {
     _mm_storeu_pd(v, val);
 }
 
 // Changes signs of [x1 x2] using [s1 s2]. s should contain only 0.0 and -0.0
 // NOTE this seems to actually be bit slower than plain multiplication? Compare!
-inline ComplexD change_sign(ComplexD x, ComplexD s)
+inline ComplexD change_sign_D(ComplexD x, ComplexD s)
 {
     return _mm_xor_pd(x,s);
 }
 
-const ComplexD const1_128 = load(0.0, -0.0);
-const ComplexD const2_128 = load(-0.0, 0.0);
+const ComplexD const1_128 = load_D(0.0, -0.0);
+const ComplexD const2_128 = load_D(-0.0, 0.0);
 
 // Multiplies complex numbers. If other of them changes more frequently, set it to b.
 #ifdef ENABLE_AVX
 // AVX-version is slightly more efficient
-inline ComplexD mul(ComplexD a, ComplexD b)
+inline ComplexD mul_D(ComplexD a, ComplexD b)
 {
     // If AVX-was supported...
-    ComplexD a1 = change_sign(a, const1_128);
+    ComplexD a1 = change_sign_D(a, const1_128);
     ComplexD a2 = _mm_permute_pd(a, 1); // Not supported in sse2
 
     ComplexD t1 = _mm_mul_pd(a1, b);
@@ -80,9 +80,9 @@ inline ComplexD mul(ComplexD a, ComplexD b)
     return y;
 }
 #else
-inline ComplexD mul(ComplexD a, ComplexD b)
+inline ComplexD mul_D(ComplexD a, ComplexD b)
 {
-    ComplexD a1 = change_sign(a, const1_128);
+    ComplexD a1 = change_sign_D(a, const1_128);
     ComplexD a2 = _mm_shuffle_pd(a, a, 1);
 
     ComplexD t1 = _mm_mul_pd(a1, b);
@@ -101,10 +101,10 @@ inline ComplexD mul(ComplexD a, ComplexD b)
 // Calculates a*conj(b)
 #ifdef ENABLE_AVX
 // AVX-version is slightly more efficient
-inline ComplexD mul_conj(ComplexD a, ComplexD b)
+inline ComplexD mul_conj_D(ComplexD a, ComplexD b)
 {
     // If AVX-was supported...
-    ComplexD a1 = change_sign(a, const2_128);
+    ComplexD a1 = change_sign_D(a, const2_128);
     ComplexD b1 = _mm_permute_pd(b, 1); // Not supported in sse2
 
     ComplexD t1 = _mm_mul_pd(a, b);
@@ -114,9 +114,9 @@ inline ComplexD mul_conj(ComplexD a, ComplexD b)
     return y;
 }
 #else
-inline ComplexD mul_conj(ComplexD a, ComplexD b)
+inline ComplexD mul_conj_D(ComplexD a, ComplexD b)
 {
-    ComplexD a1 = change_sign(a, const2_128);
+    ComplexD a1 = change_sign_D(a, const2_128);
     ComplexD b1 = _mm_shuffle_pd(b, b, 1);
 
     ComplexD t1 = _mm_mul_pd(a, b);
@@ -133,50 +133,42 @@ inline ComplexD mul_conj(ComplexD a, ComplexD b)
 
 
 // Multiplies two packed complex numbers. The forward means a*b, inverse a*conj(b)
-template<bool forward> inline ComplexD mul_w(ComplexD a, ComplexD b)
+template<bool forward> inline ComplexD mul_w_D(ComplexD a, ComplexD b)
 {
     if (forward)
     {
-        return mul(a,b);
+        return mul_D(a,b);
     } else
     {
-        return mul_conj(a,b);
+        return mul_conj_D(a,b);
     }
 }
 
 // Complex conjugate
-inline ComplexD conj(ComplexD x)
+inline ComplexD conj_D(ComplexD x)
 {
-    return change_sign(x,const1_128);
+    return change_sign_D(x,const1_128);
 }
 
 // Multiply with i
 #ifdef ENABLE_AVX
-inline ComplexD mul_i(ComplexD a)
+inline ComplexD mul_i_D(ComplexD a)
 {    
-    ComplexD a1 = change_sign(a, const1_128);
+    ComplexD a1 = change_sign_D(a, const1_128);
     ComplexD y = _mm_permute_pd(a1, 1);
     return y;
 }
 #else
-inline ComplexD mul_i(ComplexD a)
+inline ComplexD mul_i_D(ComplexD a)
 {
-    ComplexD a1 = change_sign(a, const1_128);
+    ComplexD a1 = change_sign_D(a, const1_128);
     ComplexD y = _mm_shuffle_pd(a1, a1, 1);
     return y;
 }
 #endif
 
-// For testing
-inline std::ostream& operator<<(std::ostream& os, const ComplexD &x)
-{
-    double v[2];
-    store(x, v);
-    os << v[0] << ", " << v[1];
-    return os;
-}
 
-template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_coeff(const ComplexD *x_in, ComplexD *x_out)
+template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_coeff_D(const ComplexD *x_in, ComplexD *x_out)
 {    
     // Implementation for radix = 2
     if (radix == 2)
@@ -189,11 +181,11 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     // Implementation for radix = 3
     if (radix == 3)
     {
-        const ComplexD k0 = broadcast64(0.5);
-        const ComplexD k1 = broadcast64(0.5*sqrt(3.0));
+        const ComplexD k0 = broadcast64_D(0.5);
+        const ComplexD k1 = broadcast64_D(0.5*sqrt(3.0));
         ComplexD t0 = x_in[1] + x_in[2];
         ComplexD t1 = x_in[0] - k0*t0;
-        ComplexD t2 = mul_i(k1*(x_in[1] - x_in[2]));
+        ComplexD t2 = mul_i_D(k1*(x_in[1] - x_in[2]));
 
         x_out[0] = x_in[0] + t0;
         if (forward)
@@ -216,9 +208,9 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         ComplexD t2 = x_in[0] - x_in[2];
         ComplexD t3;
         if (forward)
-            t3 = mul_i(x_in[3] - x_in[1]);
+            t3 = mul_i_D(x_in[3] - x_in[1]);
         else
-            t3 = mul_i(x_in[1] - x_in[3]);
+            t3 = mul_i_D(x_in[1] - x_in[3]);
 
         x_out[0] = t0 + t1;
         x_out[1] = t2 + t3;
@@ -230,10 +222,10 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     // Implementation for radix = 5
     if (radix == 5)
     {
-        const ComplexD k1 = broadcast64(cos(2.0*M_PI*1.0/5.0));
-        const ComplexD k2 = broadcast64(sin(2.0*M_PI*1.0/5.0));
-        const ComplexD k3 = broadcast64(-cos(2.0*M_PI*2.0/5.0));
-        const ComplexD k4 = broadcast64(sin(2.0*M_PI*2.0/5.0));
+        const ComplexD k1 = broadcast64_D(cos(2.0*M_PI*1.0/5.0));
+        const ComplexD k2 = broadcast64_D(sin(2.0*M_PI*1.0/5.0));
+        const ComplexD k3 = broadcast64_D(-cos(2.0*M_PI*2.0/5.0));
+        const ComplexD k4 = broadcast64_D(sin(2.0*M_PI*2.0/5.0));
 
         ComplexD t0 = x_in[1] + x_in[4];
         ComplexD t1 = x_in[2] + x_in[3];
@@ -241,8 +233,8 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         ComplexD t3 = x_in[2] - x_in[3];
         ComplexD t4 = x_in[0] + k1*t0 - k3*t1;
         ComplexD t5 = x_in[0] + k1*t1 - k3*t0;
-        ComplexD t6 = mul_i(k2*t2 + k4*t3);
-        ComplexD t7 = mul_i(k4*t2 - k2*t3);
+        ComplexD t6 = mul_i_D(k2*t2 + k4*t3);
+        ComplexD t7 = mul_i_D(k4*t2 - k2*t3);
 
         x_out[0] = x_in[0] + t0 + t1;
         if (forward)
@@ -265,19 +257,19 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     // Implementation for radix = 6
     if (radix == 6)
     {
-        const ComplexD k0 = broadcast64(0.5);
+        const ComplexD k0 = broadcast64_D(0.5);
         ComplexD k1;
         if (forward)
-            k1 = broadcast64(0.5*sqrt(3.0));
+            k1 = broadcast64_D(0.5*sqrt(3.0));
         else
-            k1 = broadcast64(-0.5*sqrt(3.0));
+            k1 = broadcast64_D(-0.5*sqrt(3.0));
 
         ComplexD t6 = x_in[2] + x_in[4];
         ComplexD t7 = x_in[1] + x_in[5];
         ComplexD t8 = x_in[0] - k0*t6;
         ComplexD t9 = x_in[3] - k0*t7;
-        ComplexD t10 = mul_i(k1*(x_in[4] - x_in[2]));
-        ComplexD t11 = mul_i(k1*(x_in[5] - x_in[1]));
+        ComplexD t10 = mul_i_D(k1*(x_in[4] - x_in[2]));
+        ComplexD t11 = mul_i_D(k1*(x_in[5] - x_in[1]));
         ComplexD t0 = x_in[0] + t6;
         ComplexD t1 = x_in[3] + t7;
         ComplexD t2 = t8 + t10;
@@ -297,7 +289,7 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     // Implementation for radix = 8
     if (radix == 8)
     {
-        const ComplexD k = broadcast64(sqrt(0.5));
+        const ComplexD k = broadcast64_D(sqrt(0.5));
 
         ComplexD t12 = x_in[1] + x_in[5];
         ComplexD t13 = x_in[3] + x_in[7];
@@ -307,16 +299,16 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         ComplexD t1 = t12 + t13;
         ComplexD t5;
         if (forward)
-            t5 = mul_i(t13 - t12);
+            t5 = mul_i_D(t13 - t12);
         else
-            t5 = mul_i(t12 - t13);
+            t5 = mul_i_D(t12 - t13);
 
         ComplexD t16 = k*(t14 + t15);
         ComplexD t17;
         if (forward)
-            t17 = k*mul_i(t15 - t14);
+            t17 = k*mul_i_D(t15 - t14);
         else
-            t17 = k*mul_i(t14 - t15);
+            t17 = k*mul_i_D(t14 - t15);
         ComplexD t3 = t16 + t17;
         ComplexD t7 = t17 - t16;
 
@@ -325,9 +317,9 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         ComplexD t10 = x_in[0] - x_in[4];
         ComplexD t11;
         if (forward)
-            t11 = mul_i(x_in[2] - x_in[6]);
+            t11 = mul_i_D(x_in[2] - x_in[6]);
         else
-            t11 = mul_i(x_in[6] - x_in[2]);
+            t11 = mul_i_D(x_in[6] - x_in[2]);
         ComplexD t0  = t8 + t9;
         ComplexD t4  = t8 - t9;
         ComplexD t2  = t10 - t11;
@@ -364,14 +356,14 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         x_out[i] = x_in[0]; // First column is always (1,0)
         for (size_t j = 1; j < radix; j++)
         {
-            ComplexD w = load128(coeff + 2*radix*i + 2*j);
+            ComplexD w = load_D(coeff + 2*radix*i + 2*j);
 
-            x_out[i] = x_out[i] + mul_w<forward>(x_in[j], w);
+            x_out[i] = x_out[i] + mul_w_D<forward>(x_in[j], w);
         }
     }   
 }
 
-template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_twiddle(const ComplexD *x_in, ComplexD *x_out, const ComplexD *twiddle_factors)
+template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_twiddle_D(const ComplexD *x_in, ComplexD *x_out, const ComplexD *twiddle_factors)
 {        
     // It is assumed that first twiddle factors are always (1 + 0i)
     x_out[0] = x_in[0];
@@ -382,6 +374,6 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         ComplexD x = x_in[j];
         ComplexD w = twiddle_factors[j];
 
-        x_out[j] = mul_w<forward>(x, w);
+        x_out[j] = mul_w_D<forward>(x, w);
     }
 }

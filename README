@@ -15,7 +15,7 @@ HHFFT is free software: you can redistribute it and/or modify it under the terms
 
 
 2.0 Description
-HHFFT is able to perform FFT an IFFT for real and complex inputs. Both vectors (1D) and matrices (2D) are supported. The dimensions must be composed of prime factors 2,3,5 or 7. In addition, real inputs must must have odd size.
+HHFFT is able to perform FFT an IFFT for real and complex inputs. Both vectors (1D) and matrices (2D) are supported. The dimensions must be composed of prime factors 2,3,5 or 7. In addition, real inputs must must have even size.
 
 HHFFT has been optimized for sse2 and avx instruction sets. The correct instruction set is detected run-time.
 

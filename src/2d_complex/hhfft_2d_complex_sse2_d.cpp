@@ -43,7 +43,7 @@ template<size_t radix, bool forward>
         // Copy twiddle factors
         for (size_t j = 0; j < radix; j++)
         {
-            twiddle_temp[j] = load128(twiddle_factors + 2*i + 2*j*stride);
+            twiddle_temp[j] = load_D(twiddle_factors + 2*i + 2*j*stride);
         }
 
         for (size_t k = 0; k < length; k++)
@@ -51,16 +51,16 @@ template<size_t radix, bool forward>
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                x_temp_in[j] = load128(data_in + 2*j*stride*length + 2*i*length + 2*k);
+                x_temp_in[j] = load_D(data_in + 2*j*stride*length + 2*i*length + 2*k);
             }
 
-            multiply_twiddle<radix,forward>(x_temp_in, x_temp_in, twiddle_temp);
-            multiply_coeff<radix,forward>(x_temp_in, x_temp_out);
+            multiply_twiddle_D<radix,forward>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_coeff_D<radix,forward>(x_temp_in, x_temp_out);
 
             // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                store(x_temp_out[j], data_out + 2*j*stride*length + 2*i*length + 2*k);
+                store_D(x_temp_out[j], data_out + 2*j*stride*length + 2*i*length + 2*k);
             }
         }
     }
@@ -104,10 +104,10 @@ template<size_t radix, bool forward, bool scale>
             size_t ind2 = reorder_table_rows[j];
 
             // Swap two doubles at a time
-            ComplexD x_in0 = load128(data_in + 2*i*m + 2*ind1);
-            ComplexD x_in1 = load128(data_in + 2*i*m + 2*ind2);
-            store(x_in0, data_out + 2*i*m + 2*ind2);
-            store(x_in1, data_out + 2*i*m + 2*ind1);
+            ComplexD x_in0 = load_D(data_in + 2*i*m + 2*ind1);
+            ComplexD x_in1 = load_D(data_in + 2*i*m + 2*ind2);
+            store_D(x_in0, data_out + 2*i*m + 2*ind2);
+            store_D(x_in1, data_out + 2*i*m + 2*ind1);
         }
     }
 
@@ -119,16 +119,16 @@ template<size_t radix, bool forward, bool scale>
 
         for (size_t j = 0; j < m; j++)
         {
-            ComplexD x_in0 = load128(data_out + 2*ind1*m + 2*j);
-            ComplexD x_in1 = load128(data_out + 2*ind2*m + 2*j);
-            store(x_in0, data_out + 2*ind2*m + 2*j);
-            store(x_in1, data_out + 2*ind1*m + 2*j);
+            ComplexD x_in0 = load_D(data_out + 2*ind1*m + 2*j);
+            ComplexD x_in1 = load_D(data_out + 2*ind2*m + 2*j);
+            store_D(x_in0, data_out + 2*ind2*m + 2*j);
+            store_D(x_in1, data_out + 2*ind1*m + 2*j);
         }
     }
 
     // Normal fft
     // Needed only in ifft. Equal to 1/N
-    ComplexD norm_factor = broadcast64(step_info.norm_factor);
+    ComplexD norm_factor = broadcast64_D(step_info.norm_factor);
     for (size_t i = 0; i < repeats; i++)
     {
         ComplexD x_temp_in[radix];
@@ -139,10 +139,10 @@ template<size_t radix, bool forward, bool scale>
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                x_temp_in[j] = load128(data_out + 2*i*radix*m + 2*j*m + 2*k);
+                x_temp_in[j] = load_D(data_out + 2*i*radix*m + 2*j*m + 2*k);
             }
 
-            multiply_coeff<radix,forward>(x_temp_in, x_temp_out);
+            multiply_coeff_D<radix,forward>(x_temp_in, x_temp_out);
             if (scale)
             {
                 for (size_t j = 0; j < radix; j++)
@@ -154,7 +154,7 @@ template<size_t radix, bool forward, bool scale>
             // Copy input data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                store(x_temp_out[j], data_out + 2*i*radix*m + 2*j*m + 2*k);
+                store_D(x_temp_out[j], data_out + 2*i*radix*m + 2*j*m + 2*k);
             }
         }
     }
@@ -176,7 +176,7 @@ template<size_t radix, bool forward, bool scale>
     size_t repeats = step_info.repeats;
 
     // Needed only in ifft. Equal to 1/N
-    ComplexD norm_factor = broadcast64(step_info.norm_factor);
+    ComplexD norm_factor = broadcast64_D(step_info.norm_factor);
 
     // FFT and reordering
     for (size_t i = 0; i < repeats; i++)
@@ -193,10 +193,10 @@ template<size_t radix, bool forward, bool scale>
             {
                 size_t j2 = reorder_table_columns[i*radix + j];
 
-                x_temp_in[j] = load128(data_in + 2*j2*m + 2*k2);
+                x_temp_in[j] = load_D(data_in + 2*j2*m + 2*k2);
             }
 
-            multiply_coeff<radix,forward>(x_temp_in, x_temp_out);
+            multiply_coeff_D<radix,forward>(x_temp_in, x_temp_out);
             if (scale)
             {
                 for (size_t j = 0; j < radix; j++)
@@ -208,7 +208,7 @@ template<size_t radix, bool forward, bool scale>
             // Copy input data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                store(x_temp_out[j], data_out + 2*i*radix*m + 2*j*m + 2*k);
+                store_D(x_temp_out[j], data_out + 2*i*radix*m + 2*j*m + 2*k);
             }
         }
     }
@@ -241,15 +241,15 @@ template<size_t radix> void fft_2d_complex_reorder2_rows_forward_sse2_d(const do
             {
                 size_t j2 = reorder_table_rows[j*radix + k];
 
-                x_temp_in[k] = load128(data_in + 2*i2*m + 2*j2);
+                x_temp_in[k] = load_D(data_in + 2*i2*m + 2*j2);
             }
 
-            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
             // Copy output data (un-squeeze)
             for (size_t k = 0; k < radix; k++)
             {
-                store(x_temp_out[k], data_out + 2*i*m + 2*j*radix + 2*k);
+                store_D(x_temp_out[k], data_out + 2*i*m + 2*j*radix + 2*k);
             }
         }
     }

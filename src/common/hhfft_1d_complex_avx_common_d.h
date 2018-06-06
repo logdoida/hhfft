@@ -28,18 +28,18 @@
 typedef __m256d ComplexD2;
 
 // Read two complex number
-inline ComplexD2 load(double r1, double i1, double r2, double i2)
+inline ComplexD2 load_D2(double r1, double i1, double r2, double i2)
 {
     //return _mm256_set_pd(i2,r2,i1,r1); // Why this order?
     return _mm256_setr_pd(r1,i1,r2,i2); // Reversed. Why this order?
 }
-inline const ComplexD2 load(const double *v)
+inline const ComplexD2 load_D2(const double *v)
 {
     return _mm256_loadu_pd(v);
 }
 
 // Loads same complex number twice: [r i] -> [r i r i]
-inline const ComplexD2 broadcast128(const double *v)
+inline const ComplexD2 broadcast128_D2(const double *v)
 {
     // TODO is this safe? Does alignment cause trouble?
     return _mm256_broadcast_pd((const __m128d*) v);
@@ -52,39 +52,39 @@ inline const ComplexD2 broadcast64_D2(const double x)
 }
 
 // Combines complex number from two separate memory locations: [a1 a2], [b1 b2] -> [a1 a2 b1 b2]
-inline const ComplexD2 load_two_128(const double *a, const double *b)
+inline const ComplexD2 load_two_128_D2(const double *a, const double *b)
 {
     // NOTE this should compile into two operations
-    const ComplexD2 aa = _mm256_castpd128_pd256(load128(a));
-    const ComplexD bb = load128(b);
+    const ComplexD2 aa = _mm256_castpd128_pd256(load_D(a));
+    const ComplexD bb = load_D(b);
     return _mm256_insertf128_pd (aa, bb, 1);
 }
 
 // Store a complex number
-inline void store(ComplexD2 val, double &r1, double &i1, double &r2, double &i2)
+inline void store_D2(ComplexD2 val, double &r1, double &i1, double &r2, double &i2)
 {
     double v[4];
     _mm256_storeu_pd(v, val);
     r1 = val[0]; i1 = val[1]; r2 = val[2]; i2 = val[3];
 }
-inline void store(ComplexD2 val, double *v)
+inline void store_D2(ComplexD2 val, double *v)
 {
     _mm256_storeu_pd(v, val);
 }
 
 // Divides the complex numbers to two separate memory locations: [a1 a2 b1 b2] -> [a1 a2], [b1 b2]
-inline void store_two_128(ComplexD2 val, double *a, double *b)
+inline void store_two_128_D2(ComplexD2 val, double *a, double *b)
 {
     // NOTE this should compile into three operations
     ComplexD aa = _mm256_castpd256_pd128(val);
-    store(aa, a);
+    store_D(aa, a);
     ComplexD bb = _mm256_extractf128_pd(val, 1);
-    store(bb, b);
+    store_D(bb, b);
 }
 
 // Changes signs of [x1 x2 x3 x4] using [s1 s2 s3 s4]. s should contain only 0.0 and -0.0
 // NOTE this seems to actually be bit slower than plain multiplication. Compare!
-inline ComplexD2 change_sign(ComplexD2 x, ComplexD2 s)
+inline ComplexD2 change_sign_D2(ComplexD2 x, ComplexD2 s)
 {
     return _mm256_xor_pd(x,s);
 }
@@ -93,7 +93,7 @@ inline ComplexD2 change_sign(ComplexD2 x, ComplexD2 s)
 //static const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
 
 // Multiplies two packed complex numbers.
-inline ComplexD2 __attribute__((always_inline)) mul(ComplexD2 a, ComplexD2 b)
+inline ComplexD2 __attribute__((always_inline)) mul_D2(ComplexD2 a, ComplexD2 b)
 {
     ComplexD2 a2 = _mm256_permute_pd(a, 1 + 4);
 
@@ -107,7 +107,7 @@ inline ComplexD2 __attribute__((always_inline)) mul(ComplexD2 a, ComplexD2 b)
 }
 
 // Multiplies two packed complex numbers. The forward means a*b, inverse a*conj(b)
-template<bool forward> inline __attribute__((always_inline)) ComplexD2 mul_w(ComplexD2 a, ComplexD2 b)
+template<bool forward> inline __attribute__((always_inline)) ComplexD2 mul_w_D2(ComplexD2 a, ComplexD2 b)
 {        
     if (forward)
     {
@@ -123,9 +123,9 @@ template<bool forward> inline __attribute__((always_inline)) ComplexD2 mul_w(Com
     } else
     {
         // NOTE this is slightly slower than forward version. Is there way to improve?
-        const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
+        const ComplexD2 const1 = load_D2(0.0, -0.0, 0.0, -0.0);
 
-        ComplexD2 b2 = _mm256_permute_pd(change_sign(b, const1), 1 + 4);
+        ComplexD2 b2 = _mm256_permute_pd(change_sign_D2(b, const1), 1 + 4);
 
         ComplexD2 t1 = _mm256_mul_pd(a, b);
         ComplexD2 t2 = _mm256_mul_pd(a, b2);
@@ -136,25 +136,16 @@ template<bool forward> inline __attribute__((always_inline)) ComplexD2 mul_w(Com
 }
 
 // Multiplies packed complex numbers with i
-inline __attribute__((always_inline)) ComplexD2 mul_i(ComplexD2 a)
+inline __attribute__((always_inline)) ComplexD2 mul_i_D2(ComplexD2 a)
 {    
-    const ComplexD2 const1 = load(0.0, -0.0, 0.0, -0.0);
+    const ComplexD2 const1 = load_D2(0.0, -0.0, 0.0, -0.0);
 
-    ComplexD2 a1 = change_sign(a, const1);
+    ComplexD2 a1 = change_sign_D2(a, const1);
     ComplexD2 y = _mm256_permute_pd(a1, 1 + 4);
     return y;
 }
 
-// For testing
-inline std::ostream& operator<<(std::ostream& os, const ComplexD2 &x)
-{
-    double v[4];
-    store(x, v);
-    os << v[0] << ", " << v[1] << ", " << v[2] << ", " << v[3];
-    return os;
-}
-
-template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_coeff(const ComplexD2 *x_in, ComplexD2 *x_out)
+template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_coeff_D2(const ComplexD2 *x_in, ComplexD2 *x_out)
 {
     // Implementation for radix = 2
     if (radix == 2)
@@ -171,7 +162,7 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         const ComplexD2 k1 = broadcast64_D2(0.5*sqrt(3.0));
         ComplexD2 t0 = x_in[1] + x_in[2];
         ComplexD2 t1 = x_in[0] - k0*t0;
-        ComplexD2 t2 = mul_i(k1*(x_in[1] - x_in[2]));
+        ComplexD2 t2 = mul_i_D2(k1*(x_in[1] - x_in[2]));
 
         x_out[0] = x_in[0] + t0;
         if (forward)
@@ -194,9 +185,9 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         ComplexD2 t2 = x_in[0] - x_in[2];
         ComplexD2 t3;
         if (forward)
-            t3 = mul_i(x_in[3] - x_in[1]);
+            t3 = mul_i_D2(x_in[3] - x_in[1]);
         else
-            t3 = mul_i(x_in[1] - x_in[3]);        
+            t3 = mul_i_D2(x_in[1] - x_in[3]);
 
         x_out[0] = t0 + t1;
         x_out[1] = t2 + t3;
@@ -219,8 +210,8 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         ComplexD2 t3 = x_in[2] - x_in[3];
         ComplexD2 t4 = x_in[0] + k1*t0 - k3*t1;
         ComplexD2 t5 = x_in[0] + k1*t1 - k3*t0;
-        ComplexD2 t6 = mul_i(k2*t2 + k4*t3);
-        ComplexD2 t7 = mul_i(k4*t2 - k2*t3);
+        ComplexD2 t6 = mul_i_D2(k2*t2 + k4*t3);
+        ComplexD2 t7 = mul_i_D2(k4*t2 - k2*t3);
 
         x_out[0] = x_in[0] + t0 + t1;
         if (forward)
@@ -254,8 +245,8 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         ComplexD2 t7 = x_in[1] + x_in[5];
         ComplexD2 t8 = x_in[0] - k0*t6;
         ComplexD2 t9 = x_in[3] - k0*t7;
-        ComplexD2 t10 = mul_i(k1*(x_in[4] - x_in[2]));
-        ComplexD2 t11 = mul_i(k1*(x_in[5] - x_in[1]));
+        ComplexD2 t10 = mul_i_D2(k1*(x_in[4] - x_in[2]));
+        ComplexD2 t11 = mul_i_D2(k1*(x_in[5] - x_in[1]));
         ComplexD2 t0 = x_in[0] + t6;
         ComplexD2 t1 = x_in[3] + t7;
         ComplexD2 t2 = t8 + t10;
@@ -285,16 +276,16 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         ComplexD2 t1 = t12 + t13;
         ComplexD2 t5;
         if (forward)
-            t5 = mul_i(t13 - t12);
+            t5 = mul_i_D2(t13 - t12);
         else
-            t5 = mul_i(t12 - t13);
+            t5 = mul_i_D2(t12 - t13);
 
         ComplexD2 t16 = k*(t14 + t15);
         ComplexD2 t17;
         if (forward)
-            t17 = k*mul_i(t15 - t14);
+            t17 = k*mul_i_D2(t15 - t14);
         else
-            t17 = k*mul_i(t14 - t15);
+            t17 = k*mul_i_D2(t14 - t15);
         ComplexD2 t3 = t16 + t17;
         ComplexD2 t7 = t17 - t16;
 
@@ -303,9 +294,9 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         ComplexD2 t10 = x_in[0] - x_in[4];
         ComplexD2 t11;
         if (forward)
-            t11 = mul_i(x_in[2] - x_in[6]);
+            t11 = mul_i_D2(x_in[2] - x_in[6]);
         else
-            t11 = mul_i(x_in[6] - x_in[2]);
+            t11 = mul_i_D2(x_in[6] - x_in[2]);
         ComplexD2 t0  = t8 + t9;
         ComplexD2 t4  = t8 - t9;
         ComplexD2 t2  = t10 - t11;
@@ -342,15 +333,15 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         x_out[i] = x_in[0]; // First column is always (1,0)
         for (size_t j = 1; j < radix; j++)
         {
-            ComplexD2 w = broadcast128(coeff + 2*radix*i + 2*j);
+            ComplexD2 w = broadcast128_D2(coeff + 2*radix*i + 2*j);
 
-            x_out[i] = x_out[i] + mul_w<forward>(x_in[j], w);
+            x_out[i] = x_out[i] + mul_w_D2<forward>(x_in[j], w);
         }
     }
 }
 
 
-template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_twiddle(const ComplexD2 *x_in, ComplexD2 *x_out, const ComplexD2 *twiddle_factors)
+template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_twiddle_D2(const ComplexD2 *x_in, ComplexD2 *x_out, const ComplexD2 *twiddle_factors)
 {
     // It is assumed that first twiddle factors are always (1 + 0i)
     x_out[0] = x_in[0];
@@ -361,7 +352,7 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         ComplexD2 x = x_in[j];
         ComplexD2 w = twiddle_factors[j];
 
-        x_out[j] = mul_w<forward>(x, w);
+        x_out[j] = mul_w_D2<forward>(x, w);
     }
 }
 
@@ -376,7 +367,7 @@ typedef struct
 
 
 // Read four complex numbers and reorder them to real and complex parts
-inline const ComplexD4S load512s(const double *x)
+inline const ComplexD4S load512s_D4S(const double *x)
 {
     __m256d x0 = _mm256_loadu_pd(x);
     __m256d x1 = _mm256_loadu_pd(x + 4);
@@ -389,7 +380,7 @@ inline const ComplexD4S load512s(const double *x)
 }
 
 // Store four complex numbers
-inline void store(ComplexD4S val, double *v)
+inline void store_D4S(ComplexD4S val, double *v)
 {
     // Reorder data back to correct form
     __m256d x0 = _mm256_unpacklo_pd(val.real, val.imag);
@@ -400,7 +391,7 @@ inline void store(ComplexD4S val, double *v)
 }
 
 // Multiplies four complex numbers.
-inline ComplexD4S mul(ComplexD4S a, ComplexD4S b)
+inline ComplexD4S mul_D4S(ComplexD4S a, ComplexD4S b)
 {
     ComplexD4S out;
     out.real = a.real * b.real - a.imag*b.imag;
@@ -410,7 +401,7 @@ inline ComplexD4S mul(ComplexD4S a, ComplexD4S b)
 }
 
 // Multiplies four complex numbers. Forward means a*b, inverse a*conj(b)
-template<bool forward> inline void mul_w(ComplexD4S a, ComplexD4S b)
+template<bool forward> inline void mul_w_D4S(ComplexD4S a, ComplexD4S b)
 {
     ComplexD4S out;
 

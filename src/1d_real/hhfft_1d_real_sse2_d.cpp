@@ -52,30 +52,30 @@ template<bool forward>
 
     if (n%4 == 0)
     {
-        ComplexD x_in = load128(data_in + n/2);       
-        ComplexD x_out = change_sign(x_in, const1_128);
-        store(x_out, data_out + n/2);
+        ComplexD x_in = load_D(data_in + n/2);
+        ComplexD x_out = change_sign_D(x_in, const1_128);
+        store_D(x_out, data_out + n/2);
     }
 
     for (size_t i = 2; i < n/2; i+=2)
     {
-        ComplexD sssc = load128(packing_table + i);
-        ComplexD x0_in = load128(data_in + i);
-        ComplexD x1_in = load128(data_in + n - i);
+        ComplexD sssc = load_D(packing_table + i);
+        ComplexD x0_in = load_D(data_in + i);
+        ComplexD x1_in = load_D(data_in + n - i);
 
         if(!forward)
         {
-            sssc = change_sign(sssc, const1_128);
+            sssc = change_sign_D(sssc, const1_128);
         }
 
-        ComplexD temp0 = x0_in + change_sign(x1_in, const2_128);
-        ComplexD temp1 = mul(sssc, temp0);
+        ComplexD temp0 = x0_in + change_sign_D(x1_in, const2_128);
+        ComplexD temp1 = mul_D(sssc, temp0);
 
         ComplexD x0_out = temp1 + x0_in;
-        ComplexD x1_out = change_sign(temp1, const2_128) + x1_in;
+        ComplexD x1_out = change_sign_D(temp1, const2_128) + x1_in;
 
-        store(x0_out, data_out + i);
-        store(x1_out, data_out + n - i);
+        store_D(x0_out, data_out + i);
+        store_D(x1_out, data_out + n - i);
     }
 }
 
@@ -96,7 +96,7 @@ void fft_1d_complex_to_complex_packed_ifft_sse2_d(const double *data_in, double 
     size_t n = step_info.repeats; // 2*n = number of original real numbers
     uint32_t *reorder_table_inverse = step_info.reorder_table;
     double k = step_info.norm_factor;
-    ComplexD k128 = broadcast64(k);
+    ComplexD k128 = broadcast64_D(k);
 
     double x_r = data_in[0];
     double x_i = data_in[2*n];
@@ -107,29 +107,29 @@ void fft_1d_complex_to_complex_packed_ifft_sse2_d(const double *data_in, double 
     {
         size_t i = reorder_table_inverse[n/2];
 
-        ComplexD x_in = load128(data_in + n);
-        ComplexD x_out = k128*change_sign(x_in, const1_128);
-        store(x_out, data_out + 2*i);
+        ComplexD x_in = load_D(data_in + n);
+        ComplexD x_out = k128*change_sign_D(x_in, const1_128);
+        store_D(x_out, data_out + 2*i);
     }
 
     for (size_t i = 1; i < (n+1)/2; i++)
     {
-        ComplexD sssc = load128(packing_table + 2*i);
-        sssc = change_sign(sssc, const1_128);
-        ComplexD x0_in = k128*load128(data_in + 2*i);
-        ComplexD x1_in = k128*load128(data_in + 2*(n - i));
+        ComplexD sssc = load_D(packing_table + 2*i);
+        sssc = change_sign_D(sssc, const1_128);
+        ComplexD x0_in = k128*load_D(data_in + 2*i);
+        ComplexD x1_in = k128*load_D(data_in + 2*(n - i));
 
-        ComplexD temp0 = x0_in + change_sign(x1_in, const2_128);
-        ComplexD temp1 = mul(sssc, temp0);
+        ComplexD temp0 = x0_in + change_sign_D(x1_in, const2_128);
+        ComplexD temp1 = mul_D(sssc, temp0);
 
         ComplexD x0_out = temp1 + x0_in;
-        ComplexD x1_out = change_sign(temp1, const2_128) + x1_in;
+        ComplexD x1_out = change_sign_D(temp1, const2_128) + x1_in;
 
         size_t i2 = reorder_table_inverse[i];
         size_t i3 = reorder_table_inverse[n - i];
 
-        store(x0_out, data_out + 2*i2);
-        store(x1_out, data_out + 2*i3);
+        store_D(x0_out, data_out + 2*i2);
+        store_D(x1_out, data_out + 2*i3);
     }
 }
 
@@ -141,14 +141,14 @@ template<bool forward, size_t n> void fft_1d_complex_to_complex_packed_1level_ss
     // Input/output way
     if (forward)
     {
-        ComplexD zeros = load(0,0);
+        ComplexD zeros = load_D(0,0);
         ComplexD t0 = _mm_unpacklo_pd(x[0], zeros);
         ComplexD t1 = _mm_unpackhi_pd(x[0], zeros);
         x[0] = t0 + t1;
         x[n/2] = t0 - t1;
     } else
     {
-        ComplexD half = load(0.5,0.5);
+        ComplexD half = load_D(0.5,0.5);
         ComplexD t0 = x[0] + x[n/2];
         ComplexD t1 = x[0] - x[n/2];
         ComplexD t3 = _mm_unpacklo_pd(t0, t1);
@@ -157,32 +157,32 @@ template<bool forward, size_t n> void fft_1d_complex_to_complex_packed_1level_ss
 
     if (n%4 == 0)
     {
-        x[n/4] = change_sign(x[n/4], const1_128);
+        x[n/4] = change_sign_D(x[n/4], const1_128);
     }
 
     for (size_t i = 2; i < n/2; i+=2)
     {
-        ComplexD sssc = load128(packing_table + i);
+        ComplexD sssc = load_D(packing_table + i);
         ComplexD x0_in = x[i/2];
         ComplexD x1_in = x[n/2 - i/2];
 
         if(!forward)
         {
-            sssc = change_sign(sssc, const1_128);
+            sssc = change_sign_D(sssc, const1_128);
         }
 
-        ComplexD temp0 = x0_in + change_sign(x1_in, const2_128);
-        ComplexD temp1 = mul(sssc, temp0);
+        ComplexD temp0 = x0_in + change_sign_D(x1_in, const2_128);
+        ComplexD temp1 = mul_D(sssc, temp0);
 
         x[i/2] = temp1 + x0_in;
-        x[n/2 - i/2] = change_sign(temp1, const2_128) + x1_in;
+        x[n/2 - i/2] = change_sign_D(temp1, const2_128) + x1_in;
     }
 }
 
 // fft for small sizes (2,4,6,8,10,14,16) where only one level is needed
 template<size_t n, bool forward> void fft_1d_real_1level_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {    
-    ComplexD k = broadcast64(2.0/n);
+    ComplexD k = broadcast64_D(2.0/n);
 
     if (n == 1)
     {
@@ -200,11 +200,11 @@ template<size_t n, bool forward> void fft_1d_real_1level_sse2_d(const double *da
             // Copy input data
             for (size_t i = 0; i < n/2; i++)
             {
-                x_temp_in[i] = load128(data_in + 2*i);
+                x_temp_in[i] = load_D(data_in + 2*i);
             }
 
             // Multiply with coefficients
-            multiply_coeff<n/2,forward>(x_temp_in, x_temp_out);
+            multiply_coeff_D<n/2,forward>(x_temp_in, x_temp_out);
 
             // Make the conversion
             fft_1d_complex_to_complex_packed_1level_sse2_d<forward,n>(x_temp_out);
@@ -212,26 +212,26 @@ template<size_t n, bool forward> void fft_1d_real_1level_sse2_d(const double *da
             // Copy output data
             for (size_t i = 0; i < n/2 + 1; i++)
             {
-                store(x_temp_out[i], data_out + 2*i);
+                store_D(x_temp_out[i], data_out + 2*i);
             }
         } else
         {
             // Copy input data
             for (size_t i = 0; i < n/2 + 1; i++)
             {
-                x_temp_in[i] = load128(data_in + 2*i);
+                x_temp_in[i] = load_D(data_in + 2*i);
             }
 
             // Make the conversion
             fft_1d_complex_to_complex_packed_1level_sse2_d<forward,n>(x_temp_in);
 
             // Multiply with coefficients
-            multiply_coeff<n/2,forward>(x_temp_in, x_temp_out);
+            multiply_coeff_D<n/2,forward>(x_temp_in, x_temp_out);
 
             // Copy output data
             for (size_t i = 0; i < n/2; i++)
             {
-                store(k*x_temp_out[i], data_out + 2*i);
+                store_D(k*x_temp_out[i], data_out + 2*i);
             }
         }
     }
