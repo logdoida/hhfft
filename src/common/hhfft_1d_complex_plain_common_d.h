@@ -149,6 +149,57 @@ template<size_t radix, bool forward> inline void multiply_twiddle(const double *
     }
 }
 
+template<size_t radix> void multiply_coeff_real_odd_forward(const double *x_in, double *x_out)
+{
+    // Use the normal function
+    double x_temp[2*radix];
+    multiply_coeff<radix,true>(x_in, x_temp);
+
+    // And then apply some reordering and conjugation
+    if (radix == 3)
+    {
+        x_out[0] = x_temp[0];
+        x_out[1] = x_temp[1];
+        x_out[2] = x_temp[4];
+        x_out[3] = -x_temp[5];
+        x_out[4] = x_temp[2];
+        x_out[5] = x_temp[3];
+    }
+
+    if (radix == 5)
+    {
+        x_out[0] = x_temp[0];
+        x_out[1] = x_temp[1];
+        x_out[2] = x_temp[8];
+        x_out[3] = -x_temp[9];
+        x_out[4] = x_temp[2];
+        x_out[5] = x_temp[3];
+        x_out[6] = x_temp[6];
+        x_out[7] = -x_temp[7];
+        x_out[8] = x_temp[4];
+        x_out[9] = x_temp[5];
+    }
+
+    if (radix == 7)
+    {
+        x_out[0]  = x_temp[0];
+        x_out[1]  = x_temp[1];
+        x_out[2]  = x_temp[12];
+        x_out[3]  = -x_temp[13];
+        x_out[4]  = x_temp[2];
+        x_out[5]  = x_temp[3];
+        x_out[6]  = x_temp[10];
+        x_out[7]  = -x_temp[11];
+        x_out[8]  = x_temp[4];
+        x_out[9]  = x_temp[5];
+        x_out[10] = x_temp[8];
+        x_out[11] = -x_temp[9];
+        x_out[12] = x_temp[6];
+        x_out[13] = x_temp[7];
+    }
+}
+
+
 // Packing tables to be used on small problems
 #define packing_a(i,n) (0.5*cos(2.0*M_PI*(2*i+n)/(4*n))-0.5)
 #define packing_b(i,n) (-0.5*sin(2.0*M_PI*(2*i+n)/(4*n)))

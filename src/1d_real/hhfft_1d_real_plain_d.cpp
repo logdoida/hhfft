@@ -25,6 +25,8 @@
 
 #include "../common/hhfft_1d_complex_plain_common_d.h"
 
+#include <iostream> // TESTING
+
 using namespace hhfft;
 
 template<bool forward>
@@ -149,7 +151,263 @@ void fft_1d_complex_to_complex_packed_ifft_plain_d(const double *data_in, double
     }
 }
 
+// This function is used on the first level of odd real fft
+template<size_t radix> void fft_1d_real_first_level_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t repeats = step_info.repeats;
+    uint32_t *reorder_table = step_info.reorder_table;
+
+    double x_temp_in[2*radix];
+    double x_temp_out[2*radix];
+    bool dir_out = true;
+    for (size_t i = 0; i < repeats; i++)
+    {
+        // Copy input data taking reordering into account
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t ind = reorder_table[i*radix + j];
+            x_temp_in[2*j + 0] = data_in[ind];
+            x_temp_in[2*j + 1] = 0;
+        }
+
+        //std::cout << "x_temp_in = " << x_temp_in[0] << " " << x_temp_in[1] << " " << x_temp_in[2] << " " << x_temp_in[3] << " " << x_temp_in[4] << " " << x_temp_in[5] << std::endl;
+
+        // Multiply with coefficients
+        multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+
+        //std::cout << "x_temp_out = " << x_temp_out[0] << " " << x_temp_out[1] << " " << x_temp_out[2] << " " << x_temp_out[3] << " " << x_temp_out[4] << " " << x_temp_out[5] << std::endl;
+
+        // Save only about half of the output
+        // First/ last one is real
+        if (dir_out) // direction normal
+        {
+            data_out[i*radix + 0] = x_temp_out[0];
+
+            for (size_t j = 1; j < radix/2 + 1; j++)
+            {
+                data_out[i*radix + 2*j - 1] = x_temp_out[2*j + 0];
+                data_out[i*radix + 2*j + 0] = x_temp_out[2*j + 1];
+            }
+        } else // direction inverted
+        {
+            data_out[i*radix + radix - 1] = x_temp_out[0];
+
+            for (size_t j = 1; j < radix/2 + 1; j++)
+            {
+                data_out[i*radix + radix - 2*j - 1] = x_temp_out[2*j + 0];
+                data_out[i*radix + radix - 2*j + 0] = x_temp_out[2*j + 1];
+            }
+        }
+        dir_out = !dir_out;
+    }
+}
+
+// TODO move this to header
+/*
+template<size_t radix> void multiply_coeff_real_forward(const double *x_in, double *x_out)
+{
+    if (radix == 3)
+    {
+        double k1 = 0.5;
+        double k2 = 0.5*sqrt(3);
+        x_out[0] = x_in[0] + x_in[2] + x_in[4];
+        x_out[1] = x_in[1] + x_in[3] + x_in[5];
+        x_out[2] = x_in[0] - k1*x_in[2] - k2*x_in[3] - k1*x_in[4] + k2*x_in[5];
+        x_out[3] = -x_in[1] - k2*x_in[2] + k1*x_in[3] + k2*x_in[4] + k1*x_in[5];
+        x_out[4] = x_in[0] - k1*x_in[2] + k2*x_in[3] - k1*x_in[4] - k2*x_in[5];
+        x_out[5] = x_in[1] - k2*x_in[2] - k1*x_in[3] + k2*x_in[4] - k1*x_in[5];
+    }
+
+    if (radix == 5)
+    {
+        double k1 = cos(2*M_PI*1.0/5.0);
+        double k2 = sin(2*M_PI*1.0/5.0);
+        double k3 =-cos(2*M_PI*2.0/5.0);
+        double k4 = sin(2*M_PI*2.0/5.0);
+
+        x_out[0] = x_in[0] + x_in[2] + x_in[4] + x_in[6] + x_in[8];
+        x_out[1] = x_in[1] + x_in[3] + x_in[5] + x_in[7] + x_in[9];
+        x_out[2] = x_in[0] + k1*x_in[2] - k2*x_in[3] - k3*x_in[4] - k4*x_in[5] - k3*x_in[6] + k4*x_in[7] + k1*x_in[8] + k2*x_in[9];
+        x_out[3] = -(x_in[1] + k2*x_in[2] + k1*x_in[3] + k4*x_in[4] - k3*x_in[5] - k4*x_in[6] - k3*x_in[7] - k2*x_in[8] + k1*x_in[9]);
+        x_out[4] = x_in[0] + k1*x_in[2] + k2*x_in[3] - k3*x_in[4] + k4*x_in[5] - k3*x_in[6] - k4*x_in[7] + k1*x_in[8] - k2*x_in[9];
+        x_out[5] = x_in[1] - k2*x_in[2] + k1*x_in[3] - k4*x_in[4] - k3*x_in[5] + k4*x_in[6] - k3*x_in[7] + k2*x_in[8] + k1*x_in[9];
+        x_out[6] = x_in[0] - k3*x_in[2] - k4*x_in[3] + k1*x_in[4] + k2*x_in[5] + k1*x_in[6] - k2*x_in[7] - k3*x_in[8] + k4*x_in[9];
+        x_out[7] = -(x_in[1] + k4*x_in[2] - k3*x_in[3] - k2*x_in[4] + k1*x_in[5] + k2*x_in[6] + k1*x_in[7] - k4*x_in[8] - k3*x_in[9]);
+        x_out[8] = x_in[0] - k3*x_in[2] + k4*x_in[3] + k1*x_in[4] - k2*x_in[5] + k1*x_in[6] + k2*x_in[7] - k3*x_in[8] - k4*x_in[9];
+        x_out[9] = x_in[1] - k4*x_in[2] - k3*x_in[3] + k2*x_in[4] + k1*x_in[5] - k2*x_in[6] + k1*x_in[7] + k4*x_in[8] - k3*x_in[9];
+    }
+
+    if (radix == 7)
+    {
+        double k1 = cos(2*M_PI*1.0/7.0);
+        double k2 = sin(2*M_PI*1.0/7.0);
+        double k3 =-cos(2*M_PI*2.0/7.0);
+        double k4 = sin(2*M_PI*2.0/7.0);
+        double k5 =-cos(2*M_PI*3.0/7.0);
+        double k6 = sin(2*M_PI*3.0/7.0);
+        x_out[0] = x_in[0] + x_in[2] + x_in[4] + x_in[6] + x_in[8] + x_in[10] + x_in[12];
+        x_out[1] = x_in[1] + x_in[3] + x_in[5] + x_in[7] + x_in[9] + x_in[11] + x_in[13];
+        x_out[2] = x_in[0] + k1*x_in[2] - k2*x_in[3] - k3*x_in[4] - k4*x_in[5] - k5*x_in[6] - k6*x_in[7] - k5*x_in[8] + k6*x_in[9] - k3*x_in[10] + k4*x_in[11] + k1*x_in[12] + k2*x_in[13];
+        x_out[3] = -(x_in[1] + k2*x_in[2] + k1*x_in[3] + k4*x_in[4] - k3*x_in[5] + k6*x_in[6] - k5*x_in[7] - k6*x_in[8] - k5*x_in[9] - k4*x_in[10] - k3*x_in[11] - k2*x_in[12] + k1*x_in[13]);
+        x_out[4] = x_in[0] + k1*x_in[2] + k2*x_in[3] - k3*x_in[4] + k4*x_in[5] - k5*x_in[6] + k6*x_in[7] - k5*x_in[8] - k6*x_in[9] - k3*x_in[10] - k4*x_in[11] + k1*x_in[12] - k2*x_in[13];
+        x_out[5] = x_in[1] - k2*x_in[2] + k1*x_in[3] - k4*x_in[4] - k3*x_in[5] - k6*x_in[6] - k5*x_in[7] + k6*x_in[8] - k5*x_in[9] + k4*x_in[10] - k3*x_in[11] + k2*x_in[12] + k1*x_in[13];
+        x_out[6] = x_in[0] - k3*x_in[2] - k4*x_in[3] - k5*x_in[4] + k6*x_in[5] + k1*x_in[6] + k2*x_in[7] + k1*x_in[8] - k2*x_in[9] - k5*x_in[10] - k6*x_in[11] - k3*x_in[12] + k4*x_in[13];
+        x_out[7] = -(x_in[1] + k4*x_in[2] - k3*x_in[3] - k6*x_in[4] - k5*x_in[5] - k2*x_in[6] + k1*x_in[7] + k2*x_in[8] + k1*x_in[9] + k6*x_in[10] - k5*x_in[11] - k4*x_in[12] - k3*x_in[13]);
+        x_out[8] = x_in[0] - k3*x_in[2] + k4*x_in[3] - k5*x_in[4] - k6*x_in[5] + k1*x_in[6] - k2*x_in[7] + k1*x_in[8] + k2*x_in[9] - k5*x_in[10] + k6*x_in[11] - k3*x_in[12] - k4*x_in[13];
+        x_out[9] = x_in[1] - k4*x_in[2] - k3*x_in[3] + k6*x_in[4] - k5*x_in[5] + k2*x_in[6] + k1*x_in[7] - k2*x_in[8] + k1*x_in[9] - k6*x_in[10] - k5*x_in[11] + k4*x_in[12] - k3*x_in[13];
+        x_out[10] = x_in[0] - k5*x_in[2] - k6*x_in[3] + k1*x_in[4] + k2*x_in[5] - k3*x_in[6] - k4*x_in[7] - k3*x_in[8] + k4*x_in[9] + k1*x_in[10] - k2*x_in[11] - k5*x_in[12] + k6*x_in[13];
+        x_out[11] = -(x_in[1] + k6*x_in[2] - k5*x_in[3] - k2*x_in[4] + k1*x_in[5] + k4*x_in[6] - k3*x_in[7] - k4*x_in[8] - k3*x_in[9] + k2*x_in[10] + k1*x_in[11] - k6*x_in[12] - k5*x_in[13]);
+        x_out[12] = x_in[0] - k5*x_in[2] + k6*x_in[3] + k1*x_in[4] - k2*x_in[5] - k3*x_in[6] + k4*x_in[7] - k3*x_in[8] - k4*x_in[9] + k1*x_in[10] + k2*x_in[11] - k5*x_in[12] - k6*x_in[13];
+        x_out[13] = x_in[1] - k6*x_in[2] - k5*x_in[3] + k2*x_in[4] + k1*x_in[5] - k4*x_in[6] - k3*x_in[7] + k4*x_in[8] - k3*x_in[9] - k2*x_in[10] + k1*x_in[11] + k6*x_in[12] - k5*x_in[13];
+    }
+}
+*/
+
+inline size_t index_dir_stride_odd(size_t dir_in, size_t stride, size_t k)
+{
+    return dir_in*(4*k - stride) + stride - 2*k - 1;
+}
+
+template<size_t radix> void fft_1d_real_one_level_forward_plain_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride, bool dir_out)
+{
+    // The first/last value in each stride is real
+    {
+        double x0_temp_in[2*radix];
+        double x0_temp_out[2*radix];
+
+        bool dir_in = dir_out;
+        for (size_t j = 0; j < radix; j++)
+        {
+            if (dir_in)
+            {
+                x0_temp_in[2*j + 0] = data_in[j*stride + 0];
+            } else
+            {
+                x0_temp_in[2*j + 0] = data_in[j*stride + stride - 1];
+            }
+            x0_temp_in[2*j + 1] = 0;
+
+            dir_in = !dir_in;
+        }
+
+        multiply_coeff<radix,true>(x0_temp_in, x0_temp_out);
+
+        // only about half is written
+        for (size_t j = 1; j < (radix+1)/2; j++)
+        {
+            if (dir_out)
+            {
+                data_out[0] = x0_temp_out[0];
+                data_out[2*j*stride - 1] = x0_temp_out[2*j + 0];
+                data_out[2*j*stride + 0] = x0_temp_out[2*j + 1];
+            } else
+            {
+                data_out[radix*stride - 1] = x0_temp_out[0];
+                data_out[2*j*stride - stride - 1] = x0_temp_out[2*((radix+1)/2 - j) + 0];
+                data_out[2*j*stride - stride + 0] = x0_temp_out[2*((radix+1)/2 - j) + 1];
+            }
+        }
+
+        //std::cout << "stride = " << stride << std::endl;
+        //std::cout << "x0_temp_in = " << x0_temp_in[0] << ", " << x0_temp_in[1] << ", " << x0_temp_in[2] << ", " << x0_temp_in[3] << ", " << x0_temp_in[4] << ", " << x0_temp_in[5] << ", " << x0_temp_in[6] << ", " << x0_temp_in[7] << ", " << x0_temp_in[8] << ", " << x0_temp_in[9] << std::endl;
+        //std::cout << "x0_temp_out = " << x0_temp_out[0] << ", " << x0_temp_out[1] << ", " << x0_temp_out[2] << ", " << x0_temp_out[3] << ", " << x0_temp_out[4] << ", " << x0_temp_out[5] << ", " << x0_temp_out[6] << ", " << x0_temp_out[7] << ", " << x0_temp_out[8] << ", " << x0_temp_out[9] << std::endl;
+    }
+
+    // Rest of the values represent complex numbers
+    for (size_t k = 1; k < (stride+1)/2; k++)
+    {
+        double x_temp_in[2*radix];
+        double x_temp_out[2*radix];
+        double twiddle_temp[2*radix];
+        size_t dir_in = dir_out;
+
+        /*
+        // Read in the values used in this step and multiply them with twiddle factors
+        for (size_t j = 0; j < radix; j++)
+        {
+            // direction affects in which direction the inputs are read
+            size_t index2 = index_dir_stride_odd(dir_in, stride, k);
+            double x_r = data_in[j*stride + index2 + 0];
+            double x_i = data_in[j*stride + index2 + 1];
+
+            double w_r = twiddle_factors[2*(j*stride + k) + 0];
+            double w_i = twiddle_factors[2*(j*stride + k) + 1];
+
+            x_temp_in[2*j + 0] = w_r*x_r - w_i*x_i;
+            x_temp_in[2*j + 1] = w_i*x_r + w_r*x_i;
+
+            // TESTING
+            //std::cout << "k = " << k << ", j = " << j << ", index2 = " << index2 << ", x_in = " << x_r << ", " << x_i << ", w = " << w_r << ", " << w_i << ", x_temp = " << x_temp_in[2*j + 0] << ", " << x_temp_in[2*j + 1] << std::endl;
+
+            dir_in = !dir_in;
+        }
+        */
+
+        // Copy the values and twiddle factors
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t index2 = index_dir_stride_odd(dir_in, stride, k);
+            x_temp_in[2*j + 0]  = data_in[j*stride + index2 + 0];
+            x_temp_in[2*j + 1]  = data_in[j*stride + index2 + 1];
+
+            twiddle_temp[2*j + 0] = twiddle_factors[2*k + 2*j*stride + 0];
+            twiddle_temp[2*j + 1] = twiddle_factors[2*k + 2*j*stride + 1];
+
+            dir_in = !dir_in;
+        }
+
+        multiply_twiddle<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
+
+        multiply_coeff_real_odd_forward<radix>(x_temp_in, x_temp_out);
+
+        // save output taking the directions into account
+        dir_in = dir_out;
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t index2 = index_dir_stride_odd(dir_in, stride, k);
+
+            // reverse the output order if required
+            if (dir_out)
+            {
+                data_out[j*stride + index2 + 0] = x_temp_out[2*j + 0];
+                data_out[j*stride + index2 + 1] = x_temp_out[2*j + 1];
+            } else
+            {
+                data_out[j*stride + index2 + 0] = x_temp_out[2*(radix - j - 1) + 0];
+                data_out[j*stride + index2 + 1] = x_temp_out[2*(radix - j - 1) + 1];
+            }
+
+
+            //std::cout << "j = " << j << ", dir_in = " << dir_in << ", index2 = " << index2 << ", x_temp_out = " << x_temp_out[2*j + 0] << ", " << x_temp_out[2*j + 1] << std::endl;
+            dir_in = !dir_in;
+        }
+    }
+}
+
+// This function is used on rest of the odd real fft
+template<size_t radix> void fft_1d_real_one_level_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t stride = step_info.stride;
+    size_t repeats = step_info.repeats;
+    double *twiddle_factors = step_info.twiddle_factors;
+
+    bool dir_out = true;
+    for (size_t i = 0; i < repeats; i++)
+    {
+        fft_1d_real_one_level_forward_plain_d_internal<radix>(data_in + i*radix*stride, data_out + i*radix*stride, twiddle_factors, stride, dir_out);
+
+        dir_out = !dir_out;
+    }
+}
+
 // Instantiations of the functions defined in this class
 template void fft_1d_complex_to_complex_packed_plain_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_to_complex_packed_plain_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
+template void fft_1d_real_first_level_forward_plain_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_forward_plain_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_forward_plain_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_1d_real_one_level_forward_plain_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_forward_plain_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_forward_plain_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

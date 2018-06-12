@@ -2,9 +2,9 @@ HHFFT
 
 Copyright Jouko Kalmari 2017-2018
 
-0. Introduction
+0.0 Introduction
 
-HHFFT is library for performing Fast Fourier Transform (FFT) for vectors and matrices. HHFFT is still under devolpment 
+HHFFT is C++ library for performing Fast Fourier Transform (FFT) for vectors and matrices. HHFFT is still under devolpment 
 
 
 1.0 License

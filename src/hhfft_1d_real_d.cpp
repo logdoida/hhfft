@@ -98,7 +98,67 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n, InstructionSet instruction_set)
 
 void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
 {
-    throw(std::runtime_error("HHFFT error: odd n fft size not supported!"));
+    //throw(std::runtime_error("HHFFT error: odd n fft size not supported!"));
+
+    // Calculate factorization
+    std::vector<size_t> N = calculate_factorization(n);
+
+    // TESTING print factorization
+    //for (size_t i = 0; i < N.size(); i++)  { std::cout << N[i] << " ";} std::cout << std::endl;
+
+    // First calculate the reorder table
+    reorder_table = calculate_reorder_table(N);
+
+    // TESTING print reorder tables
+    //std::cout << "reorder = " << std::endl;
+    //for (auto r: reorder_table)  { std::cout << r << " ";} std::cout << std::endl;
+
+    // Calculate twiddle factors
+    twiddle_factors.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level
+    for (size_t i = 1; i < N.size(); i++)
+    {
+        AlignedVector<double> w = calculate_twiddle_factors_DIT(i, N);
+        twiddle_factors.push_back(w);
+
+        //print_complex_vector(w.data(), w.size()/2);
+    }
+
+    ///////// FFT /////////////
+    // Put first fft step combined with reordering
+    {
+        hhfft::StepInfoD step;
+        step.radix = N[0];
+        step.stride = 1;
+        step.repeats = n / step.radix;
+        step.data_type_in = hhfft::StepDataType::data_in;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        step.reorder_table = reorder_table.data();        
+        step.start_index_out = 1; // This way there is no need to move data when it is ready
+        HHFFT_1D_Real_D_odd_set_function(step, instruction_set);
+        forward_steps.push_back(step);
+    }
+
+    // then put rest fft steps combined with twiddle factor
+    for (size_t i = 1; i < N.size(); i++)
+    {
+        hhfft::StepInfoD step;
+        hhfft::StepInfoD &step_prev = forward_steps.back();
+        step.radix = N[i];
+        step.stride = step_prev.stride * step_prev.radix;
+        step.repeats = step_prev.repeats / step.radix;
+        step.data_type_in = hhfft::StepDataType::data_out;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        step.twiddle_factors = twiddle_factors[i].data();
+        step.start_index_in = 1;
+        step.start_index_out = 1;
+        HHFFT_1D_Real_D_odd_set_function(step, instruction_set);
+        forward_steps.push_back(step);
+    }
+
+
+    ///////// IFFT /////////////
+    // TODO
+
 }
 
 void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
@@ -153,9 +213,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         step.repeats = n_complex / step.radix;
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
-        step.reorder_table = reorder_table.data();
-        step.reorder_table_inplace = reorder_table_in_place.data(); // It is possible that data_in = data_out!
-        step.reorder_table_inplace_size = reorder_table_in_place.size();
+        step.reorder_table = reorder_table.data();        
         step.norm_factor = 1.0;
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
         forward_steps.push_back(step);
@@ -199,8 +257,6 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors[0].data();
         step.reorder_table = reorder_table_inverse.data();
-        step.reorder_table_inplace = reorder_table_in_place.data(); // It is possible that data_in = data_out!
-        step.reorder_table_inplace_size = reorder_table_in_place.size();
         step.forward = false;
         step.norm_factor = 1.0/(double(n_complex));
         HHFFT_1D_Real_D_set_complex_to_complex_packed_function(step, instruction_set);
@@ -249,6 +305,16 @@ void HHFFT_1D_REAL_D::fft(const double *in, double *out)
         return;
     }
 
+    // If transform is made in-place, copy input to a temporary variable
+    hhfft::AlignedVector<double> temp_data_in;
+    if (in == out)
+    {
+        size_t nn = n;
+        temp_data_in.resize(nn);
+        std::copy(in, in + nn, temp_data_in.data());
+        in = temp_data_in.data();
+    }
+
     // Allocate some extra space if needed    
     hhfft::AlignedVector<double> temp_data(temp_data_size);
 
@@ -264,6 +330,13 @@ void HHFFT_1D_REAL_D::fft(const double *in, double *out)
         // TESTING print
         //print_complex_vector(data_out[step.data_type_out], n/2 + 1);
     }
+
+    // On odd FFTs the first real value needs to be moved one position
+    if ((n & 1) == 1)
+    {
+        out[0] = out[1];
+        out[1] = 0;
+    }
 }
 
 void HHFFT_1D_REAL_D::ifft(const double *in, double *out)
@@ -273,6 +346,16 @@ void HHFFT_1D_REAL_D::ifft(const double *in, double *out)
     {
         inverse_steps[0].step_function(in,out,inverse_steps[0]);
         return;
+    }
+
+    // If transform is made in-place, copy input to a temporary variable
+    hhfft::AlignedVector<double> temp_data_in;
+    if (in == out)
+    {
+        size_t nn = 2*((n/2)+1);
+        temp_data_in.resize(nn);
+        std::copy(in, in + nn, temp_data_in.data());
+        in = temp_data_in.data();
     }
 
     // Allocate some extra space if needed    
@@ -289,7 +372,7 @@ void HHFFT_1D_REAL_D::ifft(const double *in, double *out)
 
         // TESTING print
         //print_complex_vector(data_out[step.data_type_out], n/2 + 1);
-    }
+    }    
 }
 
 // Calculates convolution in Fourier space
