@@ -109,9 +109,14 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
     // First calculate the reorder table
     reorder_table = calculate_reorder_table(N);
 
+    // Calculate reorder table for inverse fft
+    reorder_table_ifft_odd = calculate_reorder_table_ifft_odd(reorder_table, N);
+
     // TESTING print reorder tables
     //std::cout << "reorder = " << std::endl;
     //for (auto r: reorder_table)  { std::cout << r << " ";} std::cout << std::endl;
+    //std::cout << "reorder_table_ifft_odd = " << std::endl;
+    //for (auto r: reorder_table_ifft_odd)  { std::cout << r << " ";} std::cout << std::endl;
 
     // Calculate twiddle factors
     twiddle_factors.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level
@@ -157,7 +162,36 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
 
 
     ///////// IFFT /////////////
-    // TODO
+    // Put first fft step combined with reordering
+    {
+        hhfft::StepInfoD step;
+        step.radix = N[0];
+        step.stride = 1;
+        step.repeats = (n / step.radix + 1)/2;
+        step.data_type_in = hhfft::StepDataType::data_in;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        step.reorder_table = reorder_table_ifft_odd.data();
+        step.norm_factor = 1.0/(double(n));
+        step.forward = false;
+        HHFFT_1D_Real_D_odd_set_function(step, instruction_set);
+        inverse_steps.push_back(step);
+    }
+
+    // then put rest fft steps combined with twiddle factor
+    for (size_t i = 1; i < N.size(); i++)
+    {
+        hhfft::StepInfoD step;
+        hhfft::StepInfoD &step_prev = inverse_steps.back();
+        step.radix = N[i];
+        step.stride = step_prev.stride * step_prev.radix;
+        step.repeats = ((2*step_prev.repeats - 1) / step.radix + 1)/2;
+        step.data_type_in = hhfft::StepDataType::data_out;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        step.twiddle_factors = twiddle_factors[i].data();
+        step.forward = false;
+        HHFFT_1D_Real_D_odd_set_function(step, instruction_set);
+        inverse_steps.push_back(step);
+    }
 
 }
 

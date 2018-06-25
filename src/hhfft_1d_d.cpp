@@ -85,8 +85,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     reorder_table_in_place = calculate_reorder_table_in_place(reorder_table);
 
     // TESTING print reorder tables
-    //std::cout << "reorder = " << std::endl;
-    //for (auto r: reorder_table)  { std::cout << r << " ";} std::cout << std::endl;
+    std::cout << "reorder = " << std::endl;
+    for (auto r: reorder_table)  { std::cout << r << " ";} std::cout << std::endl;
     //std::cout << "reorder_table_in_place = " << std::endl;
     //for (auto r: reorder_table_in_place)  { std::cout << r << " ";} std::cout << std::endl;
 
@@ -99,7 +99,7 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
         AlignedVector<double> w = calculate_twiddle_factors_DIT(i, N);
         twiddle_factors.push_back(w);
 
-        //print_complex_vector(w.data(), w.size()/2); // TESTING
+        print_complex_vector(w.data(), w.size()/2); // TESTING
     }
 
     // DIT
@@ -173,7 +173,7 @@ void HHFFT_1D_D::fft(const double *in, double *out)
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
         // TESTING print
-        //print_complex_vector(data_out[step.data_type_out], n);
+        print_complex_vector(data_out[step.data_type_out], n);
     }
 }
 
@@ -199,7 +199,7 @@ void HHFFT_1D_D::ifft(const double *in, double *out)
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
         // TESTING print
-        //print_complex_vector(data_out[step.data_type_out], n);
+        print_complex_vector(data_out[step.data_type_out], n);
     }
 }
 

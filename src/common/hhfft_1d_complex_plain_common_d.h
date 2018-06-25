@@ -156,46 +156,15 @@ template<size_t radix> void multiply_coeff_real_odd_forward(const double *x_in, 
     multiply_coeff<radix,true>(x_in, x_temp);
 
     // And then apply some reordering and conjugation
-    if (radix == 3)
+    for (size_t i = 0; i < radix; i+=2)
     {
-        x_out[0] = x_temp[0];
-        x_out[1] = x_temp[1];
-        x_out[2] = x_temp[4];
-        x_out[3] = -x_temp[5];
-        x_out[4] = x_temp[2];
-        x_out[5] = x_temp[3];
+        x_out[2*i + 0] = x_temp[2*(i/2) + 0];
+        x_out[2*i + 1] = x_temp[2*(i/2) + 1];
     }
-
-    if (radix == 5)
+    for (size_t i = 1; i < radix; i+=2)
     {
-        x_out[0] = x_temp[0];
-        x_out[1] = x_temp[1];
-        x_out[2] = x_temp[8];
-        x_out[3] = -x_temp[9];
-        x_out[4] = x_temp[2];
-        x_out[5] = x_temp[3];
-        x_out[6] = x_temp[6];
-        x_out[7] = -x_temp[7];
-        x_out[8] = x_temp[4];
-        x_out[9] = x_temp[5];
-    }
-
-    if (radix == 7)
-    {
-        x_out[0]  = x_temp[0];
-        x_out[1]  = x_temp[1];
-        x_out[2]  = x_temp[12];
-        x_out[3]  = -x_temp[13];
-        x_out[4]  = x_temp[2];
-        x_out[5]  = x_temp[3];
-        x_out[6]  = x_temp[10];
-        x_out[7]  = -x_temp[11];
-        x_out[8]  = x_temp[4];
-        x_out[9]  = x_temp[5];
-        x_out[10] = x_temp[8];
-        x_out[11] = -x_temp[9];
-        x_out[12] = x_temp[6];
-        x_out[13] = x_temp[7];
+        x_out[2*i + 0] =  x_temp[2*(radix - (i+1)/2) + 0];
+        x_out[2*i + 1] = -x_temp[2*(radix - (i+1)/2) + 1];
     }
 }
 

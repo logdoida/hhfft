@@ -125,11 +125,19 @@ template<size_t radix> void fft_1d_real_first_level_forward_avx_d(const double *
 template<size_t radix> void fft_1d_real_first_level_forward_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template<size_t radix> void fft_1d_real_first_level_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
+template<size_t radix> void fft_1d_real_first_level_inverse_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_first_level_inverse_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_first_level_inverse_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
 template<size_t radix> void fft_1d_real_one_level_forward_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template<size_t radix> void fft_1d_real_one_level_forward_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template<size_t radix> void fft_1d_real_one_level_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-void set_instruction_odd_first_level_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_one_level_inverse_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_one_level_inverse_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix> void set_instruction_odd_first_level_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
 
 #ifdef HHFFT_COMPILED_WITH_AVX512F
@@ -143,12 +151,10 @@ void set_instruction_odd_first_level_d(StepInfoD &step_info, hhfft::InstructionS
     if (instruction_set == hhfft::InstructionSet::avx)
     {
         /*
-        if(step_info.radix == 3)
-            step_info.step_function = fft_1d_real_first_level_forward_avx_d<3>;
-        else if(step_info.radix == 5)
-            step_info.step_function = fft_1d_real_first_level_forward_avx_d<5>;
-        else if(step_info.radix == 7)
-            step_info.step_function = fft_1d_real_first_level_forward_avx_d<7>;
+        if(step_info.forward)
+            step_info.step_function = fft_1d_real_first_level_forward_avx_d<radix>;
+        else
+            step_info.step_function = fft_1d_real_first_level_inverse_avx_d<radix>;
             */
     }
 #endif
@@ -156,27 +162,33 @@ void set_instruction_odd_first_level_d(StepInfoD &step_info, hhfft::InstructionS
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
         /*
-        if(step_info.radix == 3)
-            step_info.step_function = fft_1d_real_first_level_forward_sse2_d<3>;
-        else if(step_info.radix == 5)
-            step_info.step_function = fft_1d_real_first_level_forward_sse2_d<5>;
-        else if(step_info.radix == 7)
-            step_info.step_function = fft_1d_real_first_level_forward_sse2_d<7>;
+        if(step_info.forward)
+            step_info.step_function = fft_1d_real_first_level_forward_sse2_d<radix>;
+        else
+            step_info.step_function = fft_1d_real_first_level_inverse_sse2_d<radix>;
             */
     }
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
-        if(step_info.radix == 3)
-            step_info.step_function = fft_1d_real_first_level_forward_plain_d<3>;
-        else if(step_info.radix == 5)
-            step_info.step_function = fft_1d_real_first_level_forward_plain_d<5>;
-        else if(step_info.radix == 7)
-            step_info.step_function = fft_1d_real_first_level_forward_plain_d<7>;
+        if(step_info.forward)
+            step_info.step_function = fft_1d_real_first_level_forward_plain_d<radix>;
+        else
+            step_info.step_function = fft_1d_real_first_level_inverse_plain_d<radix>;
     }
 }
 
-void set_instruction_odd_other_level_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+void set_instruction_odd_first_level_radix_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    if(step_info.radix == 3)
+        set_instruction_odd_first_level_d<3>(step_info, instruction_set);
+    else if(step_info.radix == 5)
+        set_instruction_odd_first_level_d<5>(step_info, instruction_set);
+    else if(step_info.radix == 7)
+        set_instruction_odd_first_level_d<7>(step_info, instruction_set);
+}
+
+template<size_t radix> void set_instruction_odd_other_level_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
 
 #ifdef HHFFT_COMPILED_WITH_AVX512F
@@ -188,53 +200,47 @@ void set_instruction_odd_other_level_d(StepInfoD &step_info, hhfft::InstructionS
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
-    {
-        /*
-        if(step_info.radix == 3)
-            step_info.step_function = fft_1d_real_one_level_forward_avx_d<3>;
-        else if(step_info.radix == 5)
-            step_info.step_function = fft_1d_real_one_level_forward_avx_d<5>;
-        else if(step_info.radix == 7)
-            step_info.step_function = fft_1d_real_one_level_forward_avx_d<7>;
-            */
+    {        
+        //step_info.step_function = fft_1d_real_one_level_forward_avx_d<radix>;
     }
 #endif
 
     if (instruction_set == hhfft::InstructionSet::sse2)
-    {
-        /*
-        if(step_info.radix == 3)
-            step_info.step_function = fft_1d_real_one_level_forward_sse2_d<3>;
-        else if(step_info.radix == 5)
-            step_info.step_function = fft_1d_real_one_level_forward_sse2_d<5>;
-        else if(step_info.radix == 7)
-            step_info.step_function = fft_1d_real_one_level_forward_sse2_d<7>;
-            */
+    {        
+        //step_info.step_function = fft_1d_real_one_level_forward_sse2_d<radix>;
     }
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
-        if(step_info.radix == 3)
-            step_info.step_function = fft_1d_real_one_level_forward_plain_d<3>;
-        else if(step_info.radix == 5)
-            step_info.step_function = fft_1d_real_one_level_forward_plain_d<5>;
-        else if(step_info.radix == 7)
-            step_info.step_function = fft_1d_real_one_level_forward_plain_d<7>;
+        if(step_info.forward)
+            step_info.step_function = fft_1d_real_one_level_forward_plain_d<radix>;
+        else
+            step_info.step_function = fft_1d_real_one_level_inverse_plain_d<radix>;
     }
+}
+
+void set_instruction_odd_other_level_radix_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    if(step_info.radix == 3)
+        set_instruction_odd_other_level_d<3>(step_info, instruction_set);
+    else if(step_info.radix == 5)
+        set_instruction_odd_other_level_d<5>(step_info, instruction_set);
+    else if(step_info.radix == 7)
+        set_instruction_odd_other_level_d<7>(step_info, instruction_set);
 }
 
 void hhfft::HHFFT_1D_Real_D_odd_set_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
-    // First level of odd FFT
-    if (step_info.forward && step_info.stride == 1 && step_info.reorder_table != nullptr)
+    // First level of odd FFT/IFFT
+    if (step_info.stride == 1 && step_info.reorder_table != nullptr)
     {
-        set_instruction_odd_first_level_d(step_info, instruction_set);
+        set_instruction_odd_first_level_radix_d(step_info, instruction_set);
     }
 
-    // Other levels of odd FFT
-    if (step_info.forward && step_info.stride != 1 && step_info.reorder_table == nullptr)
+    // Other levels of odd FFT/IFFT
+    if (step_info.stride != 1 && step_info.reorder_table == nullptr)
     {
-        set_instruction_odd_other_level_d(step_info, instruction_set);
+        set_instruction_odd_other_level_radix_d(step_info, instruction_set);
     }
 
     if (step_info.step_function == nullptr)
