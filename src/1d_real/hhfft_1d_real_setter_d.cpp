@@ -160,13 +160,11 @@ template<size_t radix> void set_instruction_odd_first_level_d(StepInfoD &step_in
 #endif
 
     if (instruction_set == hhfft::InstructionSet::sse2)
-    {
-        /*
+    {        
         if(step_info.forward)
             step_info.step_function = fft_1d_real_first_level_forward_sse2_d<radix>;
         else
-            step_info.step_function = fft_1d_real_first_level_inverse_sse2_d<radix>;
-            */
+            step_info.step_function = fft_1d_real_first_level_inverse_sse2_d<radix>;        
     }
 
     if (instruction_set == hhfft::InstructionSet::none)
@@ -206,8 +204,11 @@ template<size_t radix> void set_instruction_odd_other_level_d(StepInfoD &step_in
 #endif
 
     if (instruction_set == hhfft::InstructionSet::sse2)
-    {        
-        //step_info.step_function = fft_1d_real_one_level_forward_sse2_d<radix>;
+    {
+        if(step_info.forward)
+            step_info.step_function = fft_1d_real_one_level_forward_sse2_d<radix>;
+        else
+            step_info.step_function = fft_1d_real_one_level_inverse_sse2_d<radix>;
     }
 
     if (instruction_set == hhfft::InstructionSet::none)

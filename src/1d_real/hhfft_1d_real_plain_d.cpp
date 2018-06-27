@@ -399,24 +399,18 @@ template<size_t radix> void fft_1d_real_one_level_inverse_plain_d(const double *
         x_temp_in[0] = data_in[k];
         x_temp_in[1] = 0;
 
-        // Read other inputs, multiply them with twiddle factors and conjugate them
+        // Read other inputs, only about half of them is needed
         for (size_t j = 1; j <= radix/2; j++)
         {
-            double re = data_in[2*j*stride - stride + k];
-            double im = data_in[2*j*stride + k];
+            x_temp_in[2*j + 0] = data_in[2*j*stride - stride + k];
+            x_temp_in[2*j + 1] = data_in[2*j*stride + k];
 
-            // multiplication with conjugated twiddle factors is done first
-            double w_r = twiddle_factors[2*j*stride + 2*k + 0];
-            double w_i = twiddle_factors[2*j*stride + 2*k + 1];
-
-            double re2 = w_r*re + w_i*im;
-            double im2 = w_r*im - w_i*re;
-
-            x_temp_in[2*j + 0] = re2;
-            x_temp_in[2*j + 1] = im2;
-            x_temp_in[2*(radix-j) + 0] = re2;
-            x_temp_in[2*(radix-j) + 1] = -im2;
+            twiddle_temp[2*j + 0] = twiddle_factors[2*j*stride + 2*k + 0];
+            twiddle_temp[2*j + 1] = twiddle_factors[2*j*stride + 2*k + 1];
         }
+
+        // Multiply with twiddle factors
+        multiply_conj_twiddle_odd<radix>(x_temp_in, x_temp_in, twiddle_temp);
 
         // Multiply with coefficients
         multiply_coeff<radix,false>(x_temp_in, x_temp_out);

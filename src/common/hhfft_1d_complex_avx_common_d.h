@@ -366,7 +366,7 @@ typedef struct
 } ComplexD4S;
 
 
-// Read four complex numbers and reorder them to real and complex parts
+// Read four complex numbers and reorder them to real and complex parts [r0 r2 r1 r3] & [i0 i2 i1 i3]
 inline const ComplexD4S load512s_D4S(const double *x)
 {
     __m256d x0 = _mm256_loadu_pd(x);
@@ -379,7 +379,7 @@ inline const ComplexD4S load512s_D4S(const double *x)
     return out;
 }
 
-// Store four complex numbers
+// Store four complex numbers [r0 r2 r1 r3] & [i0 i2 i1 i3]
 inline void store_D4S(ComplexD4S val, double *v)
 {
     // Reorder data back to correct form

@@ -149,6 +149,32 @@ template<size_t radix, bool forward> inline void multiply_twiddle(const double *
     }
 }
 
+template<size_t radix> inline void multiply_conj_twiddle_odd(const double *x_in, double *x_out, const double *twiddle_factors)
+{
+    // It is assumed that first twiddle factors are always (1 + 0i)
+    x_out[0] = x_in[0];
+    x_out[1] = x_in[1];
+
+    // multiply values with twiddle factors and conjugate them
+    for (size_t j = 1; j <= radix/2; j++)
+    {
+        double x_r = x_in[2*j + 0];
+        double x_i = x_in[2*j + 1];
+
+        // multiplication with conjugated twiddle factors is done first
+        double w_r = twiddle_factors[2*j + 0];
+        double w_i = twiddle_factors[2*j + 1];
+
+        double re2 = w_r*x_r + w_i*x_i;
+        double im2 = w_r*x_i - w_i*x_r;
+
+        x_out[2*j + 0] = re2;
+        x_out[2*j + 1] = im2;
+        x_out[2*(radix-j) + 0] = re2;
+        x_out[2*(radix-j) + 1] = -im2;
+    }
+}
+
 template<size_t radix> void multiply_coeff_real_odd_forward(const double *x_in, double *x_out)
 {
     // Use the normal function
@@ -167,6 +193,8 @@ template<size_t radix> void multiply_coeff_real_odd_forward(const double *x_in, 
         x_out[2*i + 1] = -x_temp[2*(radix - (i+1)/2) + 1];
     }
 }
+
+
 
 
 // Packing tables to be used on small problems
