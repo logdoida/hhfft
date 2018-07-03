@@ -86,6 +86,14 @@ template<size_t radix, bool forward> inline void multiply_coeff(const double *x_
 {
     const double *coeff = nullptr;
 
+    // Implementation for radix = 1 (this is actually needed!)
+    if (radix == 1)
+    {
+        x_out[0] = x_in[0];
+        x_out[1] = x_in[1];
+        return;
+    }
+
     if (radix == 2)
     {
         coeff = coeff_radix_2;

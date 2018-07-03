@@ -60,6 +60,14 @@ inline const ComplexD2 load_two_128_D2(const double *a, const double *b)
     return _mm256_insertf128_pd (aa, bb, 1);
 }
 
+// Load only real part, imaginary part is set to zero. [r1 r2] -> [r1 0 r2 0]
+inline const ComplexD2 load_real_D2(const double *v)
+{
+    const ComplexD2 a = _mm256_castpd128_pd256(load_real_D(v));
+    const ComplexD b = load_real_D(v + 1);
+    return _mm256_insertf128_pd(a, b, 1);
+}
+
 // Store a complex number
 inline void store_D2(ComplexD2 val, double &r1, double &i1, double &r2, double &i2)
 {
@@ -80,6 +88,15 @@ inline void store_two_128_D2(ComplexD2 val, double *a, double *b)
     store_D(aa, a);
     ComplexD bb = _mm256_extractf128_pd(val, 1);
     store_D(bb, b);
+}
+
+// Store only real parts [r1 x r2 x] -> [r1 r2]
+inline void store_real_D2(ComplexD2 val, double *v)
+{
+    ComplexD aa = _mm256_castpd256_pd128(val);
+    store_real_D(aa, v);
+    ComplexD bb = _mm256_extractf128_pd(val, 1);
+    store_real_D(bb, v + 1);
 }
 
 // Changes signs of [x1 x2 x3 x4] using [s1 s2 s3 s4]. s should contain only 0.0 and -0.0
@@ -145,8 +162,22 @@ inline __attribute__((always_inline)) ComplexD2 mul_i_D2(ComplexD2 a)
     return y;
 }
 
+// Complex conjugate
+inline ComplexD2 conj_D2(ComplexD2 x)
+{
+    const ComplexD2 const1 = load_D2(0.0, -0.0, 0.0, -0.0);
+    return change_sign_D2(x,const1);
+}
+
 template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_coeff_D2(const ComplexD2 *x_in, ComplexD2 *x_out)
 {
+    // Implementation for radix = 1 (this might not be needed)
+    if (radix == 1)
+    {
+        x_out[0] = x_in[0];
+        return;
+    }
+
     // Implementation for radix = 2
     if (radix == 2)
     {
@@ -356,6 +387,25 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     }
 }
 
+// Multiplies the first values with twiddle factors and then conjugates them and saves as last values
+template<size_t radix> inline __attribute__((always_inline)) void multiply_conj_twiddle_odd_D2(const ComplexD2 *x_in, ComplexD2 *x_out, const ComplexD2 *twiddle_factors)
+{
+    // It is assumed that first twiddle factors are always (1 + 0i)
+    x_out[0] = x_in[0];
+
+    // multiply values with twiddle factors and conjugate them
+    for (size_t j = 1; j <= radix/2; j++)
+    {
+        ComplexD2 x = x_in[j];
+
+        // multiplication with conjugated twiddle factors is done first
+        ComplexD2 w = twiddle_factors[j];
+        ComplexD2 x_temp = mul_w_D2<false>(x, w);
+
+        x_out[j] = x_temp;
+        x_out[radix-j] = conj_D2(x_temp);
+    }
+}
 
 ////////////////////////////////////////// ComplexD4S ///////////////////////////////////////
 // contains four complex numbers separated to real and imaginary parts : [r0 r2 r1 r3] & [i0 i2 i1 i3]

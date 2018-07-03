@@ -453,6 +453,183 @@ template<size_t radix> void fft_1d_real_one_level_inverse_plain_d(const double *
     }    
 }
 
+
+// for small sizes
+template<bool forward, size_t n> void fft_1d_complex_to_complex_packed_1level_plain_d(double *x)
+{
+    const double *packing_table = get_packing_table<n>();
+
+    // Input/output way
+    if (forward)
+    {
+        double x_r = x[0];
+        double x_i = x[1];
+        x[0] = x_r + x_i;
+        x[1] = 0.0;
+        x[n] = x_r - x_i;
+        x[n+1] = 0.0;
+    } else
+    {
+        double x_r = x[0];
+        double x_i = x[n];
+        x[0] = 0.5*(x_r + x_i);
+        x[1] = 0.5*(x_r - x_i);
+    }
+
+    if (n%4 == 0)
+    {
+        double x_r = x[n/2 + 0];
+        double x_i = x[n/2 + 1];
+
+        x[n/2 + 0] =  x_r;
+        x[n/2 + 1] = -x_i;
+    }
+
+    for (size_t i = 2; i < n/2; i+=2)
+    {
+        double ss = -packing_table[i + 0];
+        double sc = -packing_table[i + 1];
+
+        double x0_r = x[i + 0];
+        double x0_i = x[i + 1];
+        double x1_r = x[n - i + 0];
+        double x1_i = x[n - i + 1];
+
+        if (!forward)
+        {
+            ss = ss;
+            sc = -sc;
+        }
+
+        double temp0 = -ss*(x0_r - x1_r) + sc*(x0_i + x1_i);
+        double temp1 = -sc*(x0_r - x1_r) - ss*(x0_i + x1_i);
+
+        x[i + 0]     = temp0 + x0_r;
+        x[i + 1]     = temp1 + x0_i;
+        x[n - i + 0] = -temp0 + x1_r;
+        x[n - i + 1] = temp1 + x1_i;
+    }
+}
+
+// fft for small sizes (2,4,6,8,10,14,16) where only one level is needed
+template<size_t n, bool forward> void fft_1d_real_1level_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    if (n == 1)
+    {
+        // n == 1
+
+        data_out[0] = data_in[0];
+        data_out[1] = 0;
+    } else if (n%2 == 0)
+    {
+        // n is even
+        double x_temp_in[n+2];
+        double x_temp_out[n+2];
+
+        if (forward)
+        {
+            // Copy input data
+            for (size_t i = 0; i < n; i++)
+            {
+                x_temp_in[i] = data_in[i];
+            }
+
+            // Multiply with coefficients
+            multiply_coeff<n/2,forward>(x_temp_in, x_temp_out);
+
+            // Make the conversion
+            fft_1d_complex_to_complex_packed_1level_plain_d<forward,n>(x_temp_out);
+
+            // Copy output data
+            for (size_t i = 0; i < n + 2; i++)
+            {
+                data_out[i] = x_temp_out[i];
+            }
+        } else
+        {
+            double k = 2.0/n;
+
+            // Copy input data
+            for (size_t i = 0; i < n + 2; i++)
+            {
+                x_temp_in[i] = k*data_in[i];
+            }
+
+            // Make the conversion
+            fft_1d_complex_to_complex_packed_1level_plain_d<forward,n>(x_temp_in);
+
+            // Multiply with coefficients
+            multiply_coeff<n/2,forward>(x_temp_in, x_temp_out);
+
+            // Copy output data
+            for (size_t i = 0; i < n; i++)
+            {
+                data_out[i] = x_temp_out[i];
+            }
+        }
+    } else
+    {
+        // n is odd
+        if (forward)
+        {
+            double x_temp_in[2*n];
+            double x_temp_out[2*n];
+            // Copy real input data
+            for (size_t j = 0; j < n; j++)
+            {
+                x_temp_in[2*j + 0] = data_in[j];
+                x_temp_in[2*j + 1] = 0;
+            }
+
+            //std::cout << "x_temp_in = " << x_temp_in[0] << " " << x_temp_in[1] << " " << x_temp_in[2] << " " << x_temp_in[3] << " " << x_temp_in[4] << " " << x_temp_in[5] << std::endl;
+
+            // Multiply with coefficients
+            multiply_coeff<n,true>(x_temp_in, x_temp_out);
+
+            //std::cout << "x_temp_out = " << x_temp_out[0] << " " << x_temp_out[1] << " " << x_temp_out[2] << " " << x_temp_out[3] << " " << x_temp_out[4] << " " << x_temp_out[5] << std::endl;
+
+            // Save only about half of the output
+            for (size_t j = 0; j < n/2 + 1; j++)
+            {
+                data_out[2*j + 0] = x_temp_out[2*j + 0];
+                data_out[2*j + 1] = x_temp_out[2*j + 1];
+            }
+        } else
+        {
+            double k = 1.0/n;
+
+            double x_temp_in[2*n];
+            double x_temp_out[2*n];
+
+            // In the first repeat input is r, (r+i), (r+i) ... and output is r,r,r,r,r...
+            {
+                x_temp_in[0] = k*data_in[0];
+                x_temp_in[1] = 0;
+
+                // Read other inputs and conjugate them
+                for (size_t j = 1; j <= n/2; j++)
+                {
+                    double real = k*data_in[2*j + 0];
+                    double imag = k*data_in[2*j + 1];
+                    x_temp_in[2*j + 0] = real;
+                    x_temp_in[2*j + 1] = imag;
+                    x_temp_in[2*(n-j) + 0] = real;
+                    x_temp_in[2*(n-j) + 1] = -imag;
+                }
+
+                // Multiply with coefficients
+                multiply_coeff<n,false>(x_temp_in, x_temp_out);
+
+                // Write only real parts of the data
+                for (size_t j = 0; j < n; j++)
+                {
+                    data_out[j] = x_temp_out[2*j + 0];
+                }
+            }
+        }
+    }
+}
+
 // Instantiations of the functions defined in this class
 template void fft_1d_complex_to_complex_packed_plain_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_to_complex_packed_plain_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
@@ -472,3 +649,28 @@ template void fft_1d_real_one_level_forward_plain_d<7>(const double *data_in, do
 template void fft_1d_real_one_level_inverse_plain_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_one_level_inverse_plain_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_one_level_inverse_plain_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_1d_real_1level_plain_d<1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<2, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<3, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<4, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<5, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<6, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<7, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<8, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<10, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<12, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<14, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<16, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<2, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<3, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<4, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<5, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<6, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<7, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<8, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<10, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<12, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<14, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_plain_d<16, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

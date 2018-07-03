@@ -61,12 +61,6 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n, InstructionSet instruction_set)
         throw(std::runtime_error("HHFFT error: maximum size for the fft size is 2^32 - 1!"));
     }
 
-    if (n == 1)
-    {
-        // TODO add a support for n = 1
-        throw(std::runtime_error("HHFFT error: fft size must be larger than 1!"));
-    }
-
     // Define instruction set if needed
     if (instruction_set == InstructionSet::automatic)
     {

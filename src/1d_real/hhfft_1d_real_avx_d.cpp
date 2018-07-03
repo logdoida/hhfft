@@ -232,7 +232,362 @@ template<bool forward, size_t n> void fft_1d_complex_to_complex_packed_1level_av
     }
 }
 
-// fft for small sizes (2,4,6,8,10,14,16) where only one level is needed
+////////////////////////////////////// Odd real FFT ////////////////////////////////////////////////////
+
+// This function is used on the first level of odd real fft
+template<size_t radix> void fft_1d_real_first_level_forward_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t repeats = step_info.repeats;
+    uint32_t *reorder_table = step_info.reorder_table;
+
+    ComplexD x_temp_in[radix];
+    ComplexD x_temp_out[radix];
+    bool dir_out = true;
+    for (size_t i = 0; i < repeats; i++)
+    {
+        // Copy input data taking reordering into account
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t ind = reorder_table[i*radix + j];
+            x_temp_in[j] = load_real_D(data_in + ind);
+        }
+
+        // Multiply with coefficients
+        multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
+
+        // Save only about half of the output
+        // First/ last one is real
+        if (dir_out) // direction normal
+        {
+            store_real_D(x_temp_out[0], data_out + i*radix); // only real part
+
+            for (size_t j = 1; j < radix/2 + 1; j++)
+            {
+                store_D(x_temp_out[j], data_out + i*radix + 2*j - 1);
+            }
+        } else // direction inverted
+        {
+            store_real_D(x_temp_out[0], data_out + i*radix + radix - 1); // only real part
+
+            for (size_t j = 1; j < radix/2 + 1; j++)
+            {
+                store_D(x_temp_out[j], data_out + i*radix + radix - 2*j - 1);
+            }
+        }
+        dir_out = !dir_out;
+    }
+}
+
+inline size_t index_dir_stride_odd(size_t dir_in, size_t stride, size_t k)
+{
+    return dir_in*(4*k - stride) + stride - 2*k - 1;
+}
+
+template<size_t radix> void fft_1d_real_one_level_forward_avx_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride, bool dir_out)
+{
+    // The first/last value in each stride is real
+    {
+        ComplexD x0_temp_in[radix];
+        ComplexD x0_temp_out[radix];
+
+        // Read the inputs
+        bool dir_in = dir_out;
+        for (size_t j = 0; j < radix; j++)
+        {
+            if (dir_in)
+            {
+                x0_temp_in[j] = load_real_D(data_in + j*stride);
+            } else
+            {
+                x0_temp_in[j] = load_real_D(data_in + j*stride + stride - 1);
+            }
+
+            dir_in = !dir_in;
+        }
+
+        multiply_coeff_D<radix,true>(x0_temp_in, x0_temp_out);
+
+        // first/last output is real
+        if (dir_out)
+        {
+            store_real_D(x0_temp_out[0], data_out);
+        } else
+        {
+            store_real_D(x0_temp_out[0], data_out + radix*stride - 1);
+        }
+        // only about half is written
+        for (size_t j = 1; j < (radix+1)/2; j++)
+        {
+            if (dir_out)
+            {
+                store_D(x0_temp_out[j], data_out + 2*j*stride - 1);
+            } else
+            {
+                store_D(x0_temp_out[(radix+1)/2 - j], data_out + 2*j*stride - stride - 1);
+            }
+        }
+    }
+
+    // Rest of the values represent complex numbers
+    for (size_t k = 1; k < (stride+1)/2; k++)
+    {
+        ComplexD x_temp_in[radix];
+        ComplexD x_temp_out[radix];
+        ComplexD twiddle_temp[radix];
+        size_t dir_in = dir_out;
+
+        // Copy the values and twiddle factors
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t index2 = index_dir_stride_odd(dir_in, stride, k);
+
+            x_temp_in[j] = load_D(data_in + j*stride + index2);
+            twiddle_temp[j] = load_D(twiddle_factors + 2*k + 2*j*stride);
+            dir_in = !dir_in;
+        }
+
+        multiply_twiddle_D<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
+
+        multiply_coeff_real_odd_forward_D<radix>(x_temp_in, x_temp_out);
+
+        // save output taking the directions into account
+        dir_in = dir_out;
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t index2 = index_dir_stride_odd(dir_in, stride, k);
+
+            // reverse the output order if required
+            if (dir_out)
+            {
+                store_D(x_temp_out[j], data_out + j*stride + index2);
+            } else
+            {
+                store_D(x_temp_out[radix - j - 1], data_out + j*stride + index2);
+            }
+
+            dir_in = !dir_in;
+        }
+    }
+}
+
+// This function is used on rest of the odd real fft
+template<size_t radix> void fft_1d_real_one_level_forward_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t stride = step_info.stride;
+    size_t repeats = step_info.repeats;
+    double *twiddle_factors = step_info.twiddle_factors;
+
+    bool dir_out = true;
+    for (size_t i = 0; i < repeats; i++)
+    {
+        fft_1d_real_one_level_forward_avx_d_internal<radix>(data_in + i*radix*stride, data_out + i*radix*stride, twiddle_factors, stride, dir_out);
+
+        dir_out = !dir_out;
+    }
+}
+
+////////////////////////////////////// Odd real IFFT ////////////////////////////////////////////////////
+
+// This function is used on the first level of odd real ifft
+template<size_t radix> void fft_1d_real_first_level_inverse_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t repeats = step_info.repeats;
+    uint32_t *reorder_table = step_info.reorder_table;
+    size_t n = radix * (2*step_info.repeats - 1);
+    ComplexD norm_factor = broadcast64_D(step_info.norm_factor);
+
+    ComplexD x_temp_in[radix];
+    ComplexD x_temp_out[radix];
+
+    // In the first repeat input is r, (r+i), (r+i) ... and output is r,r,r,r,r...
+    {
+        x_temp_in[0] = norm_factor*load_real_D(data_in + 0);
+
+        // Read other inputs and conjugate them
+        for (size_t j = 1; j <= radix/2; j++)
+        {
+            size_t ind = reorder_table[j];
+            ComplexD x = norm_factor*load_D(data_in + 2*ind);
+            x_temp_in[j] = x;
+            x_temp_in[radix-j] = conj_D(x);
+        }
+
+        // NOTE this could be optimized as actually only the real part of output is used and input has symmetry
+        // Multiply with coefficients
+        multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+
+        // Write only real parts of the data
+        for (size_t j = 0; j < radix; j++)
+        {
+            store_real_D(x_temp_out[j], data_out + j);
+        }
+    }
+
+    // Other repeats are more usual, data ordering changes from r,i,r,i,r,i... to r,r,r...i,i,i...
+    for (size_t i = 1; i < repeats; i++)
+    {
+        // Copy input data taking reordering into account
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t ind = reorder_table[i*radix - radix/2 + j];
+            if (ind <= n/2)
+            {
+                x_temp_in[j] = norm_factor*load_D(data_in + 2*ind);
+            } else
+            {
+                // If input is from the lower part, it needs to be conjugated
+                ind = n - ind;
+                x_temp_in[j] = conj_D(norm_factor*load_D(data_in + 2*ind));
+            }
+        }
+
+        // Multiply with coefficients
+        multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+
+        // Store real and imag parts separately
+        for (size_t j = 0; j < radix; j++)
+        {
+            store_D(x_temp_out[j], data_out[2*i*radix - radix + j], data_out[2*i*radix + j]);
+        }
+    }
+}
+
+// This function is used on on rest of the odd real ifft
+template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t repeats = step_info.repeats;
+    size_t stride = step_info.stride;
+    double *twiddle_factors = step_info.twiddle_factors;
+
+    // In the first repeat input is r,r,r,... r,r,r, ... i,i,i, ... and output is r,r,r,r,r...
+    {
+        size_t k;
+        for (k = 0; k + 1 < stride; k+=2)
+        {
+            ComplexD2 x_temp_in[radix];
+            ComplexD2 x_temp_out[radix];
+            ComplexD2 twiddle_temp[radix];
+
+            x_temp_in[0] = load_real_D2(data_in + k);
+
+            // Read other inputs, only about half of them is needed
+            for (size_t j = 1; j <= radix/2; j++)
+            {
+                x_temp_in[j] = load_D2(data_in[2*j*stride - stride + k], data_in[2*j*stride + k],
+                                       data_in[2*j*stride - stride + k + 1], data_in[2*j*stride + k + 1]);
+                twiddle_temp[j] = load_D2(twiddle_factors + 2*j*stride + 2*k + 0);
+            }
+
+            // Multiply with twiddle factors
+            multiply_conj_twiddle_odd_D2<radix>(x_temp_in, x_temp_in, twiddle_temp);
+
+            // NOTE this could be optimized as actually only the real part of output is used and input has symmetry
+            // Multiply with coefficients
+            multiply_coeff_D2<radix,false>(x_temp_in, x_temp_out);
+
+            // Write only real parts of the data
+            for (size_t j = 0; j < radix; j++)
+            {
+                store_real_D2(x_temp_out[j], data_out + j*stride + k);
+            }
+        }
+
+        if (k < stride)
+        {
+            ComplexD x_temp_in[radix];
+            ComplexD x_temp_out[radix];
+            ComplexD twiddle_temp[radix];
+
+            x_temp_in[0] = load_real_D(data_in + k);
+
+            // Read other inputs, only about half of them is needed
+            for (size_t j = 1; j <= radix/2; j++)
+            {
+                x_temp_in[j] = load_D(data_in[2*j*stride - stride + k], data_in[2*j*stride + k]);
+                twiddle_temp[j] = load_D(twiddle_factors + 2*j*stride + 2*k + 0);
+            }
+
+            // Multiply with twiddle factors
+            multiply_conj_twiddle_odd_D<radix>(x_temp_in, x_temp_in, twiddle_temp);
+
+            // NOTE this could be optimized as actually only the real part of output is used and input has symmetry
+            // Multiply with coefficients
+            multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+
+            // Write only real parts of the data
+            for (size_t j = 0; j < radix; j++)
+            {
+                store_real_D(x_temp_out[j], data_out + j*stride + k);
+            }
+        }
+    }
+
+    // Other repeats are more usual, however both inputs and outputs have real and imag parts separated
+    for (size_t i = 1; i < repeats; i++)
+    {
+        // Load two complex numbers at a time (r,r) and (i,i)
+        size_t k;
+        for (k = 0; k + 1 < stride; k+=2)
+        {
+            ComplexD2S x_temp_in[radix];
+            ComplexD2S x_temp_out[radix];
+            ComplexD2S twiddle_temp[radix];
+
+            // Read real and imag parts separately
+            for (size_t j = 0; j < radix; j++)
+            {
+                size_t index = 2*i*stride*radix + 2*j*stride - stride*radix;
+                x_temp_in[j] = load_D2S(data_in + index + k, data_in + index + stride + k);
+                twiddle_temp[j] = load256s_D2S(twiddle_factors + 2*j*stride + 2*k);
+            }
+
+            // Multiply with twiddle factors
+            multiply_twiddle_D2S<radix,false>(x_temp_in, x_temp_in, twiddle_temp);
+
+            // Multiply with coefficients
+            multiply_coeff_D2S<radix,false>(x_temp_in, x_temp_out);
+
+            // Store real and imag parts separately
+            for (size_t j = 0; j < radix; j++)
+            {
+                size_t index = 2*i*stride*radix + j*stride;
+                store_D2S(x_temp_out[j], data_out + index - stride*radix + k, data_out + index + k);
+            }
+        }
+
+        // Load one complex number at a time r and i separated
+        if (k < stride)
+        {
+            ComplexD x_temp_in[radix];
+            ComplexD x_temp_out[radix];
+            ComplexD twiddle_temp[radix];
+
+            // Read real and imag parts separately
+            for (size_t j = 0; j < radix; j++)
+            {
+                size_t index = 2*i*stride*radix + 2*j*stride - stride*radix;
+                x_temp_in[j] = load_D(data_in[index + k], data_in[index + stride + k]);
+
+                twiddle_temp[j] = load_D(twiddle_factors + 2*j*stride + 2*k + 0);
+            }
+
+            // Multiply with twiddle factors
+            multiply_twiddle_D<radix,false>(x_temp_in, x_temp_in, twiddle_temp);
+
+            // Multiply with coefficients
+            multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+
+            // Store real and imag parts separately
+            for (size_t j = 0; j < radix; j++)
+            {
+                size_t index = 2*i*stride*radix + j*stride;
+                store_D(x_temp_out[j], data_out[index - stride*radix + k], data_out[index + k]);
+            }
+        }
+    }
+}
+
+// fft for small sizes (2,3,4,5,6,7,8,10,14,16) where only one level is needed
 template<size_t n, bool forward> void fft_1d_real_1level_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     ComplexD k = broadcast64_D(2.0/n);
@@ -241,9 +596,9 @@ template<size_t n, bool forward> void fft_1d_real_1level_avx_d(const double *dat
     {
         data_out[0] = data_in[0];
         data_out[1] = 0;
-    } else
+    } else if (n%2 == 0)
     {
-        // Note this code works only on even n
+        // n even
 
         ComplexD x_temp_in[n/2+1];
         ComplexD x_temp_out[n/2+1];
@@ -287,26 +642,97 @@ template<size_t n, bool forward> void fft_1d_real_1level_avx_d(const double *dat
                 store_D(k*x_temp_out[i], data_out + 2*i);
             }
         }
+    } else
+    {
+        ComplexD x_temp_in[n];
+        ComplexD x_temp_out[n];
+
+        // odd n
+        if (forward)
+        {
+            // Copy real input data
+            for (size_t j = 0; j < n; j++)
+            {
+                x_temp_in[j] = load_real_D(data_in + j);
+            }
+
+            // Multiply with coefficients
+            multiply_coeff_D<n,true>(x_temp_in, x_temp_out);
+
+            // Save only about half of the output
+            for (size_t j = 0; j < n/2 + 1; j++)
+            {
+                store_D(x_temp_out[j], data_out + 2*j);
+            }
+        } else
+        {
+            ComplexD norm_factor = load_D(1.0/n, 1.0/n);
+
+            // First input is real
+            x_temp_in[0] = norm_factor*load_real_D(data_in + 0);
+
+            // Read other inputs and conjugate them
+            for (size_t j = 1; j <= n/2; j++)
+            {
+                ComplexD x = norm_factor*load_D(data_in + 2*j);
+                x_temp_in[j] = x;
+                x_temp_in[n-j] = conj_D(x);
+            }
+
+            // Multiply with coefficients
+            multiply_coeff_D<n,false>(x_temp_in, x_temp_out);
+
+            // Write only real parts of the data
+            for (size_t j = 0; j < n; j++)
+            {
+                store_real_D(x_temp_out[j], data_out + j);
+            }
+        }
     }
 }
+
 
 // Instantiations of the functions defined in this class
 template void fft_1d_complex_to_complex_packed_avx_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_to_complex_packed_avx_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
+template void fft_1d_real_1level_avx_d<1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<2, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_avx_d<3, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<4, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_avx_d<5, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<6, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_avx_d<7, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<8, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<10, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<12, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<14, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<16, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<2, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_avx_d<1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_avx_d<3, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<4, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_avx_d<5, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<6, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_avx_d<7, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<8, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<10, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<12, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<14, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<16, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_1d_real_first_level_forward_avx_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_forward_avx_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_forward_avx_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_1d_real_first_level_inverse_avx_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_inverse_avx_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_inverse_avx_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_1d_real_one_level_forward_avx_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_forward_avx_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_forward_avx_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_1d_real_one_level_inverse_avx_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_inverse_avx_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_inverse_avx_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

@@ -179,6 +179,13 @@ inline ComplexD mul_i_D(ComplexD a)
 
 template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_coeff_D(const ComplexD *x_in, ComplexD *x_out)
 {    
+    // Implementation for radix = 1 (this is actually needed!)
+    if (radix == 1)
+    {
+        x_out[0] = x_in[0];
+        return;
+    }
+
     // Implementation for radix = 2
     if (radix == 2)
     {
@@ -404,6 +411,7 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     }
 }
 
+// Multiplies the first values with twiddle factors and then conjugates them and saves as last values
 template<size_t radix> inline __attribute__((always_inline)) void multiply_conj_twiddle_odd_D(const ComplexD *x_in, ComplexD *x_out, const ComplexD *twiddle_factors)
 {
     // It is assumed that first twiddle factors are always (1 + 0i)

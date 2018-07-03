@@ -179,64 +179,6 @@ template<bool forward, size_t n> void fft_1d_complex_to_complex_packed_1level_ss
     }
 }
 
-// fft for small sizes (2,4,6,8,10,14,16) where only one level is needed
-template<size_t n, bool forward> void fft_1d_real_1level_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{    
-    ComplexD k = broadcast64_D(2.0/n);
-
-    if (n == 1)
-    {
-        data_out[0] = data_in[0];
-        data_out[1] = 0;
-    } else
-    {
-        // Note this code works only on even n
-
-        ComplexD x_temp_in[n/2+1];
-        ComplexD x_temp_out[n/2+1];
-
-        if (forward)
-        {
-            // Copy input data
-            for (size_t i = 0; i < n/2; i++)
-            {
-                x_temp_in[i] = load_D(data_in + 2*i);
-            }
-
-            // Multiply with coefficients
-            multiply_coeff_D<n/2,forward>(x_temp_in, x_temp_out);
-
-            // Make the conversion
-            fft_1d_complex_to_complex_packed_1level_sse2_d<forward,n>(x_temp_out);
-
-            // Copy output data
-            for (size_t i = 0; i < n/2 + 1; i++)
-            {
-                store_D(x_temp_out[i], data_out + 2*i);
-            }
-        } else
-        {
-            // Copy input data
-            for (size_t i = 0; i < n/2 + 1; i++)
-            {
-                x_temp_in[i] = load_D(data_in + 2*i);
-            }
-
-            // Make the conversion
-            fft_1d_complex_to_complex_packed_1level_sse2_d<forward,n>(x_temp_in);
-
-            // Multiply with coefficients
-            multiply_coeff_D<n/2,forward>(x_temp_in, x_temp_out);
-
-            // Copy output data
-            for (size_t i = 0; i < n/2; i++)
-            {
-                store_D(k*x_temp_out[i], data_out + 2*i);
-            }
-        }
-    }
-}
-
 
 ////////////////////////////////////// Odd real FFT ////////////////////////////////////////////////////
 
@@ -561,21 +503,138 @@ template<size_t radix> void fft_1d_real_one_level_inverse_sse2_d(const double *d
     }
 }
 
+/////////////////////////////////// Small sizes ///////////////////////////////////////
+
+// fft for small sizes (2,3,4,5,6,7,8,10,14,16) where only one level is needed
+template<size_t n, bool forward> void fft_1d_real_1level_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    ComplexD k = broadcast64_D(2.0/n);
+
+    if (n == 1)
+    {
+        data_out[0] = data_in[0];
+        data_out[1] = 0;
+    } else if (n%2 == 0)
+    {
+        // even n
+
+        ComplexD x_temp_in[n/2+1];
+        ComplexD x_temp_out[n/2+1];
+
+        if (forward)
+        {
+            // Copy input data
+            for (size_t i = 0; i < n/2; i++)
+            {
+                x_temp_in[i] = load_D(data_in + 2*i);
+            }
+
+            // Multiply with coefficients
+            multiply_coeff_D<n/2,forward>(x_temp_in, x_temp_out);
+
+            // Make the conversion
+            fft_1d_complex_to_complex_packed_1level_sse2_d<forward,n>(x_temp_out);
+
+            // Copy output data
+            for (size_t i = 0; i < n/2 + 1; i++)
+            {
+                store_D(x_temp_out[i], data_out + 2*i);
+            }
+        } else
+        {
+            // Copy input data
+            for (size_t i = 0; i < n/2 + 1; i++)
+            {
+                x_temp_in[i] = load_D(data_in + 2*i);
+            }
+
+            // Make the conversion
+            fft_1d_complex_to_complex_packed_1level_sse2_d<forward,n>(x_temp_in);
+
+            // Multiply with coefficients
+            multiply_coeff_D<n/2,forward>(x_temp_in, x_temp_out);
+
+            // Copy output data
+            for (size_t i = 0; i < n/2; i++)
+            {
+                store_D(k*x_temp_out[i], data_out + 2*i);
+            }
+        }
+    } else
+    {
+        // odd n
+        if (forward)
+        {
+            ComplexD x_temp_in[n];
+            ComplexD x_temp_out[n];
+
+            // Copy real input data
+            for (size_t j = 0; j < n; j++)
+            {
+                x_temp_in[j] = load_real_D(data_in + j);
+            }
+
+            // Multiply with coefficients
+            multiply_coeff_D<n,true>(x_temp_in, x_temp_out);
+
+            // Save only about half of the output
+            for (size_t j = 0; j < n/2 + 1; j++)
+            {
+                store_D(x_temp_out[j], data_out + 2*j);
+            }
+        } else
+        {
+            ComplexD x_temp_in[n];
+            ComplexD x_temp_out[n];
+
+            ComplexD norm_factor = load_D(1.0/n, 1.0/n);
+
+            // First input is real
+            x_temp_in[0] = norm_factor*load_real_D(data_in + 0);
+
+            // Read other inputs and conjugate them
+            for (size_t j = 1; j <= n/2; j++)
+            {
+                ComplexD x = norm_factor*load_D(data_in + 2*j);
+                x_temp_in[j] = x;
+                x_temp_in[n-j] = conj_D(x);
+            }
+
+            // Multiply with coefficients
+            multiply_coeff_D<n,false>(x_temp_in, x_temp_out);
+
+            // Write only real parts of the data
+            for (size_t j = 0; j < n; j++)
+            {
+                store_real_D(x_temp_out[j], data_out + j);
+            }
+        }
+    }
+}
+
 // Instantiations of the functions defined in this class
 template void fft_1d_complex_to_complex_packed_sse2_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_to_complex_packed_sse2_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
+template void fft_1d_real_1level_sse2_d<1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<2, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_sse2_d<3, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<4, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_sse2_d<5, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<6, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_sse2_d<7, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<8, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<10, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<12, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<14, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<16, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_sse2_d<1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<2, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_sse2_d<3, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<4, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_sse2_d<5, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<6, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_sse2_d<7, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<8, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<10, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_sse2_d<12, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
