@@ -25,6 +25,8 @@
 
 #include "../common/hhfft_1d_complex_avx_common_d.h"
 
+#include "../test_unofficial/test.h" // TESTING
+
 using namespace hhfft;
 
 template<bool forward>
@@ -459,6 +461,8 @@ template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *da
     size_t stride = step_info.stride;
     double *twiddle_factors = step_info.twiddle_factors;
 
+    std::cout << "fft_1d_real_one_level_inverse_avx_d, radix = " << radix << ", stride = " << stride << ", repeats = " << repeats << std::endl;
+
     // In the first repeat input is r,r,r,... r,r,r, ... i,i,i, ... and output is r,r,r,r,r...
     {
         size_t k;
@@ -525,9 +529,38 @@ template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *da
     // Other repeats are more usual, however both inputs and outputs have real and imag parts separated
     for (size_t i = 1; i < repeats; i++)
     {
-        // Load two complex numbers at a time (r,r) and (i,i)
+        // Load four complex numbers at a time (r,r,r,r) and (i,i,i,i)
         size_t k;
-        for (k = 0; k + 1 < stride; k+=2)
+        for (k = 0; k + 3 < stride; k+=4)
+        {
+            ComplexD4S x_temp_in[radix];
+            ComplexD4S x_temp_out[radix];
+            ComplexD4S twiddle_temp[radix];
+
+            // Read real and imag parts separately
+            for (size_t j = 0; j < radix; j++)
+            {
+                size_t index = 2*i*stride*radix + 2*j*stride - stride*radix;
+                x_temp_in[j] = load_D4S(data_in + index + k, data_in + index + stride + k);
+                twiddle_temp[j] = load512_D4S(twiddle_factors + 2*j*stride + 2*k);
+            }
+
+            // Multiply with twiddle factors
+            multiply_twiddle_D4S<radix,false>(x_temp_in, x_temp_in, twiddle_temp);
+
+            // Multiply with coefficients
+            multiply_coeff_D4S<radix,false>(x_temp_in, x_temp_out);
+
+            // Store real and imag parts separately
+            for (size_t j = 0; j < radix; j++)
+            {
+                size_t index = 2*i*stride*radix + j*stride;
+                store_D4S(x_temp_out[j], data_out + index - stride*radix + k, data_out + index + k);
+            }
+        }
+
+        // Load two complex numbers at a time (r,r) and (i,i)        
+        if (k + 1 < stride)
         {
             ComplexD2S x_temp_in[radix];
             ComplexD2S x_temp_out[radix];
@@ -553,6 +586,7 @@ template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *da
                 size_t index = 2*i*stride*radix + j*stride;
                 store_D2S(x_temp_out[j], data_out + index - stride*radix + k, data_out + index + k);
             }
+            k += 2;
         }
 
         // Load one complex number at a time r and i separated

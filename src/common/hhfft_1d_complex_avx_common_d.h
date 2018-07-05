@@ -408,16 +408,42 @@ template<size_t radix> inline __attribute__((always_inline)) void multiply_conj_
 }
 
 ////////////////////////////////////////// ComplexD4S ///////////////////////////////////////
-// contains four complex numbers separated to real and imaginary parts : [r0 r2 r1 r3] & [i0 i2 i1 i3]
+// contains four complex numbers separated to real and imaginary parts : [r r r r] & [i i i i]
 // this is mainly intended to be used with FMA instructions, but it might also sometimes be more efficient way also with normal avx
 typedef struct
 {
     __m256d real, imag;
 } ComplexD4S;
 
+// addition, subtraction, multiplication
+inline ComplexD4S operator+(ComplexD4S a, ComplexD4S b)
+{
+    ComplexD4S out = {a.real + b.real, a.imag + b.imag};
+    return out;
+}
+inline ComplexD4S operator-(ComplexD4S a, ComplexD4S b)
+{
+    ComplexD4S out = {a.real - b.real, a.imag - b.imag};
+    return out;
+}
+inline ComplexD4S operator*(ComplexD4S a, ComplexD4S b)
+{
+    ComplexD4S out = {a.real * b.real, a.imag * b.imag};
+    return out;
+}
+
+// Read complex numbers with real and imaginary parts from different memory locations
+inline __attribute__((always_inline))  const ComplexD4S load_D4S(const double *r, const double *i)
+{
+    ComplexD4S out;
+    out.real = _mm256_loadu_pd(r);
+    out.imag = _mm256_loadu_pd(i);
+
+    return out;
+}
 
 // Read four complex numbers and reorder them to real and complex parts [r0 r2 r1 r3] & [i0 i2 i1 i3]
-inline const ComplexD4S load512s_D4S(const double *x)
+inline __attribute__((always_inline))  const ComplexD4S load512s_D4S(const double *x)
 {
     __m256d x0 = _mm256_loadu_pd(x);
     __m256d x1 = _mm256_loadu_pd(x + 4);
@@ -429,8 +455,21 @@ inline const ComplexD4S load512s_D4S(const double *x)
     return out;
 }
 
+// Read four complex numbers and reorder them to real and complex parts [r0 r1 r2 r3] & [i0 i1 i2 i3]
+inline __attribute__((always_inline)) const ComplexD4S load512_D4S(const double *x)
+{
+    __m256d x0 = load_two_128_D2(x + 0, x + 4);
+    __m256d x1 = load_two_128_D2(x + 2, x + 6);
+
+    ComplexD4S out;
+    out.real = _mm256_unpacklo_pd(x0, x1);
+    out.imag = _mm256_unpackhi_pd(x0, x1);
+
+    return out;
+}
+
 // Store four complex numbers [r0 r2 r1 r3] & [i0 i2 i1 i3]
-inline void store_D4S(ComplexD4S val, double *v)
+inline __attribute__((always_inline)) void store512s_D4S(ComplexD4S val, double *v)
 {
     // Reorder data back to correct form
     __m256d x0 = _mm256_unpacklo_pd(val.real, val.imag);
@@ -440,8 +479,23 @@ inline void store_D4S(ComplexD4S val, double *v)
     _mm256_storeu_pd(v + 4, x1);
 }
 
+// Store four complex numbers with real and imaginary parts to separate locations
+inline __attribute__((always_inline)) void store_D4S(ComplexD4S val, double *r, double *i)
+{
+    _mm256_storeu_pd(r, val.real);
+    _mm256_storeu_pd(i, val.imag);
+}
+
+inline __attribute__((always_inline)) ComplexD4S broadcast64_D4S(double x)
+{
+    ComplexD4S out;
+    out.real = broadcast64_D2(x);
+    out.imag = out.real;
+    return out;
+}
+
 // Multiplies four complex numbers.
-inline ComplexD4S mul_D4S(ComplexD4S a, ComplexD4S b)
+inline __attribute__((always_inline)) ComplexD4S mul_D4S(ComplexD4S a, ComplexD4S b)
 {
     ComplexD4S out;
     out.real = a.real * b.real - a.imag*b.imag;
@@ -451,7 +505,7 @@ inline ComplexD4S mul_D4S(ComplexD4S a, ComplexD4S b)
 }
 
 // Multiplies four complex numbers. Forward means a*b, inverse a*conj(b)
-template<bool forward> inline void mul_w_D4S(ComplexD4S a, ComplexD4S b)
+template<bool forward> inline __attribute__((always_inline)) ComplexD4S mul_w_D4S(ComplexD4S a, ComplexD4S b)
 {
     ComplexD4S out;
 
@@ -469,3 +523,225 @@ template<bool forward> inline void mul_w_D4S(ComplexD4S a, ComplexD4S b)
     return out;
 }
 
+inline __attribute__((always_inline)) ComplexD4S mul_i_D4S(ComplexD4S x)
+{
+    ComplexD4S out;
+    out.real = -x.imag;
+    out.imag = x.real;
+    return out;
+}
+
+template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_twiddle_D4S(const ComplexD4S *x_in, ComplexD4S *x_out, const ComplexD4S *twiddle_factors)
+{
+    // It is assumed that first twiddle factors are always (1 + 0i)
+    x_out[0] = x_in[0];
+
+    // Read in the values used in this step and multiply them with twiddle factors
+    for (size_t j = 1; j < radix; j++)
+    {
+        ComplexD4S x = x_in[j];
+        ComplexD4S w = twiddle_factors[j];
+
+        x_out[j] = mul_w_D4S<forward>(x, w);
+    }
+}
+
+template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_coeff_D4S(const ComplexD4S *x_in, ComplexD4S *x_out)
+{
+    // Implementation for radix = 2
+    if (radix == 2)
+    {
+        x_out[0] = x_in[0] + x_in[1];
+        x_out[1] = x_in[0] - x_in[1];
+        return;
+    }
+
+    // Implementation for radix = 3
+    if (radix == 3)
+    {
+        const ComplexD4S k0 = broadcast64_D4S(0.5);
+        const ComplexD4S k1 = broadcast64_D4S(0.5*sqrt(3.0));
+        ComplexD4S t0 = x_in[1] + x_in[2];
+        ComplexD4S t1 = x_in[0] - k0*t0;
+        ComplexD4S t2 = mul_i_D4S(k1*(x_in[1] - x_in[2]));
+
+        x_out[0] = x_in[0] + t0;
+        if (forward)
+        {
+            x_out[1] = t1 - t2;
+            x_out[2] = t1 + t2;
+        } else
+        {
+            x_out[1] = t1 + t2;
+            x_out[2] = t1 - t2;
+        }
+        return;
+    }
+
+    // Implementation for radix = 4
+    if (radix == 4)
+    {
+        ComplexD4S t0 = x_in[0] + x_in[2];
+        ComplexD4S t1 = x_in[1] + x_in[3];
+        ComplexD4S t2 = x_in[0] - x_in[2];
+        ComplexD4S t3;
+        if (forward)
+            t3 = mul_i_D4S(x_in[3] - x_in[1]);
+        else
+            t3 = mul_i_D4S(x_in[1] - x_in[3]);
+
+        x_out[0] = t0 + t1;
+        x_out[1] = t2 + t3;
+        x_out[2] = t0 - t1;
+        x_out[3] = t2 - t3;
+        return;
+    }
+
+    // Implementation for radix = 5
+    if (radix == 5)
+    {
+        const ComplexD4S k1 = broadcast64_D4S(cos(2.0*M_PI*1.0/5.0));
+        const ComplexD4S k2 = broadcast64_D4S(sin(2.0*M_PI*1.0/5.0));
+        const ComplexD4S k3 = broadcast64_D4S(-cos(2.0*M_PI*2.0/5.0));
+        const ComplexD4S k4 = broadcast64_D4S(sin(2.0*M_PI*2.0/5.0));
+
+        ComplexD4S t0 = x_in[1] + x_in[4];
+        ComplexD4S t1 = x_in[2] + x_in[3];
+        ComplexD4S t2 = x_in[1] - x_in[4];
+        ComplexD4S t3 = x_in[2] - x_in[3];
+        ComplexD4S t4 = x_in[0] + k1*t0 - k3*t1;
+        ComplexD4S t5 = x_in[0] + k1*t1 - k3*t0;
+        ComplexD4S t6 = mul_i_D4S(k2*t2 + k4*t3);
+        ComplexD4S t7 = mul_i_D4S(k4*t2 - k2*t3);
+
+        x_out[0] = x_in[0] + t0 + t1;
+        if (forward)
+        {
+            x_out[1] = t4 - t6;
+            x_out[2] = t5 - t7;
+            x_out[3] = t5 + t7;
+            x_out[4] = t4 + t6;
+        }
+        else
+        {
+            x_out[1] = t4 + t6;
+            x_out[2] = t5 + t7;
+            x_out[3] = t5 - t7;
+            x_out[4] = t4 - t6;
+        }
+        return;
+    }
+
+    // Implementation for radix = 6
+    if (radix == 6)
+    {
+        const ComplexD4S k0 = broadcast64_D4S(0.5);
+        ComplexD4S k1;
+        if (forward)
+            k1 = broadcast64_D4S(0.5*sqrt(3.0));
+        else
+            k1 = broadcast64_D4S(-0.5*sqrt(3.0));
+
+        ComplexD4S t6 = x_in[2] + x_in[4];
+        ComplexD4S t7 = x_in[1] + x_in[5];
+        ComplexD4S t8 = x_in[0] - k0*t6;
+        ComplexD4S t9 = x_in[3] - k0*t7;
+        ComplexD4S t10 = mul_i_D4S(k1*(x_in[4] - x_in[2]));
+        ComplexD4S t11 = mul_i_D4S(k1*(x_in[5] - x_in[1]));
+        ComplexD4S t0 = x_in[0] + t6;
+        ComplexD4S t1 = x_in[3] + t7;
+        ComplexD4S t2 = t8 + t10;
+        ComplexD4S t3 = t11 - t9;
+        ComplexD4S t4 = t8 - t10;
+        ComplexD4S t5 = t9 + t11;
+        x_out[0] = t0 + t1;
+        x_out[1] = t2 + t3;
+        x_out[2] = t4 + t5;
+        x_out[3] = t0 - t1;
+        x_out[4] = t2 - t3;
+        x_out[5] = t4 - t5;
+
+        return;
+    }
+
+    // Implementation for radix = 8
+    if (radix == 8)
+    {
+        const ComplexD4S k = broadcast64_D4S(sqrt(0.5));
+
+        ComplexD4S t12 = x_in[1] + x_in[5];
+        ComplexD4S t13 = x_in[3] + x_in[7];
+        ComplexD4S t14 = x_in[1] - x_in[5];
+        ComplexD4S t15 = x_in[7] - x_in[3];
+
+        ComplexD4S t1 = t12 + t13;
+        ComplexD4S t5;
+        if (forward)
+            t5 = mul_i_D4S(t13 - t12);
+        else
+            t5 = mul_i_D4S(t12 - t13);
+
+        ComplexD4S t16 = k*(t14 + t15);
+        ComplexD4S t17;
+        if (forward)
+            t17 = k*mul_i_D4S(t15 - t14);
+        else
+            t17 = k*mul_i_D4S(t14 - t15);
+        ComplexD4S t3 = t16 + t17;
+        ComplexD4S t7 = t17 - t16;
+
+        ComplexD4S t8  = x_in[0] + x_in[4];
+        ComplexD4S t9  = x_in[2] + x_in[6];
+        ComplexD4S t10 = x_in[0] - x_in[4];
+        ComplexD4S t11;
+        if (forward)
+            t11 = mul_i_D4S(x_in[2] - x_in[6]);
+        else
+            t11 = mul_i_D4S(x_in[6] - x_in[2]);
+        ComplexD4S t0  = t8 + t9;
+        ComplexD4S t4  = t8 - t9;
+        ComplexD4S t2  = t10 - t11;
+        ComplexD4S t6  = t10 + t11;
+
+        x_out[0] = t0 + t1;
+        x_out[1] = t2 + t3;
+        x_out[2] = t4 + t5;
+        x_out[3] = t6 + t7;
+        x_out[4] = t0 - t1;
+        x_out[5] = t2 - t3;
+        x_out[6] = t4 - t5;
+        x_out[7] = t6 - t7;
+        return;
+    }
+
+    // Other radices
+    const double *coeff = nullptr;
+
+    if (radix == 7)
+    {
+        coeff = coeff_radix_7;
+    }
+
+    // First row is (1,0)
+    x_out[0] = x_in[0];
+    for (size_t i = 1; i < radix; i++)
+    {
+        x_out[0] = x_out[0] + x_in[i];
+    }
+
+    for (size_t i = 1; i < radix; i++)
+    {
+        x_out[i] = x_in[0]; // First column is always (1,0)
+        for (size_t j = 1; j < radix; j++)
+        {
+            // TODO this should be a function
+            ComplexD4S w;
+            double re = coeff[2*radix*i + 2*j + 0];
+            double im = coeff[2*radix*i + 2*j + 1];
+            w.real = broadcast64_D2(re);
+            w.imag = broadcast64_D2(im);
+
+            x_out[i] = x_out[i] + mul_w_D4S<forward>(x_in[j], w);
+        }
+    }
+}

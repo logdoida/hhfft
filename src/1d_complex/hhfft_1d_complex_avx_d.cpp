@@ -417,7 +417,7 @@ void fft_1d_complex_convolution_avx_d(const double *data_in0, const double *data
         ComplexD4S x_in0 = load512s_D4S(data_in0 + i);
         ComplexD4S x_in1 = load512s_D4S(data_in1 + i);
         ComplexD4S x_out = mul_D4S(x_in0, x_in1);
-        store_D4S(x_out, data_out + i);
+        store512s_D4S(x_out, data_out + i);
     }
 
     // Then, if necassery, use 128-bit variables
