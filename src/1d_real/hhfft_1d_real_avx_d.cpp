@@ -461,8 +461,6 @@ template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *da
     size_t stride = step_info.stride;
     double *twiddle_factors = step_info.twiddle_factors;
 
-    std::cout << "fft_1d_real_one_level_inverse_avx_d, radix = " << radix << ", stride = " << stride << ", repeats = " << repeats << std::endl;
-
     // In the first repeat input is r,r,r,... r,r,r, ... i,i,i, ... and output is r,r,r,r,r...
     {
         size_t k;
@@ -587,7 +585,7 @@ template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *da
                 store_D2S(x_temp_out[j], data_out + index - stride*radix + k, data_out + index + k);
             }
             k += 2;
-        }
+        }        
 
         // Load one complex number at a time r and i separated
         if (k < stride)

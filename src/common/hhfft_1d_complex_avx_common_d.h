@@ -516,8 +516,8 @@ template<bool forward> inline __attribute__((always_inline)) ComplexD4S mul_w_D4
 
     } else
     {
-        out.real = a.real * b.real + a.imag*b.imag;
-        out.imag = a.real * b.imag - a.imag*b.real;
+        out.real = a.real * b.real + a.imag * b.imag;
+        out.imag = a.imag * b.real - a.real * b.imag;
     }
 
     return out;
