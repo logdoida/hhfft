@@ -371,6 +371,22 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     }
 }
 
+template<size_t radix> inline __attribute__((always_inline)) void multiply_coeff_real_odd_forward_D2(const ComplexD2 *x_in, ComplexD2 *x_out)
+{
+    // Use the normal function
+    ComplexD2 x_temp[radix];
+    multiply_coeff_D2<radix,true>(x_in, x_temp);
+
+    // And then apply some reordering and conjugation
+    for (size_t i = 0; i < radix; i+=2)
+    {
+        x_out[i] = x_temp[i/2];
+    }
+    for (size_t i = 1; i < radix; i+=2)
+    {
+        x_out[i] = conj_D2(x_temp[radix - (i+1)/2]);
+    }
+}
 
 template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_twiddle_D2(const ComplexD2 *x_in, ComplexD2 *x_out, const ComplexD2 *twiddle_factors)
 {

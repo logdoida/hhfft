@@ -25,8 +25,6 @@
 
 #include "../common/hhfft_1d_complex_avx_common_d.h"
 
-#include "../test_unofficial/test.h" // TESTING
-
 using namespace hhfft;
 
 template<bool forward>
@@ -285,7 +283,7 @@ inline size_t index_dir_stride_odd(size_t dir_in, size_t stride, size_t k)
     return dir_in*(4*k - stride) + stride - 2*k - 1;
 }
 
-template<size_t radix> void fft_1d_real_one_level_forward_avx_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride, bool dir_out)
+template<size_t radix> inline __attribute__((always_inline)) void fft_1d_real_one_level_forward_avx_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride, bool dir_out)
 {
     // The first/last value in each stride is real
     {
@@ -330,8 +328,63 @@ template<size_t radix> void fft_1d_real_one_level_forward_avx_d_internal(const d
         }
     }
 
-    // Rest of the values represent complex numbers
-    for (size_t k = 1; k < (stride+1)/2; k++)
+    size_t k = 1;
+    // First use 256-bit variables
+    for (; k + 1 < (stride+1)/2; k+=2)
+    {
+        ComplexD2 x_temp_in[radix];
+        ComplexD2 x_temp_out[radix];
+        ComplexD2 twiddle_temp[radix];
+        size_t dir_in = dir_out;
+
+        // Copy the values and twiddle factors
+        for (size_t j = 0; j < radix; j++)
+        {
+            if (dir_in)
+            {
+                x_temp_in[j] = load_D2(data_in + j*stride + 2*k - 1);
+            } else
+            {
+                x_temp_in[j] = load_two_128_D2(data_in + j*stride + stride - 2*k - 1, data_in + j*stride + stride - 2*k - 3);
+            }
+
+            twiddle_temp[j] = load_D2(twiddle_factors + 2*k + 2*j*stride);
+            dir_in = !dir_in;
+        }
+
+        multiply_twiddle_D2<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
+
+        multiply_coeff_real_odd_forward_D2<radix>(x_temp_in, x_temp_out);
+
+        // save output taking the directions into account
+        dir_in = dir_out;
+        for (size_t j = 0; j < radix; j++)
+        {
+            // reverse the output order if required
+            ComplexD2 temp_out;
+            if (dir_out)
+            {
+                temp_out = x_temp_out[j];
+            } else
+            {
+                temp_out = x_temp_out[radix - j - 1];
+            }
+
+            if (dir_in)
+            {
+                store_D2(temp_out, data_out + j*stride + 2*k - 1);
+            } else
+            {
+                store_two_128_D2(temp_out, data_out + j*stride + stride - 2*k - 1, data_out + j*stride + stride - 2*k - 3);
+            }
+
+            dir_in = !dir_in;
+        }
+    }
+
+
+    // Then, if necessary, use 128-bit variables
+    if (k < (stride+1)/2)
     {
         ComplexD x_temp_in[radix];
         ComplexD x_temp_out[radix];
