@@ -52,6 +52,47 @@ void fft_2d_real_reorder_columns_inverse_inplace_d(const double *data_in, double
     }
 }
 
+// Change values in the first column from [0 r] to [r 0]
+void fft_2d_real_fix_first_column_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    // It is assumed that this is always in-place as this is the last step
+    assert (data_in == data_out);
+
+    size_t n = step_info.stride;
+    size_t m = step_info.size + 1;
+
+    for (size_t i = 0; i < n; i++)
+    {
+        double r = data_in[i*m + 1];
+        data_out[i*m + 0] = r;
+        data_out[i*m + 1] = 0;
+    }
+}
+
+// Combines first column to rest of the columns in ifft odd
+void fft_2d_real_odd_rows_combine_columns_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t n = step_info.stride;
+    size_t m2 = step_info.size;  // row size after this function
+    size_t m = m2 - 1;           // row size before this function
+
+    for (size_t i = 0; i < n; i++)
+    {
+        size_t i2 = n - i - 1;
+
+        // Move normal columns
+        for (size_t j = 0; j < m; j++)
+        {
+            size_t j2 = m - j - 1;
+            data_out[i2*m2 + j2 + 1] = data_out[i2*m + j2];
+        }
+
+        // Copy real part from first column
+        data_out[i2*m2] = data_in[2*i2];
+    }
+}
+
+
 
 void hhfft::HHFFT_2D_Real_D_set_reorder_column_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
@@ -276,6 +317,269 @@ void hhfft::HHFFT_2D_Real_D_set_function(StepInfoD &step_info, hhfft::Instructio
     if (step_info.radix != 1 && !step_info.forward)
     {
         set_radix_2d_real_d(step_info, instruction_set);
+    }
+
+    if (step_info.step_function == nullptr)
+    {
+        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+    }
+}
+
+
+////////////////// Odd number of columns ////////////////////////////
+
+// Reorder both rows and columns and do FFT on rows
+template<size_t radix>
+void fft_2d_real_reorder2_odd_rows_forward_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_reorder2_odd_rows_forward_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_reorder2_odd_rows_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+// These are implemented in hhfft_1d_real_*
+template<size_t radix>
+void fft_2d_real_odd_rows_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_odd_rows_forward_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_odd_rows_forward_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_odd_rows_first_level_inverse_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_odd_rows_first_level_inverse_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_odd_rows_first_level_inverse_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_odd_rows_inverse_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_odd_rows_inverse_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_odd_rows_inverse_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+
+
+template<size_t radix> void set_instruction_set_odd_rows_2d_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+
+#ifdef HHFFT_COMPILED_WITH_AVX512F
+    if (instruction_set == hhfft::InstructionSet::avx512f)
+    {
+
+    }
+#endif
+
+    /*
+#ifdef HHFFT_COMPILED_WITH_AVX
+    if (instruction_set == hhfft::InstructionSet::avx)
+    {
+        if (step_info.forward)
+        {
+            step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_avx_d<radix>;
+        } else
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
+    }
+#endif
+
+    if (instruction_set == hhfft::InstructionSet::sse2)
+    {
+        if (step_info.forward)
+        {
+            step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_sse2_d<radix>;
+        } else
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
+    }
+    */
+
+    if (instruction_set == hhfft::InstructionSet::none)
+    {
+        if (step_info.forward)
+        {
+            if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr)
+                step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_plain_d<radix>;
+            else
+                step_info.step_function = fft_2d_real_odd_rows_forward_plain_d<radix>;
+        } else
+        {
+            if (step_info.stride == 1)
+                step_info.step_function = fft_2d_real_odd_rows_first_level_inverse_plain_d<radix>;
+            else
+                step_info.step_function = fft_2d_real_odd_rows_inverse_plain_d<radix>;
+        }
+    }
+}
+
+void set_radix_2d_odd_rows_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    size_t radix = step_info.radix;
+
+    if (radix == 3)
+    {
+        set_instruction_set_odd_rows_2d_d<3>(step_info, instruction_set);
+    } else if (radix == 5)
+    {
+        set_instruction_set_odd_rows_2d_d<5>(step_info, instruction_set);
+    } else if (radix == 7)
+    {
+        set_instruction_set_odd_rows_2d_d<7>(step_info, instruction_set);
+    }
+}
+
+void hhfft::HHFFT_2D_Real_D_odd_set_function_rows(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    step_info.step_function = nullptr;
+
+    if (step_info.radix != 1)
+    {        
+        set_radix_2d_odd_rows_d(step_info, instruction_set);
+    }
+
+    if (step_info.radix == 1 && step_info.forward)
+    {
+        step_info.step_function = fft_2d_real_fix_first_column_d;
+    }
+
+
+    if (step_info.step_function == nullptr)
+    {
+        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+    }
+}
+
+
+// Reorder first column and calculate first FFT
+template<size_t radix>
+void fft_2d_real_odd_rows_reorder_first_column_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_odd_rows_reorder_first_column_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_odd_rows_reorder_first_column_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+// Reorder other columns and calculate first FFT
+template<size_t radix>
+void fft_2d_real_odd_rows_reorder_columns_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_odd_rows_reorder_columns_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template<size_t radix>
+void fft_2d_real_odd_rows_reorder_columns_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+
+
+
+template<size_t radix> void set_instruction_set_odd_columns_2d_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+
+#ifdef HHFFT_COMPILED_WITH_AVX512F
+    if (instruction_set == hhfft::InstructionSet::avx512f)
+    {
+
+    }
+#endif
+
+    /*
+#ifdef HHFFT_COMPILED_WITH_AVX
+    if (instruction_set == hhfft::InstructionSet::avx)
+    {
+        if (step_info.forward)
+        {
+            step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_avx_d<radix>;
+        } else
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
+    }
+#endif
+
+    if (instruction_set == hhfft::InstructionSet::sse2)
+    {
+        if (step_info.forward)
+        {
+            step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_sse2_d<radix>;
+        } else
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
+    }
+    */
+
+    if (instruction_set == hhfft::InstructionSet::none)
+    {
+        if (step_info.data_type_out == hhfft::StepDataType::temp_data)
+        {
+            step_info.step_function = fft_2d_real_odd_rows_reorder_first_column_plain_d<radix>;
+        } else
+        {
+            step_info.step_function = fft_2d_real_odd_rows_reorder_columns_plain_d<radix>;
+        }
+        /*
+        if (step_info.forward)
+        {
+            if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr)
+                step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_plain_d<radix>;
+            else
+                step_info.step_function = fft_2d_real_odd_rows_forward_plain_d<radix>;
+        }
+        */
+    }
+}
+
+void set_radix_2d_odd_columns_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    size_t radix = step_info.radix;
+
+    if (radix == 2)
+    {
+        set_instruction_set_odd_columns_2d_d<2>(step_info, instruction_set);
+    } else if (radix == 3)
+    {
+        set_instruction_set_odd_columns_2d_d<3>(step_info, instruction_set);
+    } else if (radix == 4)
+    {
+        set_instruction_set_odd_columns_2d_d<4>(step_info, instruction_set);
+    } else if (radix == 5)
+    {
+        set_instruction_set_odd_columns_2d_d<5>(step_info, instruction_set);
+    } else if (radix == 6)
+    {
+        set_instruction_set_odd_columns_2d_d<6>(step_info, instruction_set);
+    } else if (radix == 7)
+    {
+        set_instruction_set_odd_columns_2d_d<7>(step_info, instruction_set);
+    } else if (radix == 8)
+    {
+        set_instruction_set_odd_columns_2d_d<8>(step_info, instruction_set);
+    }
+}
+
+void hhfft::HHFFT_2D_Real_D_odd_set_function_columns(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    step_info.step_function = nullptr;
+
+    if (step_info.radix != 1)
+    {
+        set_radix_2d_odd_columns_d(step_info, instruction_set);
+    }
+
+    if (step_info.radix == 1)
+    {
+        step_info.step_function = fft_2d_real_odd_rows_combine_columns_d;
     }
 
     if (step_info.step_function == nullptr)

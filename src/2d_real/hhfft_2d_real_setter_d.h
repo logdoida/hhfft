@@ -38,6 +38,12 @@ void HHFFT_2D_Real_D_set_complex_to_complex_packed_first_column_function(StepInf
 // Sets pointer to correct function
 void HHFFT_2D_Real_D_set_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
 
+// Sets pointer to correct function when row size is odd
+void HHFFT_2D_Real_D_odd_set_function_rows(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
+
+// Sets pointer to correct function when row size is odd
+void HHFFT_2D_Real_D_odd_set_function_columns(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
+
 }
 
 #endif // HHFFT_2D_REAL_SETTER_D_H

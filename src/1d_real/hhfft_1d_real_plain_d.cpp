@@ -168,12 +168,8 @@ template<size_t radix> void fft_1d_real_first_level_forward_plain_d(const double
             x_temp_in[2*j + 1] = 0;
         }
 
-        //std::cout << "x_temp_in = " << x_temp_in[0] << " " << x_temp_in[1] << " " << x_temp_in[2] << " " << x_temp_in[3] << " " << x_temp_in[4] << " " << x_temp_in[5] << std::endl;
-
         // Multiply with coefficients
         multiply_coeff<radix,true>(x_temp_in, x_temp_out);
-
-        //std::cout << "x_temp_out = " << x_temp_out[0] << " " << x_temp_out[1] << " " << x_temp_out[2] << " " << x_temp_out[3] << " " << x_temp_out[4] << " " << x_temp_out[5] << std::endl;
 
         // Save only about half of the output
         // First/ last one is real
@@ -259,8 +255,6 @@ template<size_t radix> void fft_1d_real_first_level_inverse_plain_d(const double
             }
         }
 
-        //std::cout << "x_temp_in = " << x_temp_in[0] << " " << x_temp_in[1] << " " << x_temp_in[2] << " " << x_temp_in[3] << " " << x_temp_in[4] << " " << x_temp_in[5] << std::endl;
-
         // Multiply with coefficients
         multiply_coeff<radix,false>(x_temp_in, x_temp_out);
 
@@ -269,6 +263,68 @@ template<size_t radix> void fft_1d_real_first_level_inverse_plain_d(const double
         {
             data_out[2*i*radix - radix + j] = x_temp_out[2*j + 0];
             data_out[2*i*radix + j] = x_temp_out[2*j + 1];
+        }
+    }
+}
+
+// This function is used on first level of the odd real 2d ifft
+template<size_t radix> void fft_2d_real_odd_rows_first_level_inverse_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t repeats = step_info.repeats;
+    size_t m = radix * (2*step_info.repeats - 1);
+    size_t n = step_info.size;
+
+    double x_temp_in[2*radix];
+    double x_temp_out[2*radix];
+
+    // Loop over all rows
+    for (size_t k = 0; k < n; k++)
+    {
+        // In the first repeat input is r, (r+i), (r+i) ... and output is r,r,r,r,r...
+        {
+            x_temp_in[0] = data_in[k*m];
+            x_temp_in[1] = 0;
+
+            // Read other inputs and conjugate them
+            for (size_t j = 1; j <= radix/2; j++)
+            {
+                double real = data_in[k*m + 2*j - 1];
+                double imag = data_in[k*m + 2*j + 0];
+                x_temp_in[2*j + 0] = real;
+                x_temp_in[2*j + 1] = imag;
+                x_temp_in[2*(radix-j) + 0] = real;
+                x_temp_in[2*(radix-j) + 1] = -imag;
+            }
+
+            // Multiply with coefficients
+            multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+
+            // Write only real parts of the data
+            for (size_t j = 0; j < radix; j++)
+            {
+                data_out[k*m + j] = x_temp_out[2*j + 0];
+            }
+        }
+
+        // Other repeats are more usual, data ordering changes from r,i,r,i,r,i... to r,r,r...i,i,i...
+        for (size_t i = 1; i < repeats; i++)
+        {
+            // Copy input data taking reordering into account
+            for (size_t j = 0; j < radix; j++)
+            {                
+                x_temp_in[2*j + 0] = data_in[k*m + 2*i*radix - radix + 2*j + 0];
+                x_temp_in[2*j + 1] = data_in[k*m + 2*i*radix - radix + 2*j + 1];
+            }            
+
+            // Multiply with coefficients
+            multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+
+            // Store real and imag parts separately
+            for (size_t j = 0; j < radix; j++)
+            {
+                data_out[k*m + 2*i*radix - radix + j] = x_temp_out[2*j + 0];
+                data_out[k*m + 2*i*radix + j] = x_temp_out[2*j + 1];
+            }
         }
     }
 }
@@ -382,6 +438,28 @@ template<size_t radix> void fft_1d_real_one_level_forward_plain_d(const double *
     }
 }
 
+// This function is used on rest of the odd real 2d fft
+template<size_t radix> void fft_2d_real_odd_rows_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t n = step_info.size;
+    size_t stride = step_info.stride;
+    size_t repeats = step_info.repeats;
+    size_t m = stride*repeats*radix + 1;
+    double *twiddle_factors = step_info.twiddle_factors;
+
+    for (size_t j = 0; j < n; j++)
+    {
+        bool dir_out = true;
+        for (size_t i = 0; i < repeats; i++)
+        {
+            fft_1d_real_one_level_forward_plain_d_internal<radix>(data_in + j*m + i*radix*stride + 1, data_out + j*m + i*radix*stride + 1,
+                                                                  twiddle_factors, stride, dir_out);
+
+            dir_out = !dir_out;
+        }
+    }
+}
+
 // This function is used on on rest of the odd real ifft
 template<size_t radix> void fft_1d_real_one_level_inverse_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {    
@@ -451,6 +529,20 @@ template<size_t radix> void fft_1d_real_one_level_inverse_plain_d(const double *
             }
         }
     }    
+}
+
+
+template<size_t radix> void fft_2d_real_odd_rows_inverse_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t n = step_info.size;
+    size_t stride = step_info.stride;
+    size_t m = stride*radix*(2*step_info.repeats - 1);
+
+    // Process all rows separately
+    for (size_t j = 0; j < n; j++)
+    {
+        fft_1d_real_one_level_inverse_plain_d<radix>(data_in + j*m, data_out + j*m, step_info);
+    }
 }
 
 
@@ -581,12 +673,8 @@ template<size_t n, bool forward> void fft_1d_real_1level_plain_d(const double *d
                 x_temp_in[2*j + 1] = 0;
             }
 
-            //std::cout << "x_temp_in = " << x_temp_in[0] << " " << x_temp_in[1] << " " << x_temp_in[2] << " " << x_temp_in[3] << " " << x_temp_in[4] << " " << x_temp_in[5] << std::endl;
-
             // Multiply with coefficients
             multiply_coeff<n,true>(x_temp_in, x_temp_out);
-
-            //std::cout << "x_temp_out = " << x_temp_out[0] << " " << x_temp_out[1] << " " << x_temp_out[2] << " " << x_temp_out[3] << " " << x_temp_out[4] << " " << x_temp_out[5] << std::endl;
 
             // Save only about half of the output
             for (size_t j = 0; j < n/2 + 1; j++)
@@ -649,6 +737,18 @@ template void fft_1d_real_one_level_forward_plain_d<7>(const double *data_in, do
 template void fft_1d_real_one_level_inverse_plain_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_one_level_inverse_plain_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_one_level_inverse_plain_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_2d_real_odd_rows_forward_plain_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_forward_plain_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_forward_plain_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_2d_real_odd_rows_first_level_inverse_plain_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_first_level_inverse_plain_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_first_level_inverse_plain_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_2d_real_odd_rows_inverse_plain_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_inverse_plain_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_inverse_plain_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 template void fft_1d_real_1level_plain_d<1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_plain_d<2, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

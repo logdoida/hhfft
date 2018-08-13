@@ -237,22 +237,22 @@ void set_radix_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
     if (radix == 2)
     {
         set_stride_type_d<2>(step_info, instruction_set);
-    } if (radix == 3)
+    } else if (radix == 3)
     {
         set_stride_type_d<3>(step_info, instruction_set);
-    } if (radix == 4)
+    } else if (radix == 4)
     {
         set_stride_type_d<4>(step_info, instruction_set);
-    } if (radix == 5)
+    } else if (radix == 5)
     {
         set_stride_type_d<5>(step_info, instruction_set);
-    } if (radix == 6)
+    } else if (radix == 6)
     {
         set_stride_type_d<6>(step_info, instruction_set);
-    } if (radix == 7)
+    } else if (radix == 7)
     {
         set_stride_type_d<7>(step_info, instruction_set);
-    } if (radix == 8)
+    } else if (radix == 8)
     {
         set_stride_type_d<8>(step_info, instruction_set);
     }
