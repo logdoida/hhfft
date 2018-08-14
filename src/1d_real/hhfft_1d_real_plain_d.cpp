@@ -531,7 +531,7 @@ template<size_t radix> void fft_1d_real_one_level_inverse_plain_d(const double *
     }    
 }
 
-
+// This is used in 2d real for odd row sizes
 template<size_t radix> void fft_2d_real_odd_rows_inverse_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     size_t n = step_info.size;

@@ -378,16 +378,21 @@ template<size_t radix> void set_instruction_set_odd_rows_2d_d(StepInfoD &step_in
     }
 #endif
 
-    /*
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {
         if (step_info.forward)
         {
-            step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_avx_d<radix>;
+            if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr)
+                step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_plain_d<radix>;  // TODO
+            else
+                step_info.step_function = fft_2d_real_odd_rows_forward_plain_d<radix>; // TODO
         } else
         {
-            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+            if (step_info.stride == 1)
+                step_info.step_function = fft_2d_real_odd_rows_first_level_inverse_plain_d<radix>; // TODO
+            else
+                step_info.step_function = fft_2d_real_odd_rows_inverse_plain_d<radix>; // TODO
         }
     }
 #endif
@@ -396,13 +401,18 @@ template<size_t radix> void set_instruction_set_odd_rows_2d_d(StepInfoD &step_in
     {
         if (step_info.forward)
         {
-            step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_sse2_d<radix>;
+            if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr)
+                step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_sse2_d<radix>;
+            else
+                step_info.step_function = fft_2d_real_odd_rows_forward_sse2_d<radix>;
         } else
         {
-            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+            if (step_info.stride == 1)
+                step_info.step_function = fft_2d_real_odd_rows_first_level_inverse_sse2_d<radix>;
+            else
+                step_info.step_function = fft_2d_real_odd_rows_inverse_sse2_d<radix>;
         }
     }
-    */
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
@@ -493,31 +503,29 @@ template<size_t radix> void set_instruction_set_odd_columns_2d_d(StepInfoD &step
     }
 #endif
 
-    /*
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {
-        if (step_info.forward)
+        if (step_info.data_type_out == hhfft::StepDataType::temp_data)
         {
-            step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_avx_d<radix>;
+            step_info.step_function = fft_2d_real_odd_rows_reorder_first_column_plain_d<radix>; // TODO
         } else
         {
-            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+            step_info.step_function = fft_2d_real_odd_rows_reorder_columns_plain_d<radix>; // TODO
         }
     }
 #endif
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
-        if (step_info.forward)
+        if (step_info.data_type_out == hhfft::StepDataType::temp_data)
         {
-            step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_sse2_d<radix>;
+            step_info.step_function = fft_2d_real_odd_rows_reorder_first_column_sse2_d<radix>;
         } else
         {
-            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+            step_info.step_function = fft_2d_real_odd_rows_reorder_columns_sse2_d<radix>;
         }
     }
-    */
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
@@ -527,16 +535,7 @@ template<size_t radix> void set_instruction_set_odd_columns_2d_d(StepInfoD &step
         } else
         {
             step_info.step_function = fft_2d_real_odd_rows_reorder_columns_plain_d<radix>;
-        }
-        /*
-        if (step_info.forward)
-        {
-            if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr)
-                step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_plain_d<radix>;
-            else
-                step_info.step_function = fft_2d_real_odd_rows_forward_plain_d<radix>;
-        }
-        */
+        }        
     }
 }
 
