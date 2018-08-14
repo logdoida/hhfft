@@ -60,6 +60,13 @@ inline const ComplexD2 load_two_128_D2(const double *a, const double *b)
     return _mm256_insertf128_pd (aa, bb, 1);
 }
 
+// Combines two complex numbers
+inline const ComplexD2 combine_two_128_D2(ComplexD a, ComplexD b)
+{
+    const ComplexD2 aa = _mm256_castpd128_pd256(a);
+    return _mm256_insertf128_pd (aa, b, 1);
+}
+
 // Load only real part, imaginary part is set to zero. [r1 r2] -> [r1 0 r2 0]
 inline const ComplexD2 load_real_D2(const double *v)
 {

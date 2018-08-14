@@ -309,6 +309,258 @@ void fft_2d_real_reorder2_inverse_avx_d(const double *data_in, double *data_out,
     }
 }
 
+//////////////////////// Odd number of columns ////////////////////////////
+
+// Combine reordering and first row wise FFT
+// Note this does not use avx
+template<size_t radix> void fft_2d_real_reorder2_odd_rows_forward_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    // Only out of place reordering supported
+    assert(data_in != data_out);
+
+    size_t n = step_info.size;
+    size_t m = step_info.repeats * radix;  // row size in input
+    size_t m2 = m+1; // row size in output
+    size_t repeats = step_info.repeats;
+    uint32_t *reorder_table_columns = step_info.reorder_table;
+    uint32_t *reorder_table_rows = step_info.reorder_table2;
+
+    // FFT and reordering
+    for (size_t i = 0; i < n; i++)
+    {
+        size_t i2 = reorder_table_columns[i];
+
+        // As the row size increases by one, set first value to be zero
+        data_out[i*m2] = 0;
+
+        bool dir_out = true;
+        for (size_t j = 0; j < repeats; j++)
+        {
+            ComplexD x_temp_in[radix];
+            ComplexD x_temp_out[radix];
+
+            // Copy input data taking reordering into account
+            for (size_t k = 0; k < radix; k++)
+            {
+                size_t j2 = reorder_table_rows[j*radix + k];
+
+                x_temp_in[k] = load_real_D(data_in + i2*m + j2);
+            }
+
+            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
+
+            // Save only about half of the output
+            // First/ last one is real
+            if (dir_out) // direction normal
+            {
+                store_real_D(x_temp_out[0], data_out + i*m2 + j*radix + 1);
+
+                for (size_t k = 1; k < radix/2 + 1; k++)
+                {
+                    store_D(x_temp_out[k], data_out + i*m2 + j*radix + 2*k);
+                }
+            } else // direction inverted
+            {
+                store_real_D(x_temp_out[0], data_out + i*m2 + j*radix + radix);
+
+                for (size_t k = 1; k < radix/2 + 1; k++)
+                {
+                    store_D(x_temp_out[k], data_out + i*m2 + j*radix + radix - 2*k);
+                }
+            }
+            dir_out = !dir_out;
+        }
+    }
+}
+
+
+// Calculates first ifft step for the first column and saves it to a temporary variable
+template<size_t radix> void fft_2d_real_odd_rows_reorder_first_column_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t m2 = 2*step_info.stride; // row size in input
+    size_t repeats = step_info.repeats;
+    uint32_t *reorder_table_columns = step_info.reorder_table;
+    double k = step_info.norm_factor;
+
+    // First use AVX
+    size_t i = 0;
+    for (; i + 1 < repeats; i+=2)
+    {
+        ComplexD2 x_temp_in[radix];
+        ComplexD2 x_temp_out[radix];
+
+        // Copy input data taking reordering and scaling into account
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t i2 = reorder_table_columns[i*radix + j];
+            size_t i3 = reorder_table_columns[(i+1)*radix + j];
+
+            x_temp_in[j] = load_two_128_D2(data_in + i2*m2, data_in + i3*m2)*k;
+        }
+
+        multiply_coeff_D2<radix,false>(x_temp_in, x_temp_out);
+
+        // save output
+        for (size_t j = 0; j < radix; j++)
+        {
+            store_two_128_D2(x_temp_out[j], data_out + 2*(i*radix + j), data_out + 2*((i+1)*radix + j));
+        }
+    }
+
+    // Then use sse2 if needed
+    if (i < repeats)
+    {
+        ComplexD x_temp_in[radix];
+        ComplexD x_temp_out[radix];
+
+        // Copy input data taking reordering and scaling into account
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t i2 = reorder_table_columns[i*radix + j];
+
+            x_temp_in[j] = load_D(data_in + i2*m2)*k;
+        }
+
+        multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+
+        // save output
+        for (size_t j = 0; j < radix; j++)
+        {
+            store_D(x_temp_out[j], data_out + 2*(i*radix + j));
+        }
+    }
+}
+
+// Reordering row- and columnwise, and first IFFT-step combined
+template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+{
+    size_t n = step_info.repeats * radix;  // number of rows
+    size_t m2 = step_info.size; // row size in input
+    size_t m = 2*m2 - 1;        // row size originally
+    size_t repeats = step_info.repeats;
+    uint32_t *reorder_table_columns = step_info.reorder_table;
+    uint32_t *reorder_table_rows = step_info.reorder_table2;
+    double norm_factor = step_info.norm_factor;
+
+    for (size_t i = 0; i < repeats; i++)
+    {
+        // all columns, skip the first one as it is processed in temp variable
+
+        // First use avx
+        size_t j = 1;
+        for (; j + 1 < m2; j+=2)
+        {
+            size_t j2 = reorder_table_rows[j];
+            size_t j3 = reorder_table_rows[j+1];
+
+            // For some of the columns the output should be conjugated
+            // This is achieved by conjugating input and changing its order: conj(ifft(x)) = ifft(conj(swap(x))
+            bool conj1 = false, conj2 = false;
+            if (j2 > m/2)
+            {
+                j2 = m - j2;
+                conj1 = true;
+            }
+            if (j3 > m/2)
+            {
+                j3 = m - j3;
+                conj2 = true;
+            }
+
+            ComplexD2 x_temp_in[radix];
+            ComplexD2 x_temp_out[radix];
+
+            // Copy input data taking reordering and scaling into account
+            for (size_t k = 0; k < radix; k++)
+            {
+                size_t i2 = reorder_table_columns[i*radix + k];
+                size_t i3 = i2;
+
+                // 0->0, 1->n-1, 2->n-2 ...
+                if (i2 > 0 && conj1)
+                {
+                    i2 = n - i2;
+                }
+                if (i3 > 0 && conj2)
+                {
+                    i3 = n - i3;
+                }
+
+                ComplexD x1 = load_D(data_in + i2*2*m2 + 2*j2);
+                ComplexD x2 = load_D(data_in + i3*2*m2 + 2*j3);
+
+                if (conj1)
+                {
+                    x1 = conj_D(x1);
+                }
+
+                if (conj2)
+                {
+                    x2 = conj_D(x2);
+                }
+
+                x_temp_in[k] = combine_two_128_D2(x1,x2)*norm_factor;
+            }
+
+            multiply_coeff_D2<radix,false>(x_temp_in, x_temp_out);
+
+            // save output. The row size is decreased to m2-1 so that all data fits
+            for (size_t k = 0; k < radix; k++)
+            {
+                store_D2(x_temp_out[k], data_out + 2*(i*radix + k)*(m2-1) + 2*j - 2);
+            }
+        }
+
+        // Then use sse2 if needed
+        if (j < m2)
+        {
+            size_t j2 = reorder_table_rows[j];
+
+            // For some of the columns the output should be conjugated
+            // This is achieved by conjugating input and changing its order: conj(ifft(x)) = ifft(conj(swap(x))
+            bool conj = false;
+            if (j2 > m/2)
+            {
+                j2 = m - j2;
+                conj = true;
+            }
+
+            ComplexD x_temp_in[radix];
+            ComplexD x_temp_out[radix];
+
+            // Copy input data taking reordering and scaling into account
+            for (size_t k = 0; k < radix; k++)
+            {
+                size_t i2 = reorder_table_columns[i*radix + k];
+
+                // 0->0, 1->n-1, 2->n-2 ...
+                if (i2 > 0 && conj)
+                {
+                    i2 = n - i2;
+                }
+
+                ComplexD x = load_D(data_in + i2*2*m2 + 2*j2)*norm_factor;
+
+                if (conj)
+                {
+                    x_temp_in[k] = conj_D(x);
+                } else
+                {
+                    x_temp_in[k] = x;
+                }
+            }
+
+            multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+
+            // save output. The row size is decreased to m2-1 so that all data fits
+            for (size_t k = 0; k < radix; k++)
+            {
+                store_D(x_temp_out[k], data_out + 2*(i*radix + k)*(m2-1) + 2*j - 2);
+            }
+        }
+    }
+}
+
 // Instantiations of the functions defined in this class
 template void fft_2d_complex_to_complex_packed_avx_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_to_complex_packed_avx_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
@@ -320,3 +572,23 @@ template void fft_2d_real_reorder2_inverse_avx_d<5>(const double *data_in, doubl
 template void fft_2d_real_reorder2_inverse_avx_d<6>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_avx_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_avx_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_2d_real_reorder2_odd_rows_forward_avx_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_odd_rows_forward_avx_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_odd_rows_forward_avx_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_2d_real_odd_rows_reorder_first_column_avx_d<2>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_avx_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_avx_d<4>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_avx_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_avx_d<6>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_avx_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_avx_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+
+template void fft_2d_real_odd_rows_reorder_columns_avx_d<2>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_avx_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_avx_d<4>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_avx_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_avx_d<6>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_avx_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_avx_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

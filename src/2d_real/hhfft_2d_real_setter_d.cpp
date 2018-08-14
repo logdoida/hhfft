@@ -384,15 +384,15 @@ template<size_t radix> void set_instruction_set_odd_rows_2d_d(StepInfoD &step_in
         if (step_info.forward)
         {
             if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr)
-                step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_plain_d<radix>;  // TODO
+                step_info.step_function = fft_2d_real_reorder2_odd_rows_forward_avx_d<radix>;
             else
-                step_info.step_function = fft_2d_real_odd_rows_forward_plain_d<radix>; // TODO
+                step_info.step_function = fft_2d_real_odd_rows_forward_avx_d<radix>;
         } else
         {
             if (step_info.stride == 1)
-                step_info.step_function = fft_2d_real_odd_rows_first_level_inverse_plain_d<radix>; // TODO
+                step_info.step_function = fft_2d_real_odd_rows_first_level_inverse_avx_d<radix>;
             else
-                step_info.step_function = fft_2d_real_odd_rows_inverse_plain_d<radix>; // TODO
+                step_info.step_function = fft_2d_real_odd_rows_inverse_avx_d<radix>;
         }
     }
 #endif
@@ -508,10 +508,10 @@ template<size_t radix> void set_instruction_set_odd_columns_2d_d(StepInfoD &step
     {
         if (step_info.data_type_out == hhfft::StepDataType::temp_data)
         {
-            step_info.step_function = fft_2d_real_odd_rows_reorder_first_column_plain_d<radix>; // TODO
+            step_info.step_function = fft_2d_real_odd_rows_reorder_first_column_avx_d<radix>;
         } else
         {
-            step_info.step_function = fft_2d_real_odd_rows_reorder_columns_plain_d<radix>; // TODO
+            step_info.step_function = fft_2d_real_odd_rows_reorder_columns_avx_d<radix>;
         }
     }
 #endif
