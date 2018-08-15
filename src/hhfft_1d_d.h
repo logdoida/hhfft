@@ -32,7 +32,7 @@ namespace hhfft
 
 // This class is responsible of making a plan on how to calculate the the FFT and calls the proper functions
 class HHFFT_1D_D
-{
+{    
 public:
     HHFFT_1D_D(size_t n, InstructionSet instruction_set = InstructionSet::automatic);
 
@@ -80,6 +80,9 @@ private:
 
     // This is a pointer to a function that performs the convolution
     void (*convolution_function)(const double *, const double *, double *, size_t n) = nullptr;    
+
+    // 2D fft can copy the planning made in this class
+    friend class HHFFT_2D_D;
 };
 
 }

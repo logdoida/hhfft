@@ -95,11 +95,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     twiddle_factors.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level
     for (size_t i = 1; i < N.size(); i++)
     {     
-
         AlignedVector<double> w = calculate_twiddle_factors_DIT(i, N);
         twiddle_factors.push_back(w);
-
-        print_complex_vector(w.data(), w.size()/2); // TESTING
     }
 
     // DIT

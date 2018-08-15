@@ -26,6 +26,7 @@
 #include "utilities.h"
 
 #include "hhfft_2d_d.h"
+#include "hhfft_1d_d.h"
 
 #include "1d_complex/hhfft_1d_complex_d.h"
 #include "2d_complex/hhfft_2d_complex_d.h"
@@ -55,12 +56,6 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
         throw(std::runtime_error("HHFFT error: maximum size for the fft size is 2^32 - 1!"));
     }
 
-    if ((n == 1) || (m == 1))
-    {
-        // TODO add a support to small radices with a single pass dft
-        throw(std::runtime_error("HHFFT error: fft size must be larger than 1!"));
-    }
-
     // Define instruction set if needed
     if (instruction_set == InstructionSet::automatic)
     {
@@ -69,6 +64,19 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
 
     // Set the convolution function
     convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
+
+    if ((n == 1) || (m == 1))
+    {
+        // Use 1d fft to calculate the transformation
+        if (n == 1)
+        {
+            plan_vector(m, instruction_set);
+        } else
+        {
+            plan_vector(n, instruction_set);
+        }
+        return;
+    }
 
     // Calculate factorization
     std::vector<size_t> N_columns = calculate_factorization(n);
@@ -218,8 +226,28 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
     }    
 }
 
+void HHFFT_2D_D::plan_vector(size_t n, InstructionSet instruction_set)
+{
+    HHFFT_1D_D fft_1d(n, instruction_set);
+
+    // Copy/move data from the 1d plan
+    temp_data_size = fft_1d.temp_data_size;
+    reorder_table_rows = std::move(fft_1d.reorder_table);
+    reorder_table_in_place_rows = std::move(fft_1d.reorder_table_in_place);
+    forward_steps = std::move(fft_1d.forward_steps);
+    inverse_steps = std::move(fft_1d.inverse_steps);
+    twiddle_factors_rows = std::move(fft_1d.twiddle_factors);
+}
+
 void HHFFT_2D_D::fft(const double *in, double *out)
 {
+    // If there is just one step, run it directly
+    if (forward_steps.size() == 1)
+    {
+        forward_steps[0].step_function(in,out,forward_steps[0]);
+        return;
+    }
+
     // Allocate some extra space if needed    
     hhfft::AlignedVector<double> temp_data(temp_data_size);
 
@@ -239,6 +267,13 @@ void HHFFT_2D_D::fft(const double *in, double *out)
 
 void HHFFT_2D_D::ifft(const double *in, double *out)
 {
+    // If there is just one step, run it directly
+    if (inverse_steps.size() == 1)
+    {
+        inverse_steps[0].step_function(in,out,inverse_steps[0]);
+        return;
+    }
+
     // Allocate some extra space if needed
     hhfft::AlignedVector<double> temp_data(temp_data_size);
 

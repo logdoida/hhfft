@@ -63,6 +63,9 @@ private:
     void plan_odd(InstructionSet instruction_set);
     void plan_even(InstructionSet instruction_set);
 
+    // Used for cases when n=1 or m=1
+    void plan_vector(size_t n, InstructionSet instruction_set, bool is_column);
+
     // Dimensions of the matrix (Number of complex numbers)
     size_t n; // Number of rows
     size_t m; // Number of columns

@@ -76,6 +76,11 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n, InstructionSet instruction_set)
     HHFFT_1D_Real_D_set_small_function(step_info_ifft, n, false, instruction_set);
     if (step_info_fft.step_function && step_info_ifft.step_function)
     {
+        // Data type in/out are set as they might be used in 2d real!
+        step_info_fft.data_type_in = hhfft::StepDataType::data_in;
+        step_info_fft.data_type_out = hhfft::StepDataType::data_out;
+        step_info_ifft.data_type_in = hhfft::StepDataType::data_in;
+        step_info_ifft.data_type_out = hhfft::StepDataType::data_out;
         forward_steps.push_back(step_info_fft);
         inverse_steps.push_back(step_info_ifft);
         return;

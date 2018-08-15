@@ -92,6 +92,9 @@ private:
 
     // This is a pointer to a function that performs the convolution
     void (*convolution_function)(const double *, const double *, double *, size_t n);
+
+    // 2D fft real can copy the planning made in this class
+    friend class HHFFT_2D_REAL_D;
 };
 
 }

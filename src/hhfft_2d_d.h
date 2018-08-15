@@ -59,6 +59,9 @@ public:
 
 private:
 
+    // Used for cases when n=1 or m=1
+    void plan_vector(size_t n, InstructionSet instruction_set);
+
     // Dimensions of the matrix (Number of complex numbers)
     size_t n; // Number of rows
     size_t m; // Number of columns
