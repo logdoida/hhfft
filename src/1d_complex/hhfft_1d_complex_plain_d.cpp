@@ -28,7 +28,7 @@
 using namespace hhfft;
 
 // In-place reordering "swap"
-template<bool scale> inline void fft_1d_complex_reorder_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<bool scale> inline void fft_1d_complex_reorder_in_place_d(const double *, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     size_t n = step_info.reorder_table_inplace_size;
     uint32_t *reorder_table = step_info.reorder_table_inplace;

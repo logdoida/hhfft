@@ -92,7 +92,7 @@ template<size_t radix, bool forward>
 ////////////////////////////////////// Column and row-wise + one FFT step ////////////////////////////////////////////////
 
 template<size_t radix, bool forward, bool scale>
-    void fft_2d_complex_reorder2_inplace_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+    void fft_2d_complex_reorder2_inplace_plain_d(const double *, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     size_t n = step_info.stride;
     size_t m = step_info.size;

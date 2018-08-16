@@ -94,7 +94,7 @@ void fft_2d_real_odd_rows_combine_columns_d(const double *data_in, double *data_
 
 
 
-void hhfft::HHFFT_2D_Real_D_set_reorder_column_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+void hhfft::HHFFT_2D_Real_D_set_reorder_column_function(StepInfoD &step_info)
 {
     if (!step_info.forward)
     {        

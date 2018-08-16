@@ -604,7 +604,7 @@ template<bool forward, size_t n> void fft_1d_complex_to_complex_packed_1level_pl
 }
 
 // fft for small sizes (2,4,6,8,10,14,16) where only one level is needed
-template<size_t n, bool forward> void fft_1d_real_1level_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<size_t n, bool forward> void fft_1d_real_1level_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &)
 {
     if (n == 1)
     {

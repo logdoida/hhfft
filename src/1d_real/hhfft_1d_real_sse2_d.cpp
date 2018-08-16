@@ -599,7 +599,7 @@ template<size_t radix> void fft_2d_real_odd_rows_inverse_sse2_d(const double *da
 /////////////////////////////////// Small sizes ///////////////////////////////////////
 
 // fft for small sizes (2,3,4,5,6,7,8,10,14,16) where only one level is needed
-template<size_t n, bool forward> void fft_1d_real_1level_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<size_t n, bool forward> void fft_1d_real_1level_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &)
 {
     ComplexD k = broadcast64_D(2.0/n);
 

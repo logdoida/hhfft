@@ -27,7 +27,7 @@ namespace hhfft
 {
 
 // Sets pointer to correct function
-void HHFFT_2D_Real_D_set_reorder_column_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set);
+void HHFFT_2D_Real_D_set_reorder_column_function(StepInfoD &step_info);
 
 // Sets pointer to correct function
 void HHFFT_2D_Real_D_set_complex_to_complex_packed_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set);

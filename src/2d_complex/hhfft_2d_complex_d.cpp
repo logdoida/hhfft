@@ -28,7 +28,7 @@ using namespace hhfft;
 //////////////////////// reorder ////////////////////////////////////
 
 // TODO can be removed after 2d complex nor 2d real need them...
-template<bool scale> void fft_2d_complex_reorder_columns_in_place_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<bool scale> void fft_2d_complex_reorder_columns_in_place_d(const double *, double *data_out, hhfft::StepInfo<double> &step_info)
 {    
     size_t m = step_info.size;
     uint32_t *reorder_table = step_info.reorder_table_inplace;
@@ -98,7 +98,7 @@ template<bool scale> void fft_2d_complex_reorder_columns_d(const double *data_in
     }
 }
 
-template<bool scale> void fft_2d_complex_reorder_inplace_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<bool scale> void fft_2d_complex_reorder_inplace_d(const double *, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     size_t n = step_info.stride;
     size_t m = step_info.size;
@@ -192,7 +192,7 @@ template<bool scale> void fft_2d_complex_reorder_d(const double *data_in, double
     }
 }
 
-void hhfft::HHFFT_2D_Complex_D_set_function_reorder(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+void hhfft::HHFFT_2D_Complex_D_set_function_reorder(StepInfoD &step_info)
 {
     step_info.step_function = nullptr;
 

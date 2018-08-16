@@ -250,7 +250,7 @@ void fft_1d_complex_convolution_sse2_d(const double *data_in1, const double *dat
 }
 
 // fft for small sizes (1,2,3,4,5,7,8) where only one level is needed
-template<size_t n, bool forward> void fft_1d_complex_1level_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<size_t n, bool forward> void fft_1d_complex_1level_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &)
 {
     ComplexD k = broadcast64_D(1.0/n);
 

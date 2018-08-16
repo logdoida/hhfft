@@ -27,7 +27,7 @@
 
 using namespace hhfft;
 
-void fft_2d_real_reorder_rows_in_place_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+void fft_2d_real_reorder_rows_in_place_plain_d(const double *, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     size_t n = step_info.stride; // number of rows
     size_t m = step_info.size; // number of columns
@@ -120,7 +120,7 @@ void fft_2d_complex_to_complex_packed_first_column_plain_d(const double *data_in
 }
 
 template<bool forward>
-    void fft_2d_complex_to_complex_packed_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+    void fft_2d_complex_to_complex_packed_plain_d(const double *, double *data_out, hhfft::StepInfo<double> &step_info)
 {        
     const double *packing_table = step_info.twiddle_factors;
     size_t n = step_info.repeats; // n = number of original real rows
