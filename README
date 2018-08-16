@@ -4,7 +4,7 @@ Copyright Jouko Kalmari 2017-2018
 
 0.0 Introduction
 
-HHFFT is C++ library for performing Fast Fourier Transform (FFT) for vectors and matrices. HHFFT is still under devolpment 
+HHFFT is C++ library for performing Fast Fourier Transform (FFT) for vectors and matrices. HHFFT is still under development 
 
 
 1.0 License
@@ -15,7 +15,7 @@ HHFFT is free software: you can redistribute it and/or modify it under the terms
 
 
 2.0 Description
-HHFFT is able to perform FFT an IFFT for real and complex inputs. Both vectors (1D) and matrices (2D) are supported. The dimensions must be composed of prime factors 2,3,5 or 7. In addition, real inputs must must have even size.
+HHFFT is able to perform FFT an IFFT for real and complex inputs. Both vectors (1D) and matrices (2D) are supported. The dimensions must be composed of prime factors 2,3,5 or 7.
 
 HHFFT has been optimized for sse2 and avx instruction sets. The correct instruction set is detected run-time.
 
@@ -36,7 +36,7 @@ instead of just cmake ..
 If you want to install the compiled library run
 sudo make install
 
-To test that the compilation has been succesful, run the test1
+To test that the compilation has been successful, run the test1
 ./hhfft_test1
 
 on the last line of the output should read "Test passed!"
