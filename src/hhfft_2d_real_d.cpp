@@ -60,12 +60,6 @@ HHFFT_2D_REAL_D::HHFFT_2D_REAL_D(size_t n, size_t m, InstructionSet instruction_
         throw(std::runtime_error("HHFFT error: maximum size for the fft size is 2^32 - 1!"));
     }
 
-    if (m == 2)
-    {
-        // TODO add a support to small radices
-        throw(std::runtime_error("HHFFT error: fft size m must be larger than 2!"));
-    }
-
     // Define instruction set if needed
     if (instruction_set == InstructionSet::automatic)
     {
@@ -435,8 +429,20 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
 
     // FFT
     ///////// FFT row-wise ////////////
-    // Reordering row- and columnwise, and first FFT-step combined here.
+    if (m_complex == 1)
     {
+        // Only reordering of columns is required
+        hhfft::StepInfoD step;
+        step.data_type_in = hhfft::StepDataType::data_in;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        step.reorder_table = reorder_table_columns.data();
+        step.radix = 1;
+        step.repeats = n;
+        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        forward_steps.push_back(step);
+
+    } else {
+        // Reordering row- and columnwise, and first FFT-step combined here.
         hhfft::StepInfoD step;
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
@@ -593,8 +599,9 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         inverse_steps.push_back(step);
     }
 
-    // First FFT step
+    // First FFT step if needed
     // NOTE 1D fft is used as no twiddle factors are involved
+    if (m_complex > 1)
     {
         hhfft::StepInfoD step;
         step.data_type_in = hhfft::StepDataType::data_out;

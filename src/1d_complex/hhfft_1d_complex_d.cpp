@@ -281,8 +281,7 @@ template<bool scale> void set_reorder_instruction_set_d(StepInfoD &step_info, hh
     }
 
     if (instruction_set == hhfft::InstructionSet::none)
-    {
-        // NOTE plain is more or less an unused reference implementation, as sse2 should always be supported
+    {        
         step_info.step_function = fft_1d_complex_reorder_plain_d<scale>;
     }
 }
@@ -337,7 +336,7 @@ void (*hhfft::HHFFT_1D_Complex_D_set_convolution_function(hhfft::InstructionSet 
 }
 
 // n = 1!
-void fft_1d_complex_n1_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+void fft_1d_complex_n1_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &)
 {
     data_out[0] = data_in[0];
     data_out[1] = data_in[1];
