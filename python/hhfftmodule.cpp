@@ -264,9 +264,6 @@ static int Hhfft2dPlan_init(Hhfft2dPlanObject *self, PyObject *args, PyObject *k
         return -1;
     }
 
-    // TESTING
-    printf("Hhfft2dPlan_init n = %i, m = %i\n",n[0],n[1]);
-
     // Initialize the HHFFT object
     try
     {
@@ -290,9 +287,6 @@ static int Hhfft2dRealPlan_init(Hhfft2dRealPlanObject *self, PyObject *args, PyO
     {
         return -1;
     }
-
-    // TESTING
-    printf("Hhfft2dRealPlan_init n = %i, m = %i\n",n[0],n[1]);
 
     // Initialize the HHFFT object
     try
@@ -348,6 +342,56 @@ static void Hhfft2dRealPlan_dealloc(Hhfft2dRealPlanObject *self)
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
 
+static bool read_input(PyObject *args, PyObject *keywords, int type_in, int ndims, npy_intp* dims_in, PyArrayObject **in_arr)
+{
+    PyObject *in = NULL;
+
+    // Read the parameters
+    static char *keywordlist[] = {(char *)"in", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, keywords, "O", keywordlist, &in))
+    {
+        return false;
+    }
+
+    // Try to convert the input object to a numpy array
+    *in_arr = (PyArrayObject *) PyArray_FROM_OTF(in, type_in, NPY_ARRAY_IN_ARRAY);
+    if (!*in_arr)
+    {
+        return false;
+    }
+
+    // Check that the number of dimensions of the input array are correct
+    const npy_intp *dims = PyArray_DIMS(*in_arr);
+    if (PyArray_NDIM(*in_arr) != ndims)
+    {
+        PyErr_SetString(PyExc_ValueError, "Input dimension number wrong");
+        Py_DECREF(*in_arr);
+        return false;
+    }
+
+    // Copy dimensions
+    for (int i = 0; i < ndims; i++)
+    {
+        dims_in[i] = dims[i];
+    }
+
+    // Everything is ok
+    return true;
+}
+
+static bool create_output(int type_out, int ndims, npy_intp* dims_out, PyArrayObject **out_arr)
+{
+    // Create an output array
+    *out_arr = (PyArrayObject *) PyArray_SimpleNew(ndims, dims_out, type_out);
+    if (!*out_arr)
+    {
+        return false;
+    }
+
+    // Everything is ok
+    return true;
+}
+
 static bool read_inputs_create_output(PyObject *args, PyObject *keywords, int type_in, int type_out, int ndims, npy_intp* dims_in, npy_intp* dims_out, PyArrayObject **in_arr, PyArrayObject **out_arr)
 {
     PyObject *in = NULL;
@@ -366,7 +410,7 @@ static bool read_inputs_create_output(PyObject *args, PyObject *keywords, int ty
         return false;
     }
 
-    // Check that the dimensions of the input array are correct
+    // Check that the number of dimensions of the input array are correct
     const npy_intp *dims = PyArray_DIMS(*in_arr);
     if (PyArray_NDIM(*in_arr) != ndims)
     {
@@ -375,6 +419,7 @@ static bool read_inputs_create_output(PyObject *args, PyObject *keywords, int ty
         return false;
     }
 
+    // Check that the dimensions sizes of the input array are correct
     for (int i = 0; i < ndims; i++)
     {
         if (dims[i] != dims_in[i])
@@ -630,6 +675,220 @@ static PyObject *Hhfft2dRealPlan_ifft(Hhfft2dRealPlanObject *self, PyObject *arg
     return (PyObject *) out_arr;
 }
 
+
+//////////// Direct functions (i.e. no existing plan)
+// Note that fft real are not supported, as it is not possible to know in ifft what is the correct size!
+
+// FFT 1D directly
+static PyObject *fft_1d(PyObject *, PyObject *args, PyObject *keywords)
+{
+    int type_in = NPY_COMPLEX128;
+    int type_out = NPY_COMPLEX128;
+    int ndims = 1;
+    npy_intp dims_in[1];
+
+    PyArrayObject *in_arr = NULL;
+    PyArrayObject *out_arr = NULL;
+
+    // Read the inputs
+    if(!read_input(args, keywords, type_in, ndims, dims_in, &in_arr))
+    {
+        return NULL;
+    }
+
+    // Crate output array of same size as input
+    if(!create_output(type_out, ndims, dims_in, &out_arr))
+    {
+        Py_DECREF(in_arr);
+        return NULL;
+    }
+
+    // Initialize the HHFFT object
+    hhfft::HHFFT_1D_D *hhfft_1d = NULL;
+    try
+    {
+        size_t n = dims_in[0];
+        hhfft_1d = new hhfft::HHFFT_1D_D(n);
+    } catch (std::runtime_error &e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+        Py_DECREF(in_arr);
+        return NULL;
+    }
+
+    // Do the actual fft
+    double *data_in = (double *) PyArray_DATA(in_arr);
+    double *data_out = (double *) PyArray_DATA(out_arr);
+    hhfft_1d->fft(data_in, data_out);
+
+    // Free the HHFFT object
+    delete hhfft_1d;
+
+    // Decrement reference counter
+    Py_DECREF(in_arr);
+
+    // Return the output array
+    return (PyObject *) out_arr;
+}
+
+// IFFT 1D directly
+static PyObject *ifft_1d(PyObject *, PyObject *args, PyObject *keywords)
+{
+    int type_in = NPY_COMPLEX128;
+    int type_out = NPY_COMPLEX128;
+    int ndims = 1;
+    npy_intp dims_in[1];
+
+    PyArrayObject *in_arr = NULL;
+    PyArrayObject *out_arr = NULL;
+
+    // Read the inputs
+    if(!read_input(args, keywords, type_in, ndims, dims_in, &in_arr))
+    {
+        return NULL;
+    }
+
+    // Crate output array of same size as input
+    if(!create_output(type_out, ndims, dims_in, &out_arr))
+    {
+        Py_DECREF(in_arr);
+        return NULL;
+    }
+
+    // Initialize the HHFFT object
+    hhfft::HHFFT_1D_D *hhfft_1d = NULL;
+    try
+    {
+        size_t n = dims_in[0];
+        hhfft_1d = new hhfft::HHFFT_1D_D(n);
+    } catch (std::runtime_error &e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+        Py_DECREF(in_arr);
+        return NULL;
+    }
+
+    // Do the actual fft
+    double *data_in = (double *) PyArray_DATA(in_arr);
+    double *data_out = (double *) PyArray_DATA(out_arr);
+    hhfft_1d->ifft(data_in, data_out);
+
+    // Free the HHFFT object
+    delete hhfft_1d;
+
+    // Decrement reference counter
+    Py_DECREF(in_arr);
+
+    // Return the output array
+    return (PyObject *) out_arr;
+}
+
+// FFT 2D directly
+static PyObject *fft_2d(PyObject *, PyObject *args, PyObject *keywords)
+{
+    int type_in = NPY_COMPLEX128;
+    int type_out = NPY_COMPLEX128;
+    int ndims = 2;
+    npy_intp dims_in[2];
+
+    PyArrayObject *in_arr = NULL;
+    PyArrayObject *out_arr = NULL;
+
+    // Read the inputs
+    if(!read_input(args, keywords, type_in, ndims, dims_in, &in_arr))
+    {
+        return NULL;
+    }
+
+    // Crate output array of same size as input
+    if(!create_output(type_out, ndims, dims_in, &out_arr))
+    {
+        Py_DECREF(in_arr);
+        return NULL;
+    }
+
+    // Initialize the HHFFT object
+    hhfft::HHFFT_2D_D *hhfft_2d = NULL;
+    try
+    {
+        size_t n = dims_in[0];
+        size_t m = dims_in[1];
+        hhfft_2d = new hhfft::HHFFT_2D_D(n,m);
+    } catch (std::runtime_error &e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+        Py_DECREF(in_arr);
+        return NULL;
+    }
+
+    // Do the actual fft
+    double *data_in = (double *) PyArray_DATA(in_arr);
+    double *data_out = (double *) PyArray_DATA(out_arr);
+    hhfft_2d->fft(data_in, data_out);
+
+    // Free the HHFFT object
+    delete hhfft_2d;
+
+    // Decrement reference counter
+    Py_DECREF(in_arr);
+
+    // Return the output array
+    return (PyObject *) out_arr;
+}
+
+// IFFT 2D directly
+static PyObject *ifft_2d(PyObject *, PyObject *args, PyObject *keywords)
+{
+    int type_in = NPY_COMPLEX128;
+    int type_out = NPY_COMPLEX128;
+    int ndims = 2;
+    npy_intp dims_in[2];
+
+    PyArrayObject *in_arr = NULL;
+    PyArrayObject *out_arr = NULL;
+
+    // Read the inputs
+    if(!read_input(args, keywords, type_in, ndims, dims_in, &in_arr))
+    {
+        return NULL;
+    }
+
+    // Crate output array of same size as input
+    if(!create_output(type_out, ndims, dims_in, &out_arr))
+    {
+        Py_DECREF(in_arr);
+        return NULL;
+    }
+
+    // Initialize the HHFFT object
+    hhfft::HHFFT_2D_D *hhfft_2d = NULL;
+    try
+    {
+        size_t n = dims_in[0];
+        size_t m = dims_in[1];
+        hhfft_2d = new hhfft::HHFFT_2D_D(n,m);
+    } catch (std::runtime_error &e)
+    {
+        PyErr_SetString(PyExc_RuntimeError, e.what());
+        Py_DECREF(in_arr);
+        return NULL;
+    }
+
+    // Do the actual fft
+    double *data_in = (double *) PyArray_DATA(in_arr);
+    double *data_out = (double *) PyArray_DATA(out_arr);
+    hhfft_2d->ifft(data_in, data_out);
+
+    // Free the HHFFT object
+    delete hhfft_2d;
+
+    // Decrement reference counter
+    Py_DECREF(in_arr);
+
+    // Return the output array
+    return (PyObject *) out_arr;
+}
+
 // Members table
 static PyMemberDef Hhfft1dPlan_members[] = {
     {(char *) "n", T_PYSSIZET, offsetof(Hhfft1dPlanObject, n), READONLY, (char *) "size of fft"},
@@ -661,8 +920,8 @@ static PyMethodDef Hhfft1dPlan_methods[] = {
 };
 
 static PyMethodDef Hhfft1dRealPlan_methods[] = {
-    {"fft", (PyCFunction) Hhfft1dRealPlan_fft, METH_VARARGS | METH_KEYWORDS, "Fast Fourier transform, 1D real"},
-    {"ifft", (PyCFunction) Hhfft1dRealPlan_ifft, METH_VARARGS | METH_KEYWORDS, "Inverse Fast Fourier transform, 1D real"},
+    {"fft", (PyCFunction) Hhfft1dRealPlan_fft, METH_VARARGS | METH_KEYWORDS, "Fast Fourier transform, 1D real input"},
+    {"ifft", (PyCFunction) Hhfft1dRealPlan_ifft, METH_VARARGS | METH_KEYWORDS, "Inverse Fast Fourier transform, 1D real output"},
     {NULL}
 };
 
@@ -673,10 +932,20 @@ static PyMethodDef Hhfft2dPlan_methods[] = {
 };
 
 static PyMethodDef Hhfft2dRealPlan_methods[] = {
-    {"fft", (PyCFunction) Hhfft2dRealPlan_fft, METH_VARARGS | METH_KEYWORDS, "Fast Fourier transform, 2D real"},
-    {"ifft", (PyCFunction) Hhfft2dRealPlan_ifft, METH_VARARGS | METH_KEYWORDS, "Inverse Fast Fourier transform, 2D real"},
+    {"fft", (PyCFunction) Hhfft2dRealPlan_fft, METH_VARARGS | METH_KEYWORDS, "Fast Fourier transform, 2D real input"},
+    {"ifft", (PyCFunction) Hhfft2dRealPlan_ifft, METH_VARARGS | METH_KEYWORDS, "Inverse Fast Fourier transform, 2D real output"},
     {NULL}
 };
+
+// Methods to perform fft/ifft directly without making a separate plan first
+static PyMethodDef Hhfft_methods[] = {
+    {"fft", (PyCFunction) fft_1d, METH_VARARGS | METH_KEYWORDS, "Fast Fourier transform, 1D complex"},
+    {"ifft", (PyCFunction) ifft_1d, METH_VARARGS | METH_KEYWORDS, "Inverse Fast Fourier transform, 1D complex"},
+    {"fft2", (PyCFunction) fft_2d, METH_VARARGS | METH_KEYWORDS, "Fast Fourier transform, 2D complex"},
+    {"ifft2", (PyCFunction) ifft_2d, METH_VARARGS | METH_KEYWORDS, "Inverse Fast Fourier transform, 2D complex"},
+    {NULL}
+};
+
 
 // HHFFT type
 static PyTypeObject Hhfft1dPlan_type = {
@@ -775,6 +1044,7 @@ extern "C" PyMODINIT_FUNC PyInit_hhfft(void)
     hhfft_module.m_name = "hhfft";
     hhfft_module.m_doc = "HHFFT module";
     hhfft_module.m_size = -1;
+    hhfft_module.m_methods = Hhfft_methods;
 
     PyObject *module = PyModule_Create(&hhfft_module);
     if (module == NULL)
