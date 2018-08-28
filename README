@@ -4,7 +4,7 @@ Copyright Jouko Kalmari 2017-2018
 
 0.0 Introduction
 
-HHFFT is C++ library for performing Fast Fourier Transform (FFT) for vectors and matrices. HHFFT is still under development 
+HHFFT is C++ library for performing Fast Fourier Transform (FFT) for vectors and matrices. HHFFT includes also a Python 3 wrapper.
 
 
 1.0 License
@@ -15,36 +15,51 @@ HHFFT is free software: you can redistribute it and/or modify it under the terms
 
 
 2.0 Description
-HHFFT is able to perform FFT an IFFT for real and complex inputs. Both vectors (1D) and matrices (2D) are supported. The dimensions must be composed of prime factors 2,3,5 or 7.
 
-HHFFT has been optimized for sse2 and avx instruction sets. The correct instruction set is detected run-time.
+HHFFT is able to perform FFT an IFFT for real or complex inputs. Both vectors (1D) and matrices (2D) are supported. The dimensions must be composed of prime factors 2,3,5 or 7. 
+
+HHFFT has developed using gcc compiler on Linux for x86-64 CPUs. It is written in C++11 and is optimized for sse2 and avx instruction sets. The correct instruction set is detected run-time, so it is possible to compile and using different hardware.
 
 
-3.0 Installation and testing
+3.0 Installation and Testing
 
-To compile the library start terminal go to the directory where HHFFT is uncompressed and type:
-
-mkdir bin
-cd bin
-cmake ..
-make
+To compile the library start terminal go to the directory where HHFFT is uncompressed and type
+   mkdir bin
+   cd bin
+   cmake ..
+   make
 
 To specify where the library should be installed use
-cmake -DCMAKE_INSTALL_PREFIX=/path/where/to/put/hhfft .. 
-instead of just cmake ..
+   cmake -DCMAKE_INSTALL_PREFIX=/path/where/to/install/hhfft .. 
+instead of just plain "cmake .."
 
 If you want to install the compiled library run
-sudo make install
+   sudo make install
 
 To test that the compilation has been successful, run the test1
-./hhfft_test1
+   ./hhfft_test1
 
-on the last line of the output should read "Test passed!"
+After running the test, the last line of the output should read "Test passed!"
 
 
-4.0 Linking library to your project
+4.0 Linking the Library with Your Project
 
-To link with HHFFT use -lhhfft flag in compiler.
+To link with HHFFT use -lhhfft flag when calling the compiler.
 If the library is not found when running the program try to call:
-sudo ldconfig
+   sudo ldconfig
+
+
+5.0 Python Wrapper
+
+HHFFT has a Python 3 wrapper. It uses numpy arrays as input and output. See python/hhfft.py for examples on how to use it.
+
+To use the Python wrapper, HHFFT C++ library must first be compiled and installed as instructed in Section 3.0. Then to compile and install the hhfft Python package, call
+   cd python
+   sudo python3 setup.py install
+
+In order to test the HHFFT on Python, run
+   python3 hhfft_test.py
+
+
+
 

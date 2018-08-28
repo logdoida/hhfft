@@ -62,7 +62,7 @@ print('HHFFT 2D real: err = {:.5}'.format(err))
 
 
 # Perform 1D FFT and IFFT complex transform without a plan
-# Note that this approach is slower than using a plan, if more that one fft or ifft is used
+# Note that this is slower than using a plan, if more that one FFT or IFFT is done
 x = np.random.rand(15) + 1j*np.random.rand(15)
 y = hhfft.fft(x)
 z = hhfft.ifft(y)
@@ -71,7 +71,7 @@ print('HHFFT 1D complex (no plan): err = {:.5}'.format(err))
 
 
 # Perform 2D FFT and IFFT complex transform without a plan
-# Note that this approach is slower than using a plan, if more that one fft or ifft is used
+# Note that this is slower than using a plan, if more that one FFT or IFFT is done
 x = np.random.rand(4,6) + 1j*np.random.rand(4,6)
 y = hhfft.fft2(x)
 z = hhfft.ifft2(y)

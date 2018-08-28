@@ -40,9 +40,9 @@ int main()
     HHFFT_2D_REAL_D hhfft_2d_real(n, m);
 
     // Allocate data
-    double *x       = hhfft_2d_real.allocate_memory(); // Real input
-    double *x_fft   = hhfft_2d_real.allocate_memory(); // Real input
-    double *x_ifft  = hhfft_2d_real.allocate_memory(); // Real input
+    double *x       = hhfft_2d_real.allocate_memory(); // n x m real numbers
+    double *x_fft   = hhfft_2d_real.allocate_memory(); // n x (m+2)/2 complex numbers
+    double *x_ifft  = hhfft_2d_real.allocate_memory(); // n x m real numbers
 
     // Initialize x with random numbers
     std::mt19937 gen(12345);
