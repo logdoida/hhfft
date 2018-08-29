@@ -18,7 +18,7 @@ HHFFT is free software: you can redistribute it and/or modify it under the terms
 
 HHFFT is able to perform FFT an IFFT for real or complex inputs. Both vectors (1D) and matrices (2D) are supported. The dimensions must be composed of prime factors 2,3,5 or 7. 
 
-HHFFT has developed using gcc compiler on Linux for x86-64 CPUs. It is written in C++11 and is optimized for sse2 and avx instruction sets. The correct instruction set is detected run-time, so it is possible to compile and using different hardware.
+HHFFT has been developed using gcc compiler on Linux for x86-64 architectures. It is written in C++11 and is optimized for sse2 and avx instruction sets. The correct instruction set is detected run-time, so it is possible to compile and use it on different hardware.
 
 
 3.0 Installation and Testing

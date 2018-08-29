@@ -232,8 +232,7 @@ void HHFFT_2D_D::plan_vector(size_t n, InstructionSet instruction_set)
 
     // Copy/move data from the 1d plan
     temp_data_size = fft_1d.temp_data_size;
-    reorder_table_rows = std::move(fft_1d.reorder_table);
-    reorder_table_in_place_rows = std::move(fft_1d.reorder_table_in_place);
+    reorder_table_rows = std::move(fft_1d.reorder_table);    
     forward_steps = std::move(fft_1d.forward_steps);
     inverse_steps = std::move(fft_1d.inverse_steps);
     twiddle_factors_rows = std::move(fft_1d.twiddle_factors);
@@ -246,6 +245,15 @@ void HHFFT_2D_D::fft(const double *in, double *out)
     {
         forward_steps[0].step_function(in,out,forward_steps[0]);
         return;
+    }
+
+    // If transform is made in-place, copy input to a temporary variable
+    hhfft::AlignedVector<double> temp_data_in;
+    if (in == out)
+    {
+        temp_data_in.resize(2*n*m);
+        std::copy(in, in + 2*n*m, temp_data_in.data());
+        in = temp_data_in.data();
     }
 
     // Allocate some extra space if needed    
@@ -272,6 +280,14 @@ void HHFFT_2D_D::ifft(const double *in, double *out)
     {
         inverse_steps[0].step_function(in,out,inverse_steps[0]);
         return;
+    }
+
+    hhfft::AlignedVector<double> temp_data_in;
+    if (in == out)
+    {
+        temp_data_in.resize(2*n*m);
+        std::copy(in, in + 2*n*m, temp_data_in.data());
+        in = temp_data_in.data();
     }
 
     // Allocate some extra space if needed

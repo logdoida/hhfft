@@ -27,51 +27,8 @@
 
 using namespace hhfft;
 
-// In-place reordering "swap"
-template<bool scale> inline __attribute__((always_inline)) void fft_1d_complex_reorder_in_place_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
-    size_t n = step_info.reorder_table_inplace_size;
-    uint32_t *reorder_table = step_info.reorder_table_inplace;
-
-    // In-place algorithm
-    assert (data_in == data_out);
-
-    for (size_t i = 0; i < n; i++)
-    {
-        size_t ind1 = i + 1; // First one has been omitted!
-        size_t ind2 = reorder_table[i];
-
-        // Swap two doubles at a time
-        ComplexD x_in0 = load_D(data_in + 2*ind1);
-        ComplexD x_in1 = load_D(data_in + 2*ind2);
-        store_D(x_in0, data_out + 2*ind2);
-        store_D(x_in1, data_out + 2*ind1);
-    }
-
-    // Scaling needs to be done as a separate step as some data might be copied twice or zero times    
-    if (scale)
-    {
-        size_t n2 = step_info.radix*step_info.repeats;
-
-        // Needed only in ifft. Equal to 1/N
-        double k = step_info.norm_factor;
-
-        for (size_t i = 0; i < 2*n2; i++)
-        {
-            data_out[i] *= k;
-        }
-    }
-}
-
 template<bool scale> void fft_1d_complex_reorder_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
-    // Check, if in-place should be done instead
-    if (data_in == data_out)
-    {
-        fft_1d_complex_reorder_in_place_avx_d<scale>(data_in, data_out, step_info);
-        return;
-    }
-
     size_t n = step_info.radix*step_info.repeats;
     uint32_t *reorder_table = step_info.reorder_table;
 
@@ -152,20 +109,13 @@ template<size_t radix, bool forward>
 }
 
 // To be used when stride is 1 and reordering is needed
-template<size_t radix, bool forward, bool scale>
+template<size_t radix, bool forward>
     inline __attribute__((always_inline)) void fft_1d_complex_avx_d_internal_stride1_reorder(const double *data_in, double *data_out, size_t repeats,  hhfft::StepInfo<double> &step_info)
 {
-    // in-place reordering cannot be combined with fft, use separate steps
-    if (data_in == data_out)
-    {
-        fft_1d_complex_reorder_in_place_avx_d<scale>(data_in, data_out, step_info);
-        fft_1d_complex_avx_d_internal_stride1<radix,forward>(data_in, data_out, repeats);
-        return;
-    }
-
     size_t i = 0;
     uint32_t *reorder_table = step_info.reorder_table;
     double k = step_info.norm_factor;
+    size_t n = repeats*radix;
 
     // First use 256-bit variables
     {
@@ -176,25 +126,32 @@ template<size_t radix, bool forward, bool scale>
             // Copy input data from two memory locations.
             for (size_t j = 0; j < radix; j++)
             {
-                size_t ind0 = reorder_table[i*radix + j];
-                size_t ind1 = reorder_table[i*radix + radix + j];
+                size_t i2 = i*radix + j;
+                size_t ind0 = reorder_table[i2];
+                size_t ind1 = reorder_table[i2 + radix];
 
-                x_temp_in[j] = load_two_128_D2(data_in + 2*ind0, data_in + 2*ind1);
+                if (forward)
+                {
+                    x_temp_in[j] = load_two_128_D2(data_in + 2*ind0, data_in + 2*ind1);
+                } else
+                {
+                    if (i2 > 0)
+                    {
+                        ind0 = n - ind0;
+                    }
+                    ind1 = n - ind1;
+                    x_temp_in[j] = k*load_two_128_D2(data_in + 2*ind0, data_in + 2*ind1);
+                }
             }
 
             // Multiply with coefficients
-            multiply_coeff_D2<radix,forward>(x_temp_in, x_temp_out);
+            multiply_coeff_D2<radix,true>(x_temp_in, x_temp_out);
 
             // Save output to two memory locations.
             for (size_t j = 0; j < radix; j++)
             {
                 size_t ind0 = i*radix + j;
                 size_t ind1 = i*radix + radix + j;
-
-                if (scale)
-                {
-                    x_temp_out[j] = x_temp_out[j]*k;
-                }
 
                 store_two_128_D2(x_temp_out[j], data_out + 2*ind0, data_out + 2*ind1);
             }
@@ -207,25 +164,31 @@ template<size_t radix, bool forward, bool scale>
         ComplexD x_temp_in[radix];
         ComplexD x_temp_out[radix];
 
-        // Copy input data (squeeze)
+        // Copy input data taking reordering into account
         for (size_t j = 0; j < radix; j++)
         {
-            size_t ind = reorder_table[i*radix + j];
+            size_t i2 = i*radix + j;
+            size_t ind = reorder_table[i2];
 
-            x_temp_in[j] = load_D(data_in + 2*ind);
+            if (forward)
+            {
+                x_temp_in[j] = load_D(data_in + 2*ind);
+            } else
+            {
+                if (i2 > 0)
+                {
+                    ind = n - ind;
+                }
+                x_temp_in[j] = k*load_D(data_in + 2*ind);
+            }
         }
 
         // Multiply with coefficients
-        multiply_coeff_D<radix,forward>(x_temp_in, x_temp_out);
+        multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
-        // Copy output data (un-squeeze)
+        // Save output to two memory locations.
         for (size_t j = 0; j < radix; j++)
         {
-            if (scale)
-            {
-                x_temp_out[j] = x_temp_out[j]*k;
-            }
-
             store_D(x_temp_out[j], data_out + 2*i*radix + 2*j);
         }
     }
@@ -381,7 +344,7 @@ template<size_t radix, SizeType stride_type, bool forward>
 }
 
 // Reordering and fft-step combined
-template<size_t radix, SizeType stride_type, bool forward, bool scale>
+template<size_t radix, SizeType stride_type, bool forward>
     void fft_1d_complex_reorder2_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
     size_t repeats = step_info.repeats;
@@ -389,7 +352,7 @@ template<size_t radix, SizeType stride_type, bool forward, bool scale>
     // Only for stride 1!
     assert(stride_type == SizeType::Size1);
 
-    fft_1d_complex_avx_d_internal_stride1_reorder<radix, forward, scale>(data_in, data_out, repeats, step_info);
+    fft_1d_complex_avx_d_internal_stride1_reorder<radix, forward>(data_in, data_out, repeats, step_info);
 }
 
 template<size_t radix, SizeType stride_type, bool forward>
@@ -469,35 +432,20 @@ template<size_t n, bool forward> void fft_1d_complex_1level_avx_d(const double *
 template void fft_1d_complex_reorder_avx_d<false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_reorder_avx_d<true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template void fft_1d_complex_reorder2_avx_d<2, SizeType::Size1, false, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<2, SizeType::Size1, true, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<3, SizeType::Size1, false, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<3, SizeType::Size1, true, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<4, SizeType::Size1, false, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<4, SizeType::Size1, true, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<5, SizeType::Size1, false, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<5, SizeType::Size1, true, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<6, SizeType::Size1, false, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<6, SizeType::Size1, true, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<7, SizeType::Size1, false, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<7, SizeType::Size1, true, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<8, SizeType::Size1, false, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<8, SizeType::Size1, true, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-
-template void fft_1d_complex_reorder2_avx_d<2, SizeType::Size1, false, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<2, SizeType::Size1, true, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<3, SizeType::Size1, false, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<3, SizeType::Size1, true, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<4, SizeType::Size1, false, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<4, SizeType::Size1, true, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<5, SizeType::Size1, false, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<5, SizeType::Size1, true, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<6, SizeType::Size1, false, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<6, SizeType::Size1, true, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<7, SizeType::Size1, false, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<7, SizeType::Size1, true, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<8, SizeType::Size1, false, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_avx_d<8, SizeType::Size1, true, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<2, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<2, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<3, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<3, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<4, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<4, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<5, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<5, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<6, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<6, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<7, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<7, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<8, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<8, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 template void fft_1d_complex_avx_d<2, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_avx_d<2, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

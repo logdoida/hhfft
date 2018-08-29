@@ -81,14 +81,9 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     // First calculate the reorder table
     reorder_table = calculate_reorder_table(N);
 
-    // Then in-place version of the reorder table
-    reorder_table_in_place = calculate_reorder_table_in_place(reorder_table);
-
     // TESTING print reorder tables
     //std::cout << "reorder = " << std::endl;
     //for (auto r: reorder_table)  { std::cout << r << " ";} std::cout << std::endl;
-    //std::cout << "reorder_table_in_place = " << std::endl;
-    //for (auto r: reorder_table_in_place)  { std::cout << r << " ";} std::cout << std::endl;
 
     // Calculate twiddle factors
     // NOTE that a portion of these are always one and they could be removed to decrease memory requirements.
@@ -109,8 +104,6 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table.data();
-        step.reorder_table_inplace = reorder_table_in_place.data(); // It is possible that data_in = data_out!
-        step.reorder_table_inplace_size = reorder_table_in_place.size();
         step.norm_factor = 1.0;
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
         forward_steps.push_back(step);
@@ -135,12 +128,12 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     for (size_t i = 0; i < forward_steps.size(); i++)
     {
         auto step = forward_steps[i];
-        step.forward = false;        
 
-        // Scaling is be done in reordering step (first or last step)
+        // Scaling is be done in reordering step
         if (i == 0)
         {
              step.norm_factor = 1.0/(double(n));
+             step.forward = false;
         }
 
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
@@ -155,6 +148,16 @@ void HHFFT_1D_D::fft(const double *in, double *out)
     {
         forward_steps[0].step_function(in,out,forward_steps[0]);
         return;
+    }
+
+    // If transform is made in-place, copy input to a temporary variable
+    hhfft::AlignedVector<double> temp_data_in;
+    if (in == out)
+    {
+        size_t nn = 2*n;
+        temp_data_in.resize(nn);
+        std::copy(in, in + nn, temp_data_in.data());
+        in = temp_data_in.data();
     }
 
     // Allocate some extra space if needed    
@@ -181,6 +184,16 @@ void HHFFT_1D_D::ifft(const double *in, double *out)
     {
         inverse_steps[0].step_function(in,out,inverse_steps[0]);
         return;
+    }
+
+    // If transform is made in-place, copy input to a temporary variable
+    hhfft::AlignedVector<double> temp_data_in;
+    if (in == out)
+    {
+        size_t nn = 2*n;
+        temp_data_in.resize(nn);
+        std::copy(in, in + nn, temp_data_in.data());
+        in = temp_data_in.data();
     }
 
     // Allocate some extra space if needed    
