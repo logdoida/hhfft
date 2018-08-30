@@ -304,8 +304,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         step.repeats = n_complex / step.radix;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
-        step.reorder_table = nullptr;
-        step.forward = false;
+        step.reorder_table = nullptr;        
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
@@ -320,8 +319,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         step.repeats = step_prev.repeats / step.radix;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
-        step.twiddle_factors = twiddle_factors[i].data();
-        step.forward = false;
+        step.twiddle_factors = twiddle_factors[i].data();        
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }

@@ -341,7 +341,7 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_sse2_d(const do
         // all columns, skip the first one as it is processed in temp variable
         for (size_t j = 1; j < m2; j++)
         {
-            size_t j2 = reorder_table_rows[j];
+            size_t j2 = m - reorder_table_rows[j];
 
             // For some of the columns the output should be conjugated
             // This is achieved by conjugating input and changing its order: conj(ifft(x)) = ifft(conj(swap(x))

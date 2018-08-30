@@ -29,7 +29,7 @@ using namespace hhfft;
 
 template<bool forward>
     void fft_1d_complex_to_complex_packed_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
+{    
     const double *packing_table = step_info.twiddle_factors;
     size_t n = 2*step_info.repeats; // n = number of original real numbers
 
@@ -92,19 +92,8 @@ template<bool forward>
     }
 }
 
-// This is found in hhfft_1d_complex_plain_d.cpp
-template<bool scale> void fft_1d_complex_reorder_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-
 void fft_1d_complex_to_complex_packed_ifft_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
-    // If data_in == data_out,
-    if(data_in == data_out)
-    {
-        fft_1d_complex_to_complex_packed_plain_d<false>(data_in, data_out, step_info);
-        fft_1d_complex_reorder_plain_d<true>(data_out, data_out, step_info);
-        return;
-    }
-
+{    
     const double *packing_table = step_info.twiddle_factors;
     size_t n = step_info.repeats; // 2*n = number of original real numbers
     uint32_t *reorder_table_inverse = step_info.reorder_table;
@@ -139,8 +128,8 @@ void fft_1d_complex_to_complex_packed_ifft_plain_d(const double *data_in, double
         double temp0 = -ss*(x0_r - x1_r) + sc*(x0_i + x1_i);
         double temp1 = -sc*(x0_r - x1_r) - ss*(x0_i + x1_i);
 
-        size_t i2 = reorder_table_inverse[i];
-        size_t i3 = reorder_table_inverse[n - i];
+        size_t i2 = reorder_table_inverse[n - i];
+        size_t i3 = reorder_table_inverse[i];
 
         data_out[2*i2 + 0] = temp0 + x0_r;
         data_out[2*i2 + 1] = temp1 + x0_i;
@@ -216,16 +205,16 @@ template<size_t radix> void fft_1d_real_first_level_inverse_plain_d(const double
         for (size_t j = 1; j <= radix/2; j++)
         {
             size_t ind = reorder_table[j];
-            double real =  norm_factor*data_in[2*ind + 0];
-            double imag =  norm_factor*data_in[2*ind + 1];
+            double real = norm_factor*data_in[2*ind + 0];
+            double imag = norm_factor*data_in[2*ind + 1];
             x_temp_in[2*j + 0] = real;
-            x_temp_in[2*j + 1] = imag;
+            x_temp_in[2*j + 1] = -imag;
             x_temp_in[2*(radix-j) + 0] = real;
-            x_temp_in[2*(radix-j) + 1] = -imag;
+            x_temp_in[2*(radix-j) + 1] = imag;
         }
 
         // Multiply with coefficients
-        multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+        multiply_coeff<radix,true>(x_temp_in, x_temp_out);
 
         // Write only real parts of the data
         for (size_t j = 0; j < radix; j++)
@@ -240,7 +229,7 @@ template<size_t radix> void fft_1d_real_first_level_inverse_plain_d(const double
         // Copy input data taking reordering into account
         for (size_t j = 0; j < radix; j++)
         {
-            size_t ind = reorder_table[i*radix - radix/2 + j];
+            size_t ind = n - reorder_table[i*radix - radix/2 + j];
             //std::cout << "i = " << i << ", j = " << j << ", ind = " << ind << std::endl;
             if (ind <= n/2)
             {
@@ -256,7 +245,7 @@ template<size_t radix> void fft_1d_real_first_level_inverse_plain_d(const double
         }
 
         // Multiply with coefficients
-        multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+        multiply_coeff<radix,true>(x_temp_in, x_temp_out);
 
         // Store real and imag parts separately
         for (size_t j = 0; j < radix; j++)
@@ -297,7 +286,7 @@ template<size_t radix> void fft_2d_real_odd_rows_first_level_inverse_plain_d(con
             }
 
             // Multiply with coefficients
-            multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
 
             // Write only real parts of the data
             for (size_t j = 0; j < radix; j++)
@@ -317,7 +306,7 @@ template<size_t radix> void fft_2d_real_odd_rows_first_level_inverse_plain_d(con
             }            
 
             // Multiply with coefficients
-            multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
 
             // Store real and imag parts separately
             for (size_t j = 0; j < radix; j++)
@@ -491,7 +480,7 @@ template<size_t radix> void fft_1d_real_one_level_inverse_plain_d(const double *
         multiply_conj_twiddle_odd<radix>(x_temp_in, x_temp_in, twiddle_temp);
 
         // Multiply with coefficients
-        multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+        multiply_coeff<radix,true>(x_temp_in, x_temp_out);
 
         // Write only real parts of the data
         for (size_t j = 0; j < radix; j++)
@@ -516,10 +505,10 @@ template<size_t radix> void fft_1d_real_one_level_inverse_plain_d(const double *
             }
 
             // Multiply with twiddle factors
-            multiply_twiddle<radix,false>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_twiddle<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
 
             // Multiply with coefficients
-            multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
 
             // Store real and imag parts separately
             for (size_t j = 0; j < radix; j++)

@@ -450,8 +450,8 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_avx_d(const dou
         size_t j = 1;
         for (; j + 1 < m2; j+=2)
         {
-            size_t j2 = reorder_table_rows[j];
-            size_t j3 = reorder_table_rows[j+1];
+            size_t j2 = m - reorder_table_rows[j];
+            size_t j3 = m - reorder_table_rows[j+1];
 
             // For some of the columns the output should be conjugated
             // This is achieved by conjugating input and changing its order: conj(ifft(x)) = ifft(conj(swap(x))
@@ -514,7 +514,7 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_avx_d(const dou
         // Then use sse2 if needed
         if (j < m2)
         {
-            size_t j2 = reorder_table_rows[j];
+            size_t j2 = m - reorder_table_rows[j];
 
             // For some of the columns the output should be conjugated
             // This is achieved by conjugating input and changing its order: conj(ifft(x)) = ifft(conj(swap(x))

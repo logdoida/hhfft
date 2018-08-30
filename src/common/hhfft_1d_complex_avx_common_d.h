@@ -421,9 +421,9 @@ template<size_t radix> inline __attribute__((always_inline)) void multiply_conj_
     {
         ComplexD2 x = x_in[j];
 
-        // multiplication with conjugated twiddle factors is done first
+        // multiplication with twiddle factors is done first
         ComplexD2 w = twiddle_factors[j];
-        ComplexD2 x_temp = mul_w_D2<false>(x, w);
+        ComplexD2 x_temp = mul_w_D2<true>(x, w);
 
         x_out[j] = x_temp;
         x_out[radix-j] = conj_D2(x_temp);

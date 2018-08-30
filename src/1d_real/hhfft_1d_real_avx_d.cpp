@@ -104,19 +104,8 @@ template<bool forward>
     }
 }
 
-// This is found in hhfft_1d_complex_avx_d.cpp
-template<bool scale> void fft_1d_complex_reorder_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-
 void fft_1d_complex_to_complex_packed_ifft_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
-    // If data_in == data_out,
-    if(data_in == data_out)
-    {
-        fft_1d_complex_to_complex_packed_avx_d<false>(data_in, data_out, step_info);
-        fft_1d_complex_reorder_avx_d<true>(data_out, data_out, step_info);
-        return;
-    }
-
     const double *packing_table = step_info.twiddle_factors;
     size_t n = step_info.repeats; // 2*n = number of original real numbers
     uint32_t *reorder_table_inverse = step_info.reorder_table;
@@ -156,10 +145,10 @@ void fft_1d_complex_to_complex_packed_ifft_avx_d(const double *data_in, double *
         ComplexD2 x0_out = temp1 + x0_in;
         ComplexD2 x1_out = change_sign_D2(temp1, const2) + x1_in;
 
-        size_t i2 = reorder_table_inverse[i];
-        size_t i3 = reorder_table_inverse[i + 1];
-        size_t i4 = reorder_table_inverse[n - i];
-        size_t i5 = reorder_table_inverse[n - i - 1];
+        size_t i2 = reorder_table_inverse[n - i];
+        size_t i3 = reorder_table_inverse[n - i - 1];
+        size_t i4 = reorder_table_inverse[i];
+        size_t i5 = reorder_table_inverse[i + 1];
 
         store_two_128_D2(x0_out, data_out + 2*i2, data_out + 2*i3);
         store_two_128_D2(x1_out, data_out + 2*i4, data_out + 2*i5);
@@ -178,8 +167,8 @@ void fft_1d_complex_to_complex_packed_ifft_avx_d(const double *data_in, double *
         ComplexD x0_out = temp1 + x0_in;
         ComplexD x1_out = change_sign_D(temp1, const2_128) + x1_in;
 
-        size_t i2 = reorder_table_inverse[i];
-        size_t i3 = reorder_table_inverse[n - i];
+        size_t i2 = reorder_table_inverse[n - i];
+        size_t i3 = reorder_table_inverse[i];
 
         store_D(x0_out, data_out + 2*i2);
         store_D(x1_out, data_out + 2*i3);
@@ -487,13 +476,13 @@ template<size_t radix> void fft_1d_real_first_level_inverse_avx_d(const double *
         {
             size_t ind = reorder_table[j];
             ComplexD x = norm_factor*load_D(data_in + 2*ind);
-            x_temp_in[j] = x;
-            x_temp_in[radix-j] = conj_D(x);
+            x_temp_in[j] = conj_D(x);
+            x_temp_in[radix-j] = x;
         }
 
         // NOTE this could be optimized as actually only the real part of output is used and input has symmetry
         // Multiply with coefficients
-        multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+        multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
         // Write only real parts of the data
         for (size_t j = 0; j < radix; j++)
@@ -508,7 +497,7 @@ template<size_t radix> void fft_1d_real_first_level_inverse_avx_d(const double *
         // Copy input data taking reordering into account
         for (size_t j = 0; j < radix; j++)
         {
-            size_t ind = reorder_table[i*radix - radix/2 + j];
+            size_t ind = n - reorder_table[i*radix - radix/2 + j];
             if (ind <= n/2)
             {
                 x_temp_in[j] = norm_factor*load_D(data_in + 2*ind);
@@ -521,7 +510,7 @@ template<size_t radix> void fft_1d_real_first_level_inverse_avx_d(const double *
         }
 
         // Multiply with coefficients
-        multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+        multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
         // Store real and imag parts separately
         for (size_t j = 0; j < radix; j++)
@@ -558,7 +547,7 @@ template<size_t radix> void fft_2d_real_odd_rows_first_level_inverse_avx_d(const
             }
 
             // Multiply with coefficients
-            multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
             // Write only real parts of the data
             for (size_t j = 0; j < radix; j++)
@@ -577,7 +566,7 @@ template<size_t radix> void fft_2d_real_odd_rows_first_level_inverse_avx_d(const
             }
 
             // Multiply with coefficients
-            multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
             // Store real and imag parts separately
             for (size_t j = 0; j < radix; j++)
@@ -619,7 +608,7 @@ template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *da
 
             // NOTE this could be optimized as actually only the real part of output is used and input has symmetry
             // Multiply with coefficients
-            multiply_coeff_D2<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D2<radix,true>(x_temp_in, x_temp_out);
 
             // Write only real parts of the data
             for (size_t j = 0; j < radix; j++)
@@ -648,7 +637,7 @@ template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *da
 
             // NOTE this could be optimized as actually only the real part of output is used and input has symmetry
             // Multiply with coefficients
-            multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
             // Write only real parts of the data
             for (size_t j = 0; j < radix; j++)
@@ -678,10 +667,10 @@ template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *da
             }
 
             // Multiply with twiddle factors
-            multiply_twiddle_D4S<radix,false>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_twiddle_D4S<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
 
             // Multiply with coefficients
-            multiply_coeff_D4S<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D4S<radix,true>(x_temp_in, x_temp_out);
 
             // Store real and imag parts separately
             for (size_t j = 0; j < radix; j++)
@@ -707,10 +696,10 @@ template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *da
             }
 
             // Multiply with twiddle factors
-            multiply_twiddle_D2S<radix,false>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_twiddle_D2S<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
 
             // Multiply with coefficients
-            multiply_coeff_D2S<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D2S<radix,true>(x_temp_in, x_temp_out);
 
             // Store real and imag parts separately
             for (size_t j = 0; j < radix; j++)
@@ -738,10 +727,10 @@ template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *da
             }
 
             // Multiply with twiddle factors
-            multiply_twiddle_D<radix,false>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_twiddle_D<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
 
             // Multiply with coefficients
-            multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
             // Store real and imag parts separately
             for (size_t j = 0; j < radix; j++)

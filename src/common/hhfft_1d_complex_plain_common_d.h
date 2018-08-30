@@ -169,12 +169,12 @@ template<size_t radix> inline void multiply_conj_twiddle_odd(const double *x_in,
         double x_r = x_in[2*j + 0];
         double x_i = x_in[2*j + 1];
 
-        // multiplication with conjugated twiddle factors is done first
+        // multiplication with twiddle factors is done first
         double w_r = twiddle_factors[2*j + 0];
         double w_i = twiddle_factors[2*j + 1];
 
-        double re2 = w_r*x_r + w_i*x_i;
-        double im2 = w_r*x_i - w_i*x_r;
+        double re2 = w_r*x_r - w_i*x_i;
+        double im2 = w_r*x_i + w_i*x_r;
 
         x_out[2*j + 0] = re2;
         x_out[2*j + 1] = im2;
