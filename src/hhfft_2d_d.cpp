@@ -206,12 +206,11 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
     {
         auto step = forward_steps[i];
 
-        step.forward = false;
-
         // Reordering + scaling is done in the first step
         if (i == 0)
         {
-            step.norm_factor = 1.0/(double(n*m));            
+            step.norm_factor = 1.0/(double(n*m));
+            step.forward = false;
         }
 
         if (forward_step_columns[i])

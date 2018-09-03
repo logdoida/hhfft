@@ -25,186 +25,6 @@
 
 using namespace hhfft;
 
-//////////////////////// reorder ////////////////////////////////////
-
-// TODO can be removed after 2d complex nor 2d real need them...
-template<bool scale> void fft_2d_complex_reorder_columns_in_place_d(const double *, double *data_out, hhfft::StepInfo<double> &step_info)
-{    
-    size_t m = step_info.size;
-    uint32_t *reorder_table = step_info.reorder_table_inplace;
-    size_t reorder_table_size = step_info.reorder_table_inplace_size;
-
-    // In-place algorithm
-    assert (data_in == data_out);
-
-    for (size_t i = 0; i < reorder_table_size; i++)
-    {
-        size_t ind1 = i + 1; // First one has been omitted!
-        size_t ind2 = reorder_table[i];
-
-        for (size_t j = 0; j < 2*m; j++)
-        {
-            double temp = data_out[2*ind1*m + j];
-            data_out[2*ind1*m + j] = data_out[2*ind2*m + j];
-            data_out[2*ind2*m + j] = temp;
-        }
-    }
-
-    // Scaling needs to be done as a separate step as some data might be copied twice or zero times    
-    // Scaling needs to be done as a separate step as some data might be copied twice or zero times        
-    size_t n2 = step_info.stride;
-    double k = step_info.norm_factor;
-    if (scale)
-    {        
-        for (size_t i = 0; i < 2*n2*m; i++)
-        {
-            data_out[i] *= k;
-        }
-    }    
-}
-
-// TODO can be removed after 2d complex nor 2d real need them...
-template<bool scale> void fft_2d_complex_reorder_columns_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{    
-    // Check, if in-place should be done instead
-    if (data_in == data_out)
-    {
-        fft_2d_complex_reorder_columns_in_place_d<scale>(data_in, data_out, step_info);
-        return;
-    }
-
-    size_t n = step_info.stride;
-    size_t m = step_info.size;
-    uint32_t *reorder_table = step_info.reorder_table;
-
-    // Needed only in ifft. Equal to 1/N
-    double k = step_info.norm_factor;    
-
-    for (size_t i = 0; i < n; i++)
-    {
-        size_t i2 = reorder_table[i];
-
-        for (size_t j = 0; j < m; j++)
-        {
-            if (scale)
-            {
-                data_out[2*i*m + 2*j + 0] = k*data_in[2*i2*m + 2*j + 0];
-                data_out[2*i*m + 2*j + 1] = k*data_in[2*i2*m + 2*j + 1];
-            } else {
-                data_out[2*i*m + 2*j + 0] = data_in[2*i2*m + 2*j + 0];
-                data_out[2*i*m + 2*j + 1] = data_in[2*i2*m + 2*j + 1];
-            }
-        }
-    }
-}
-
-template<bool scale> void fft_2d_complex_reorder_inplace_d(const double *, double *data_out, hhfft::StepInfo<double> &step_info)
-{
-    size_t n = step_info.stride;
-    size_t m = step_info.size;
-    uint32_t *reorder_table_columns = step_info.reorder_table_inplace;
-    uint32_t *reorder_table_rows = step_info.reorder_table2_inplace;
-    size_t reorder_table_size_columns = step_info.reorder_table_inplace_size;
-    size_t reorder_table_size_rows = step_info.reorder_table2_inplace_size;
-
-    // Reorder rows
-    for (size_t i = 0; i < n; i++)
-    {
-        for (size_t j = 0; j < reorder_table_size_rows; j++)
-        {
-            size_t ind1 = j + 1; // First one has been omitted!
-            size_t ind2 = reorder_table_rows[j];
-
-            // Swap two doubles at a time
-            //__m128d temp1 = _mm_loadu_pd(data_in + 2*i*m + 2*ind1);
-            //__m128d temp2 = _mm_loadu_pd(data_in + 2*i*m + 2*ind2);
-            //_mm_storeu_pd(data_out + 2*i*m + 2*ind2, temp1);
-            //_mm_storeu_pd(data_out + 2*i*m + 2*ind1, temp2);
-
-            double r_temp = data_out[2*i*m + 2*ind1+0];
-            double c_temp = data_out[2*i*m + 2*ind1+1];
-            data_out[2*i*m + 2*ind1+0] = data_out[2*i*m + 2*ind2+0];
-            data_out[2*i*m + 2*ind1+1] = data_out[2*i*m + 2*ind2+1];
-            data_out[2*i*m + 2*ind2+0] = r_temp;
-            data_out[2*i*m + 2*ind2+1] = c_temp;
-        }
-    }
-
-    // Reorder columns
-    for (size_t i = 0; i < reorder_table_size_columns; i++)
-    {
-        size_t ind1 = i + 1; // First one has been omitted!
-        size_t ind2 = reorder_table_columns[i];
-
-        for (size_t j = 0; j < 2*m; j++)
-        {
-            double temp = data_out[2*ind1*m + j];
-            data_out[2*ind1*m + j] = data_out[2*ind2*m + j];
-            data_out[2*ind2*m + j] = temp;
-        }
-    }
-
-    // Scaling is done as a separate step
-    if (scale)
-    {
-        // Needed only in ifft. Equal to 1/N
-        double k = step_info.norm_factor;
-
-        for (size_t i = 0; i < 2*m*n; i++)
-        {
-            data_out[i] *= k;
-        }
-    }
-}
-
-template<bool scale> void fft_2d_complex_reorder_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
-{
-    if (data_in == data_out)
-    {
-        fft_2d_complex_reorder_inplace_d<scale>(data_in, data_out, step_info);
-        return;
-    }
-
-    size_t n = step_info.stride;
-    size_t m = step_info.size;
-    uint32_t *reorder_table_columns = step_info.reorder_table;
-    uint32_t *reorder_table_rows = step_info.reorder_table2;
-
-    // Needed only in ifft. Equal to 1/N
-    double k = step_info.norm_factor;
-
-    for (size_t i = 0; i < n; i++)
-    {
-        size_t i2 = reorder_table_columns[i];
-
-        for (size_t j = 0; j < m; j++)
-        {
-            size_t j2 = reorder_table_rows[j];
-            if (scale)
-            {
-                data_out[2*i*m + 2*j + 0] = k*data_in[2*i2*m + 2*j2 + 0];
-                data_out[2*i*m + 2*j + 1] = k*data_in[2*i2*m + 2*j2 + 1];
-            } else {
-                data_out[2*i*m + 2*j + 0] = data_in[2*i2*m + 2*j2 + 0];
-                data_out[2*i*m + 2*j + 1] = data_in[2*i2*m + 2*j2 + 1];
-            }
-        }
-    }
-}
-
-void hhfft::HHFFT_2D_Complex_D_set_function_reorder(StepInfoD &step_info)
-{
-    step_info.step_function = nullptr;
-
-    if (step_info.norm_factor != 1.0)
-        step_info.step_function = fft_2d_complex_reorder_d<true>;
-    else
-        step_info.step_function = fft_2d_complex_reorder_d<false>;
-
-    return;
-}
-
-
 // Actual implementations are in different .cpp-files
 template<size_t radix, bool forward>
     void fft_2d_complex_column_twiddle_dit_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
@@ -220,13 +40,13 @@ template<size_t radix, SizeType size_type, bool forward>
 
 
 // Reorder both rows and columns and do FFT
-template<size_t radix, bool forward, bool scale>
+template<size_t radix, bool forward>
 void fft_2d_complex_reorder2_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, bool forward, bool scale>
+template<size_t radix, bool forward>
 void fft_2d_complex_reorder2_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, bool forward, bool scale>
+template<size_t radix, bool forward>
 void fft_2d_complex_reorder2_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 
@@ -248,12 +68,8 @@ template<size_t radix, SizeType size_type, bool forward> void set_instruction_se
         if (step_info.reorder_table == nullptr && step_info.reorder_table2 == nullptr && step_info.twiddle_factors != nullptr)
             step_info.step_function = fft_2d_complex_column_twiddle_dit_avx_d<radix, size_type, forward>;
         if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr && step_info.twiddle_factors == nullptr)
-        {
-            // Take scaling into account
-            if (step_info.norm_factor == 1.0)
-                step_info.step_function = fft_2d_complex_reorder2_avx_d<radix, forward, false>;
-            else
-                step_info.step_function = fft_2d_complex_reorder2_avx_d<radix, forward, true>;
+        {            
+            step_info.step_function = fft_2d_complex_reorder2_avx_d<radix, forward>;
         }
     }
 #endif
@@ -263,12 +79,8 @@ template<size_t radix, SizeType size_type, bool forward> void set_instruction_se
         if (step_info.reorder_table == nullptr && step_info.reorder_table2 == nullptr && step_info.twiddle_factors != nullptr)
             step_info.step_function = fft_2d_complex_column_twiddle_dit_sse2_d<radix, size_type, forward>;
         if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr && step_info.twiddle_factors == nullptr)
-        {
-            // Take scaling into account
-            if (step_info.norm_factor == 1.0)
-                step_info.step_function = fft_2d_complex_reorder2_sse2_d<radix, forward, false>;
-            else
-                step_info.step_function = fft_2d_complex_reorder2_sse2_d<radix, forward, true>;
+        {            
+            step_info.step_function = fft_2d_complex_reorder2_sse2_d<radix, forward>;
         }
     }
 
@@ -277,12 +89,8 @@ template<size_t radix, SizeType size_type, bool forward> void set_instruction_se
         if (step_info.reorder_table == nullptr && step_info.reorder_table2 == nullptr && step_info.twiddle_factors != nullptr)
             step_info.step_function = fft_2d_complex_column_twiddle_dit_plain_d<radix, forward>;
         if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr && step_info.twiddle_factors == nullptr)
-        {
-            // Take scaling into account
-            if (step_info.norm_factor == 1.0)
-                step_info.step_function = fft_2d_complex_reorder2_plain_d<radix, forward, false>;
-            else
-                step_info.step_function = fft_2d_complex_reorder2_plain_d<radix, forward, true>;
+        {            
+            step_info.step_function = fft_2d_complex_reorder2_plain_d<radix, forward>;
         }
     }
 }
@@ -371,25 +179,18 @@ void hhfft::HHFFT_2D_Complex_D_set_function_columns(StepInfoD &step_info, hhfft:
 {
     step_info.step_function = nullptr;
 
-    if (step_info.radix == 1 && (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr))
-    {    
-        if (step_info.norm_factor != 1.0)
-            step_info.step_function = fft_2d_complex_reorder_columns_d<true>;
-        else
-            step_info.step_function = fft_2d_complex_reorder_columns_d<false>;
-
-        return;
-    }    
-
-    if (step_info.twiddle_factors == nullptr
-            && step_info.reorder_table == nullptr && step_info.reorder_table_inplace == nullptr
-            && step_info.reorder_table2 == nullptr && step_info.reorder_table2_inplace == nullptr)
+    if (step_info.radix != 1)
     {
-        // 1D FFT is used here instead!
-        HHFFT_1D_Complex_D_set_function(step_info, instruction_set);
-    } else
-    {
-        set_radix_2d_colums_d(step_info, instruction_set);
+        if (step_info.twiddle_factors == nullptr
+                && step_info.reorder_table == nullptr && step_info.reorder_table_inplace == nullptr
+                && step_info.reorder_table2 == nullptr && step_info.reorder_table2_inplace == nullptr)
+        {
+            // 1D FFT is used here instead!
+            HHFFT_1D_Complex_D_set_function(step_info, instruction_set);
+        } else
+        {
+            set_radix_2d_colums_d(step_info, instruction_set);
+        }
     }
 
     if (step_info.step_function == nullptr)
