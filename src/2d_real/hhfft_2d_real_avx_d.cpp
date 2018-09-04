@@ -203,6 +203,7 @@ void fft_2d_real_reorder2_inverse_avx_d(const double *data_in, double *data_out,
     size_t m = step_info.stride;  // number of columns
     size_t m2 = m + 1;            // number of columns in input
     size_t repeats = step_info.repeats;
+    size_t n = repeats*radix;
     uint32_t *reorder_table_columns = step_info.reorder_table;
     ComplexD norm_factor = broadcast64_D(step_info.norm_factor);
     ComplexD2 norm_factor_256 = broadcast64_D2(step_info.norm_factor);
@@ -218,7 +219,13 @@ void fft_2d_real_reorder2_inverse_avx_d(const double *data_in, double *data_out,
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                size_t j2 = reorder_table_columns[i*radix + j];
+                size_t j1 = i*radix + j;
+                size_t j2 = reorder_table_columns[j1];
+                if (j1 > 0)
+                {
+                    j2 = n - j2;
+                }
+
                 double x0_r = data_in[2*j2*m2 + 0];
                 double x0_i = data_in[2*j2*m2 + 1];
                 double x1_r = data_in[2*j2*m2 + 2*m + 0];
@@ -232,7 +239,7 @@ void fft_2d_real_reorder2_inverse_avx_d(const double *data_in, double *data_out,
                 x_temp_in[j] = norm_factor*load_D(t1 + t2, t3 + t4);
             }
 
-            multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
             // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
@@ -251,11 +258,17 @@ void fft_2d_real_reorder2_inverse_avx_d(const double *data_in, double *data_out,
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                size_t j2 = reorder_table_columns[i*radix + j];
+                size_t j1 = i*radix + j;
+                size_t j2 = reorder_table_columns[j1];
+
+                if (j1 > 0)
+                {
+                    j2 = n - j2;
+                }
                 x_temp_in[j] = norm_factor*load_D(data_in + 2*j2*m2 + 2*k);
             }
 
-            multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
             // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
@@ -273,11 +286,16 @@ void fft_2d_real_reorder2_inverse_avx_d(const double *data_in, double *data_out,
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                size_t j2 = reorder_table_columns[i*radix + j];
+                size_t j1 = i*radix + j;
+                size_t j2 = reorder_table_columns[j1];
+                if (j1 > 0)
+                {
+                    j2 = n - j2;
+                }
                 x_temp_in[j] = norm_factor_256*load_D2(data_in + 2*j2*m2 + 2*k);
             }
 
-            multiply_coeff_D2<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D2<radix,true>(x_temp_in, x_temp_out);
 
             // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
@@ -294,11 +312,16 @@ void fft_2d_real_reorder2_inverse_avx_d(const double *data_in, double *data_out,
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                size_t j2 = reorder_table_columns[i*radix + j];
+                size_t j1 = i*radix + j;
+                size_t j2 = reorder_table_columns[j1];
+                if (j1 > 0)
+                {
+                    j2 = n - j2;
+                }
                 x_temp_in[j] = norm_factor*load_D(data_in + 2*j2*m2 + 2*k);
             }
 
-            multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
             // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)

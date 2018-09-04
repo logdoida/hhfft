@@ -175,6 +175,7 @@ void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_ou
     size_t m = step_info.stride;  // number of columns
     size_t m2 = m + 1;            // number of columns in input
     size_t repeats = step_info.repeats;
+    size_t n = repeats*radix;
     uint32_t *reorder_table_columns = step_info.reorder_table;
     double norm_factor = step_info.norm_factor;
 
@@ -188,7 +189,13 @@ void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_ou
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                size_t j2 = reorder_table_columns[i*radix + j];
+                size_t j1 = i*radix + j;
+                size_t j2 = reorder_table_columns[j1];
+                if (j1 > 0)
+                {
+                    j2 = n - j2;
+                }
+
                 double x0_r = data_in[2*j2*m2 + 0];
                 double x0_i = data_in[2*j2*m2 + 1];
                 double x1_r = data_in[2*j2*m2 + 2*m + 0];
@@ -203,7 +210,7 @@ void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_ou
                 x_temp_in[2*j + 1] = t3 + t4;
             }
 
-            multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
 
             // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
@@ -213,17 +220,24 @@ void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_ou
             }
         }
 
+        // do other columns
         for (size_t k = 1; k < m; k++)
         {
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                size_t j2 = reorder_table_columns[i*radix + j];
+                size_t j1 = i*radix + j;
+                size_t j2 = reorder_table_columns[j1];
+                if (j1 > 0)
+                {
+                    j2 = n - j2;
+                }
+
                 x_temp_in[2*j + 0] = data_in[2*j2*m2 + 2*k + 0];
                 x_temp_in[2*j + 1] = data_in[2*j2*m2 + 2*k + 1];
             }
 
-            multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
 
             // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)

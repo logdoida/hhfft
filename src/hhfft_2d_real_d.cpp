@@ -398,13 +398,24 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
 
     // Then in-place version of the reorder table
     reorder_table_in_place_columns = calculate_reorder_table_in_place(reorder_table_columns);
-    reorder_table_in_place_rows = calculate_reorder_table_in_place(reorder_table_rows);
+
+    // Calculate reorder table in place "inverted" as input is actually reordered instead of calling ifft
+    std::vector<uint32_t> reorder_table_rows_temp(m_complex);
+    for (size_t i = 1; i < m_complex; i++)
+    {
+        reorder_table_rows_temp[i] = m_complex - reorder_table_rows[i];
+    }
+    reorder_table_in_place_rows = calculate_reorder_table_in_place(reorder_table_rows_temp);
 
     // TESTING print reorder tables
     //std::cout << "reorder_table_columns = " << std::endl;
     //for (auto r: reorder_table_columns)  { std::cout << r << " ";} std::cout << std::endl;
     //std::cout << "reorder_table_in_place = " << std::endl;
     //for (auto r: reorder_table_in_place)  { std::cout << r << " ";} std::cout << std::endl;
+    //std::cout << "reorder_table_rows = " << std::endl;
+    //for (auto r: reorder_table_rows)  { std::cout << r << " ";} std::cout << std::endl;
+    //std::cout << "reorder_table_in_place_rows = " << std::endl;
+    //for (auto r: reorder_table_in_place_rows)  { std::cout << r << " ";} std::cout << std::endl;
 
     // Add packing factors
     AlignedVector<double> packing_factors = hhfft::calculate_packing_factors(m);
@@ -564,7 +575,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors_columns[i].data();
-        step.forward = false;
+        step.forward = true;
         HHFFT_2D_Complex_D_set_function_columns(step, instruction_set);
         inverse_steps.push_back(step);
     }
@@ -584,8 +595,9 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
 
     ///////// IFFT row-wise ////////////
 
-    // Reorder rows in-place if needed
-    if (N_rows.size() > 1)
+    // Reorder rows in-place
+    // NOTE if N_rows.size() == 1, it would be enough just to swap the ordering from 0 1 2 3 ... to 0 ... 3 2 1
+    if (reorder_table_in_place_rows.size() > 0)
     {
         hhfft::StepInfoD step;
         step.data_type_in = hhfft::StepDataType::data_out;
@@ -609,7 +621,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.stride = 1;
         step.radix = N_rows[0];
         step.repeats = n*m_complex / step.radix;
-        step.forward = false;
+        step.forward = true;
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
@@ -625,7 +637,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors_rows[i].data();
-        step.forward = false;
+        step.forward = true;
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
