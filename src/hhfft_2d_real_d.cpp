@@ -291,7 +291,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::temp_data;
         step.data_type_out = hhfft::StepDataType::temp_data;
         step.twiddle_factors = twiddle_factors_columns[i].data();
-        step.forward = false;
+        step.forward = true;
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
@@ -327,7 +327,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.repeats = step_prev.repeats / step.radix;
         step.size = m2 - 1; // First column is in temp variable!
         step.twiddle_factors = twiddle_factors_columns[i].data();
-        step.forward = false;
+        step.forward = true;
         HHFFT_2D_Complex_D_set_function_columns(step, instruction_set);
         inverse_steps.push_back(step);
     }

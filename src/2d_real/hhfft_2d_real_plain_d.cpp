@@ -324,6 +324,7 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_first_column_plain_d(co
     size_t repeats = step_info.repeats;
     uint32_t *reorder_table_columns = step_info.reorder_table;
     double k = step_info.norm_factor;
+    size_t n = repeats*radix;
 
     for (size_t i = 0; i < repeats; i++)
     {
@@ -333,13 +334,18 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_first_column_plain_d(co
         // Copy input data taking reordering and scaling into account
         for (size_t j = 0; j < radix; j++)
         {
-            size_t i2 = reorder_table_columns[i*radix + j];
+            size_t i1 = i*radix + j;
+            size_t i2 = reorder_table_columns[i1];
+            if (i1 > 0)
+            {
+                i2 = n - i2;
+            }
 
             x_temp_in[2*j + 0] = data_in[i2*m2 + 0] * k;
             x_temp_in[2*j + 1] = data_in[i2*m2 + 1] * k;
         }
 
-        multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+        multiply_coeff<radix,true>(x_temp_in, x_temp_out);
 
         // save output
         for (size_t j = 0; j < radix; j++)
@@ -370,6 +376,7 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_plain_d(const d
 
             // For some of the columns the output should be conjugated
             // This is achieved by conjugating input and changing its order: conj(ifft(x)) = ifft(conj(swap(x))
+            // Also ifft(x) = fft(swap(x))!
             bool conj = false;
             if (j2 > m/2)
             {
@@ -386,7 +393,7 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_plain_d(const d
                 size_t i2 = reorder_table_columns[i*radix + k];
 
                 // 0->0, 1->n-1, 2->n-2 ...
-                if (i2 > 0 && conj)
+                if (i2 > 0 && !conj)
                 {
                     i2 = n - i2;
                 }
@@ -405,7 +412,7 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_plain_d(const d
                 }
             }
 
-            multiply_coeff<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
 
             // save output. The row size is decreased to m2-1 so that all data fits
             for (size_t k = 0; k < radix; k++)

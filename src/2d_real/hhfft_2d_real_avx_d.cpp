@@ -404,6 +404,7 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_first_column_avx_d(cons
     size_t repeats = step_info.repeats;
     uint32_t *reorder_table_columns = step_info.reorder_table;
     double k = step_info.norm_factor;
+    size_t n = repeats*radix;
 
     // First use AVX
     size_t i = 0;
@@ -415,13 +416,18 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_first_column_avx_d(cons
         // Copy input data taking reordering and scaling into account
         for (size_t j = 0; j < radix; j++)
         {
-            size_t i2 = reorder_table_columns[i*radix + j];
-            size_t i3 = reorder_table_columns[(i+1)*radix + j];
+            size_t i1 = i*radix + j;
+            size_t i2 = reorder_table_columns[i1];
+            size_t i3 = n - reorder_table_columns[i1 + radix];
+            if (i1 > 0)
+            {
+                i2 = n - i2;
+            }
 
             x_temp_in[j] = load_two_128_D2(data_in + i2*m2, data_in + i3*m2)*k;
         }
 
-        multiply_coeff_D2<radix,false>(x_temp_in, x_temp_out);
+        multiply_coeff_D2<radix,true>(x_temp_in, x_temp_out);
 
         // save output
         for (size_t j = 0; j < radix; j++)
@@ -439,12 +445,17 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_first_column_avx_d(cons
         // Copy input data taking reordering and scaling into account
         for (size_t j = 0; j < radix; j++)
         {
-            size_t i2 = reorder_table_columns[i*radix + j];
+            size_t i1 = i*radix + j;
+            size_t i2 = reorder_table_columns[i1];
+            if (i1 > 0)
+            {
+                i2 = n - i2;
+            }
 
             x_temp_in[j] = load_D(data_in + i2*m2)*k;
         }
 
-        multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+        multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
         // save output
         for (size_t j = 0; j < radix; j++)
@@ -500,11 +511,11 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_avx_d(const dou
                 size_t i3 = i2;
 
                 // 0->0, 1->n-1, 2->n-2 ...
-                if (i2 > 0 && conj1)
+                if (i2 > 0 && !conj1)
                 {
                     i2 = n - i2;
                 }
-                if (i3 > 0 && conj2)
+                if (i3 > 0 && !conj2)
                 {
                     i3 = n - i3;
                 }
@@ -525,7 +536,7 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_avx_d(const dou
                 x_temp_in[k] = combine_two_128_D2(x1,x2)*norm_factor;
             }
 
-            multiply_coeff_D2<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D2<radix,true>(x_temp_in, x_temp_out);
 
             // save output. The row size is decreased to m2-1 so that all data fits
             for (size_t k = 0; k < radix; k++)
@@ -541,6 +552,7 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_avx_d(const dou
 
             // For some of the columns the output should be conjugated
             // This is achieved by conjugating input and changing its order: conj(ifft(x)) = ifft(conj(swap(x))
+            // Also ifft(x) = fft(swap(x))!
             bool conj = false;
             if (j2 > m/2)
             {
@@ -557,7 +569,7 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_avx_d(const dou
                 size_t i2 = reorder_table_columns[i*radix + k];
 
                 // 0->0, 1->n-1, 2->n-2 ...
-                if (i2 > 0 && conj)
+                if (i2 > 0 && !conj)
                 {
                     i2 = n - i2;
                 }
@@ -573,7 +585,7 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_avx_d(const dou
                 }
             }
 
-            multiply_coeff_D<radix,false>(x_temp_in, x_temp_out);
+            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
             // save output. The row size is decreased to m2-1 so that all data fits
             for (size_t k = 0; k < radix; k++)
