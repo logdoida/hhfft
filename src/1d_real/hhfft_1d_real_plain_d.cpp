@@ -78,7 +78,7 @@ template<bool forward>
 
         if (!forward)
         {
-            ss = ss;
+            //ss = ss;
             sc = -sc;
         }
 
@@ -578,7 +578,7 @@ template<bool forward, size_t n> void fft_1d_complex_to_complex_packed_1level_pl
 
         if (!forward)
         {
-            ss = ss;
+            //ss = ss;
             sc = -sc;
         }
 

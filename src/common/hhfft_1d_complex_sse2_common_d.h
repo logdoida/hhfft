@@ -32,7 +32,7 @@ inline ComplexD load_D(double r, double i)
 {
     return _mm_setr_pd(r,i);
 }
-inline const ComplexD load_D(const double *v)
+inline ComplexD load_D(const double *v)
 {
     return _mm_loadu_pd(v);
 }
@@ -41,7 +41,7 @@ inline ComplexD broadcast64_D(double x)
     return _mm_setr_pd(x,x);
 }
 // Load only real part, imaginary part is set to zero
-inline const ComplexD load_real_D(const double *v)
+inline ComplexD load_real_D(const double *v)
 {
     return _mm_load_sd(v);
 }

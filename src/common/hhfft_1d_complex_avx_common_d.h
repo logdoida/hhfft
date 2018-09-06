@@ -33,26 +33,26 @@ inline ComplexD2 load_D2(double r1, double i1, double r2, double i2)
     //return _mm256_set_pd(i2,r2,i1,r1); // Why this order?
     return _mm256_setr_pd(r1,i1,r2,i2); // Reversed. Why this order?
 }
-inline const ComplexD2 load_D2(const double *v)
+inline ComplexD2 load_D2(const double *v)
 {
     return _mm256_loadu_pd(v);
 }
 
 // Loads same complex number twice: [r i] -> [r i r i]
-inline const ComplexD2 broadcast128_D2(const double *v)
+inline ComplexD2 broadcast128_D2(const double *v)
 {
     // TODO is this safe? Does alignment cause trouble?
     return _mm256_broadcast_pd((const __m128d*) v);
 }
 
 // Loads same number four times: [x] -> [x x x x]
-inline const ComplexD2 broadcast64_D2(const double x)
+inline ComplexD2 broadcast64_D2(const double x)
 {
     return _mm256_broadcast_sd(&x);
 }
 
 // Combines complex number from two separate memory locations: [a1 a2], [b1 b2] -> [a1 a2 b1 b2]
-inline const ComplexD2 load_two_128_D2(const double *a, const double *b)
+inline ComplexD2 load_two_128_D2(const double *a, const double *b)
 {
     // NOTE this should compile into two operations
     const ComplexD2 aa = _mm256_castpd128_pd256(load_D(a));
@@ -61,14 +61,14 @@ inline const ComplexD2 load_two_128_D2(const double *a, const double *b)
 }
 
 // Combines two complex numbers
-inline const ComplexD2 combine_two_128_D2(ComplexD a, ComplexD b)
+inline ComplexD2 combine_two_128_D2(ComplexD a, ComplexD b)
 {
     const ComplexD2 aa = _mm256_castpd128_pd256(a);
     return _mm256_insertf128_pd (aa, b, 1);
 }
 
 // Load only real part, imaginary part is set to zero. [r1 r2] -> [r1 0 r2 0]
-inline const ComplexD2 load_real_D2(const double *v)
+inline ComplexD2 load_real_D2(const double *v)
 {
     const ComplexD2 a = _mm256_castpd128_pd256(load_real_D(v));
     const ComplexD b = load_real_D(v + 1);

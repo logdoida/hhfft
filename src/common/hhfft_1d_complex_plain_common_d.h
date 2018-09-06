@@ -237,6 +237,8 @@ template<size_t n> const double *get_packing_table()
             return packing_table_14;
         case 16:
             return packing_table_16;
+        default:
+            return nullptr;
     }
 
     return nullptr;

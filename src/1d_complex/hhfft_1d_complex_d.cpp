@@ -118,7 +118,7 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
                 step_info.step_function = fft_1d_complex_avx_d<radix, stride_type, forward>;
             else if(step_info.stride == 1)
             {
-                step_info.step_function = fft_1d_complex_reorder2_avx_d<radix, stride_type, forward>;
+                step_info.step_function = fft_1d_complex_reorder2_avx_d<radix, SizeType::Size1, forward>;
             }
         } else
         {
@@ -136,7 +136,7 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
                 step_info.step_function = fft_1d_complex_sse2_d<radix, stride_type, forward>;
             else if(step_info.stride == 1)
             {                
-                step_info.step_function = fft_1d_complex_reorder2_sse2_d<radix, stride_type, forward>;
+                step_info.step_function = fft_1d_complex_reorder2_sse2_d<radix, SizeType::Size1, forward>;
             }
         } else
         {
