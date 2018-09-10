@@ -26,16 +26,16 @@
 using namespace hhfft;
 
 // Actual implementations are in different .cpp-files
-template<size_t radix, bool forward>
+template<size_t radix>
     void fft_2d_complex_column_twiddle_dit_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, SizeType size_type, bool forward>
+template<size_t radix, SizeType size_type>
     void fft_2d_complex_column_twiddle_dit_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, SizeType size_type, bool forward>
+template<size_t radix, SizeType size_type>
     void fft_2d_complex_column_twiddle_dit_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, SizeType size_type, bool forward>
+template<size_t radix, SizeType size_type>
     void fft_2d_complex_column_twiddle_dit_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 
@@ -66,7 +66,7 @@ template<size_t radix, SizeType size_type, bool forward> void set_instruction_se
     if (instruction_set == hhfft::InstructionSet::avx)
     {
         if (step_info.reorder_table == nullptr && step_info.reorder_table2 == nullptr && step_info.twiddle_factors != nullptr)
-            step_info.step_function = fft_2d_complex_column_twiddle_dit_avx_d<radix, size_type, forward>;
+            step_info.step_function = fft_2d_complex_column_twiddle_dit_avx_d<radix, size_type>;
         if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr && step_info.twiddle_factors == nullptr)
         {            
             step_info.step_function = fft_2d_complex_reorder2_avx_d<radix, forward>;
@@ -77,7 +77,7 @@ template<size_t radix, SizeType size_type, bool forward> void set_instruction_se
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
         if (step_info.reorder_table == nullptr && step_info.reorder_table2 == nullptr && step_info.twiddle_factors != nullptr)
-            step_info.step_function = fft_2d_complex_column_twiddle_dit_sse2_d<radix, size_type, forward>;
+            step_info.step_function = fft_2d_complex_column_twiddle_dit_sse2_d<radix, size_type>;
         if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr && step_info.twiddle_factors == nullptr)
         {            
             step_info.step_function = fft_2d_complex_reorder2_sse2_d<radix, forward>;
@@ -87,7 +87,7 @@ template<size_t radix, SizeType size_type, bool forward> void set_instruction_se
     if (instruction_set == hhfft::InstructionSet::none)
     {
         if (step_info.reorder_table == nullptr && step_info.reorder_table2 == nullptr && step_info.twiddle_factors != nullptr)
-            step_info.step_function = fft_2d_complex_column_twiddle_dit_plain_d<radix, forward>;
+            step_info.step_function = fft_2d_complex_column_twiddle_dit_plain_d<radix>;
         if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr && step_info.twiddle_factors == nullptr)
         {            
             step_info.step_function = fft_2d_complex_reorder2_plain_d<radix, forward>;

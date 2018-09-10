@@ -30,10 +30,10 @@ using namespace hhfft;
 
 ////////////////////////////////////// Column-wise ////////////////////////////////////////////////
 
-template<size_t radix, bool forward>
+template<size_t radix>
     inline __attribute__((always_inline)) void fft_2d_complex_column_twiddle_dit_sse2_d_internal(
             const double *data_in, double *data_out, const double *twiddle_factors, size_t stride, size_t length)
-{    
+{
     ComplexD x_temp_in[radix];
     ComplexD x_temp_out[radix];
     ComplexD twiddle_temp[radix];
@@ -54,8 +54,8 @@ template<size_t radix, bool forward>
                 x_temp_in[j] = load_D(data_in + 2*j*stride*length + 2*i*length + 2*k);
             }
 
-            multiply_twiddle_D<radix,forward>(x_temp_in, x_temp_in, twiddle_temp);
-            multiply_coeff_D<radix,forward>(x_temp_in, x_temp_out);
+            multiply_twiddle_D<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
             // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
@@ -66,7 +66,7 @@ template<size_t radix, bool forward>
     }
 }
 
-template<size_t radix, SizeType size_type, bool forward>
+template<size_t radix, SizeType size_type>
     void fft_2d_complex_column_twiddle_dit_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {    
     size_t stride = step_info.stride;
@@ -75,7 +75,7 @@ template<size_t radix, SizeType size_type, bool forward>
 
     for (size_t i = 0; i < repeats; i++)
     {
-        fft_2d_complex_column_twiddle_dit_sse2_d_internal<radix,forward>
+        fft_2d_complex_column_twiddle_dit_sse2_d_internal<radix>
                 (data_in  + 2*i*radix*stride*length,
                  data_out + 2*i*radix*stride*length,
                  step_info.twiddle_factors,
@@ -185,35 +185,21 @@ template<size_t radix> void fft_2d_complex_reorder2_rows_forward_sse2_d(const do
 
 
 // Instantiations of the functions defined in this class
-template void fft_2d_complex_column_twiddle_dit_sse2_d<2, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<2, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<3, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<3, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<4, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<4, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<5, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<5, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<6, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<6, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<7, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<7, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<8, SizeType::Size1, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<8, SizeType::Size1, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<2, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<3, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<4, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<5, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<6, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<7, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<8, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template void fft_2d_complex_column_twiddle_dit_sse2_d<2, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<2, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<3, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<3, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<4, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<4, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<5, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<5, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<6, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<6, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<7, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<7, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<8, SizeType::SizeN, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_sse2_d<8, SizeType::SizeN, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<2, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<3, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<4, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<5, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<6, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<7, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_d<8, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 template void fft_2d_complex_reorder2_sse2_d<2, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_sse2_d<2, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);

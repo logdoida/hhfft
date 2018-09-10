@@ -27,29 +27,29 @@ using namespace hhfft;
 
 // Actual implementations are in different .cpp-files
 // No twiddle factors
-template<size_t radix, bool forward>
+template<size_t radix>
     void fft_1d_complex_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, SizeType stride_type, bool forward>
+template<size_t radix, SizeType stride_type>
     void fft_1d_complex_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, SizeType stride_type, bool forward>
+template<size_t radix, SizeType stride_type>
     void fft_1d_complex_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, SizeType stride_type, bool forward>
+template<size_t radix, SizeType stride_type>
     void fft_1d_complex_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 // DIT
-template<size_t radix, bool forward>
+template<size_t radix>
     void fft_1d_complex_twiddle_dit_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, SizeType stride_type, bool forward>
+template<size_t radix, SizeType stride_type>
     void fft_1d_complex_twiddle_dit_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, SizeType stride_type, bool forward>
+template<size_t radix, SizeType stride_type>
     void fft_1d_complex_twiddle_dit_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, SizeType stride_type, bool forward>
+template<size_t radix, SizeType stride_type>
     void fft_1d_complex_twiddle_dit_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 // Reordering
@@ -93,7 +93,7 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
         {
             // Check if reordering should be supported
             if(step_info.reorder_table == nullptr)
-                step_info.step_function = fft_1d_complex_avx512_d<radix, stride_type, forward>;
+                step_info.step_function = fft_1d_complex_avx512_d<radix, stride_type>;
             else if(step_info.stride == 1)
             {                
                 step_info.step_function = fft_1d_complex_reorder2_avx512_d<radix, stride_type, forward>;
@@ -103,7 +103,7 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
             if (step_info.dif)
                 step_info.step_function = fft_1d_complex_twiddle_dif_avx512_d<radix, stride_type, forward>;
             else
-                step_info.step_function = fft_1d_complex_twiddle_dit_avx512_d<radix, stride_type, forward>;
+                step_info.step_function = fft_1d_complex_twiddle_dit_avx512_d<radix, stride_type>;
         }
     }
 #endif
@@ -115,14 +115,14 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
         {
             // Check if reordering should be supported
             if(step_info.reorder_table == nullptr)
-                step_info.step_function = fft_1d_complex_avx_d<radix, stride_type, forward>;
+                step_info.step_function = fft_1d_complex_avx_d<radix, stride_type>;
             else if(step_info.stride == 1)
             {
                 step_info.step_function = fft_1d_complex_reorder2_avx_d<radix, SizeType::Size1, forward>;
             }
         } else
         {
-            step_info.step_function = fft_1d_complex_twiddle_dit_avx_d<radix, stride_type, forward>;
+            step_info.step_function = fft_1d_complex_twiddle_dit_avx_d<radix, stride_type>;
         }
     }
 #endif
@@ -133,14 +133,14 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
         {
             // Check if reordering should be supported
             if(step_info.reorder_table == nullptr)
-                step_info.step_function = fft_1d_complex_sse2_d<radix, stride_type, forward>;
+                step_info.step_function = fft_1d_complex_sse2_d<radix, stride_type>;
             else if(step_info.stride == 1)
             {                
                 step_info.step_function = fft_1d_complex_reorder2_sse2_d<radix, SizeType::Size1, forward>;
             }
         } else
         {
-            step_info.step_function = fft_1d_complex_twiddle_dit_sse2_d<radix, stride_type, forward>;
+            step_info.step_function = fft_1d_complex_twiddle_dit_sse2_d<radix, stride_type>;
         }
     }  
 
@@ -151,14 +151,14 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
         {
            // Check if reordering should be supported
            if(step_info.reorder_table == nullptr)
-               step_info.step_function = fft_1d_complex_plain_d<radix, forward>;
+               step_info.step_function = fft_1d_complex_plain_d<radix>;
            else if(step_info.stride == 1)
            {
                step_info.step_function = fft_1d_complex_reorder2_plain_d<radix, forward>;
            }
         } else
         {
-            step_info.step_function = fft_1d_complex_twiddle_dit_plain_d<radix, forward>;
+            step_info.step_function = fft_1d_complex_twiddle_dit_plain_d<radix>;
         }
     }  
 }

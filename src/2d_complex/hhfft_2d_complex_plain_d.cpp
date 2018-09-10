@@ -30,10 +30,10 @@ using namespace hhfft;
 
 ////////////////////////////////////// Column-wise ////////////////////////////////////////////////
 
-template<size_t radix, bool forward>
+template<size_t radix>
     inline __attribute__((always_inline)) void fft_2d_complex_column_twiddle_dit_plain_d_internal(
             const double *data_in, double *data_out, const double *twiddle_factors, size_t stride, size_t length)
-{    
+{        
     double x_temp_in[2*radix];
     double x_temp_out[2*radix];
     double twiddle_temp[2*radix];
@@ -56,9 +56,9 @@ template<size_t radix, bool forward>
                 x_temp_in[2*j + 1] = data_in[2*j*stride*length + 2*i*length + 2*k + 1];                
             }
 
-            multiply_twiddle<radix,forward>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_twiddle<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
 
-            multiply_coeff<radix,forward>(x_temp_in, x_temp_out);
+            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
 
             // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
@@ -70,18 +70,16 @@ template<size_t radix, bool forward>
     }
 }
 
-template<size_t radix, bool forward>
+template<size_t radix>
     void fft_2d_complex_column_twiddle_dit_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
 {
-    assert(step_info.forward == forward);
-
     size_t stride = step_info.stride;
     size_t repeats = step_info.repeats;
     size_t length = step_info.size;
 
     for (size_t i = 0; i < repeats; i++)
     {
-        fft_2d_complex_column_twiddle_dit_plain_d_internal<radix,forward>
+        fft_2d_complex_column_twiddle_dit_plain_d_internal<radix>
                 (data_in  + 2*i*radix*stride*length,
                  data_out + 2*i*radix*stride*length,
                  step_info.twiddle_factors,
@@ -196,20 +194,13 @@ template<size_t radix> void fft_2d_complex_reorder2_rows_forward_plain_d(const d
 
 
 // Instantiations of the functions defined in this class
-template void fft_2d_complex_column_twiddle_dit_plain_d<2, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<2, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<3, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<3, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<4, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<4, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<5, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<5, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<6, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<6, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<7, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<7, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<8, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_plain_d<8, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_plain_d<2>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_plain_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_plain_d<4>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_plain_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_plain_d<6>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_plain_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_plain_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 
 template void fft_2d_complex_reorder2_plain_d<2, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_reorder2_plain_d<2, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
