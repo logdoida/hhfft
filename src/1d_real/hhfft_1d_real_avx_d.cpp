@@ -758,7 +758,7 @@ template<size_t radix> void fft_2d_real_odd_rows_inverse_avx_d(const double *dat
 
 // fft for small sizes (2,3,4,5,6,7,8,10,14,16) where only one level is needed
 template<size_t n, bool forward> void fft_1d_real_1level_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &)
-{
+{    
     ComplexD k = broadcast64_D(2.0/n);
 
     if (n == 1)
@@ -767,8 +767,7 @@ template<size_t n, bool forward> void fft_1d_real_1level_avx_d(const double *dat
         data_out[1] = 0;
     } else if (n%2 == 0)
     {
-        // n even
-
+        // n even        
         ComplexD x_temp_in[n/2+1];
         ComplexD x_temp_out[n/2+1];
 
@@ -790,7 +789,7 @@ template<size_t n, bool forward> void fft_1d_real_1level_avx_d(const double *dat
             for (size_t i = 0; i < n/2 + 1; i++)
             {
                 store_D(x_temp_out[i], data_out + 2*i);
-            }
+            }            
         } else
         {
             // Copy input data
