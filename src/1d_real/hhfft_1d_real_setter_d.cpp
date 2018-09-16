@@ -27,15 +27,15 @@ using namespace hhfft;
 ////////////////////////////////////////// Even sizes /////////////////////////////////////////////7////
 
 // Actual implementations are in different .cpp-files
-template<bool forward> void fft_1d_complex_to_complex_packed_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<bool forward> void fft_1d_complex_to_complex_packed_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<bool forward> void fft_1d_complex_to_complex_packed_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<bool forward> void fft_1d_complex_to_complex_packed_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<bool forward> void fft_1d_complex_to_complex_packed_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<bool forward> void fft_1d_complex_to_complex_packed_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<bool forward> void fft_1d_complex_to_complex_packed_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<bool forward> void fft_1d_complex_to_complex_packed_avx512_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 // Combines complex-packed-to-complex and reordering
-void fft_1d_complex_to_complex_packed_ifft_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-void fft_1d_complex_to_complex_packed_ifft_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-void fft_1d_complex_to_complex_packed_ifft_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_1d_complex_to_complex_packed_ifft_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+void fft_1d_complex_to_complex_packed_ifft_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+void fft_1d_complex_to_complex_packed_ifft_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
@@ -117,21 +117,21 @@ void hhfft::HHFFT_1D_Real_D_set_complex_to_complex_packed_function(StepInfoD &st
 
 ////////////////////////////////////////// Odd sizes /////////////////////////////////////////////7////
 
-template<size_t radix> void fft_1d_real_first_level_forward_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<size_t radix> void fft_1d_real_first_level_forward_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<size_t radix> void fft_1d_real_first_level_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_first_level_forward_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_first_level_forward_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_first_level_forward_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template<size_t radix> void fft_1d_real_first_level_inverse_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<size_t radix> void fft_1d_real_first_level_inverse_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<size_t radix> void fft_1d_real_first_level_inverse_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_first_level_inverse_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_first_level_inverse_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_first_level_inverse_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template<size_t radix> void fft_1d_real_one_level_forward_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<size_t radix> void fft_1d_real_one_level_forward_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<size_t radix> void fft_1d_real_one_level_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_one_level_forward_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_one_level_forward_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_one_level_forward_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<size_t radix> void fft_1d_real_one_level_inverse_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<size_t radix> void fft_1d_real_one_level_inverse_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_one_level_inverse_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<size_t radix> void fft_1d_real_one_level_inverse_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix> void set_instruction_odd_first_level_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
@@ -251,9 +251,9 @@ void hhfft::HHFFT_1D_Real_D_odd_set_function(StepInfoD &step_info, hhfft::Instru
 //////////////////////////////// Small one level functions ////////////////////////////////////////////
 
 // Small single level FFT
-template<size_t n, bool forward> void fft_1d_real_1level_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<size_t n, bool forward> void fft_1d_real_1level_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<size_t n, bool forward> void fft_1d_real_1level_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<size_t n, bool forward> void fft_1d_real_1level_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<size_t n, bool forward> void fft_1d_real_1level_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<size_t n, bool forward> void fft_1d_real_1level_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 
 template<size_t n> void set_small_function_instruction_set_real_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set, bool forward)

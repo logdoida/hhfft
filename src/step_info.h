@@ -36,7 +36,7 @@ enum SizeType{Size1, Size2, Size4, Size2N, Size4N, SizeN};
 template<typename T> struct StepInfo
 {
     // This is a pointer to a function that performs some operation to data
-    void (*step_function)(const T *, T *, StepInfo &);
+    void (*step_function)(const T *, T *, const StepInfo &);
 
     // This constants are used inside the function
     size_t radix = 1;

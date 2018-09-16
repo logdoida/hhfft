@@ -24,18 +24,23 @@
 
 using namespace hhfft;
 
-void* hhfft::allocate_aligned_memory(size_t num_bytes, bool allocate_extra)
-{
-    // Alignment in bytes for AVX (TODO other alignments for SSE / AVX512?)
-    size_t alignment = 32;
+// Alignment in bytes for AVX (TODO other alignments for SSE / AVX512?)
+const size_t alignment = 32;
 
+size_t hhfft::calculate_aligned_size(size_t num_bytes)
+{    
+    return num_bytes/alignment*alignment + alignment;
+}
+
+void* hhfft::allocate_aligned_memory(size_t num_bytes, bool allocate_extra)
+{    
     // aligned_alloc can only be used when num_bytes is multiple of alignment
     if (num_bytes%alignment != 0)
     {
         // allocate extra if allowed
         if (allocate_extra)
         {
-            return aligned_alloc(alignment, num_bytes/alignment*alignment + alignment);
+            return aligned_alloc(alignment, calculate_aligned_size(num_bytes));
         } else
         {
             return malloc(num_bytes);

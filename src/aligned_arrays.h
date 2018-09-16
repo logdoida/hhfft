@@ -25,6 +25,9 @@
 namespace hhfft
 {
 
+// Calculates size of aligned memory
+size_t calculate_aligned_size(size_t num_bytes);
+
 // Allocates aligned memory
 void* allocate_aligned_memory(size_t num_bytes, bool allocate_extra = false);
 
@@ -58,6 +61,12 @@ public:
 
     // Direct access
     T* data()
+    {
+        return array;
+    }
+
+    // Direct access
+    const T* data() const
     {
         return array;
     }

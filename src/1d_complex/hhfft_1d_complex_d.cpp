@@ -28,49 +28,54 @@ using namespace hhfft;
 // Actual implementations are in different .cpp-files
 // No twiddle factors
 template<size_t radix>
-    void fft_1d_complex_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_1d_complex_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType stride_type>
-    void fft_1d_complex_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_1d_complex_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType stride_type>
-    void fft_1d_complex_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_1d_complex_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType stride_type>
-    void fft_1d_complex_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_1d_complex_avx512_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 // DIT
 template<size_t radix>
-    void fft_1d_complex_twiddle_dit_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_1d_complex_twiddle_dit_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType stride_type>
-    void fft_1d_complex_twiddle_dit_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_1d_complex_twiddle_dit_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType stride_type>
-    void fft_1d_complex_twiddle_dit_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_1d_complex_twiddle_dit_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType stride_type>
-    void fft_1d_complex_twiddle_dit_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_1d_complex_twiddle_dit_avx512_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+
+// Reorder in-place
+void fft_1d_complex_reorder_in_place_plain_d(const double *, double *data_out,const hhfft::StepInfo<double> &step_info);
+void fft_1d_complex_reorder_in_place_sse2_d(const double *, double *data_out,const hhfft::StepInfo<double> &step_info);
+void fft_1d_complex_reorder_in_place_avx_d(const double *, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 // Reordering
 template<bool scale>
-    void fft_1d_complex_reorder_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_1d_complex_reorder_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<bool scale>
-    void fft_1d_complex_reorder_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_1d_complex_reorder_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<bool scale>
-    void fft_1d_complex_reorder_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_1d_complex_reorder_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 // Reorder and do FFT
 template<size_t radix, bool forward>
-void fft_1d_complex_reorder2_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_1d_complex_reorder2_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType stride_type, bool forward>
-void fft_1d_complex_reorder2_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_1d_complex_reorder2_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType stride_type, bool forward>
-void fft_1d_complex_reorder2_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_1d_complex_reorder2_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 // Convolution
 void fft_1d_complex_convolution_plain_d(const double *in1, const double *in2, double *out, size_t n);
@@ -78,9 +83,9 @@ void fft_1d_complex_convolution_sse2_d(const double *in1, const double *in2, dou
 void fft_1d_complex_convolution_avx_d(const double *in1, const double *in2, double *out, size_t n);
 
 // Small single level FFT
-template<size_t n, bool forward> void fft_1d_complex_1level_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<size_t n, bool forward> void fft_1d_complex_1level_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template<size_t n, bool forward> void fft_1d_complex_1level_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template<size_t n, bool forward> void fft_1d_complex_1level_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<size_t n, bool forward> void fft_1d_complex_1level_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<size_t n, bool forward> void fft_1d_complex_1level_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 
 template<size_t radix, SizeType stride_type, bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
@@ -250,25 +255,36 @@ template<bool forward> void set_reorder_instruction_set_d(StepInfoD &step_info, 
 #ifdef HHFFT_COMPILED_WITH_AVX512F
     if (instruction_set == hhfft::InstructionSet::avx512f)
     {
-        step_info.step_function = fft_1d_complex_reorder_avx512_d<forward>;
+        if (step_info.reorder_table != nullptr)
+            step_info.step_function = fft_1d_complex_reorder_avx512_d<forward>;
+        // TODO in-place
     }
 #endif
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {
-        step_info.step_function = fft_1d_complex_reorder_avx_d<forward>;
+        if (step_info.reorder_table != nullptr)
+            step_info.step_function = fft_1d_complex_reorder_avx_d<forward>;
+        if (step_info.reorder_table_inplace != nullptr)
+            step_info.step_function = fft_1d_complex_reorder_in_place_avx_d;
     }
 #endif
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
-        step_info.step_function = fft_1d_complex_reorder_sse2_d<forward>;
+        if (step_info.reorder_table != nullptr)
+            step_info.step_function = fft_1d_complex_reorder_sse2_d<forward>;
+        if (step_info.reorder_table_inplace != nullptr)
+            step_info.step_function = fft_1d_complex_reorder_in_place_sse2_d;
     }
 
     if (instruction_set == hhfft::InstructionSet::none)
     {        
-        step_info.step_function = fft_1d_complex_reorder_plain_d<forward>;
+        if (step_info.reorder_table != nullptr)
+            step_info.step_function = fft_1d_complex_reorder_plain_d<forward>;
+        if (step_info.reorder_table_inplace != nullptr)
+            step_info.step_function = fft_1d_complex_reorder_in_place_plain_d;
     }
 }
 

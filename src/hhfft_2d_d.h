@@ -41,16 +41,16 @@ public:
     HHFFT_2D_D& operator=(const HHFFT_2D_D &other) = delete;
 
     // FFT with complex inputs and outputs
-    void fft(const double *in, double *out);
+    void fft(const double *in, double *out) const;
 
     // IFFT with complex inputs and outputs
-    void ifft(const double *in, double *out);
+    void ifft(const double *in, double *out) const;
 
     // Calculates convolution of fourier transformed inputs
-    void convolution(const double *in1, const double *in2, double *out);
+    void convolution(const double *in1, const double *in2, double *out) const;
 
     // Allocate aligned array that contains enough space for the complex input and output data
-    double* allocate_memory();
+    double* allocate_memory() const;
 
     // Free memory
     static void free_memory(double *data);

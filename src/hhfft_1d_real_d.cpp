@@ -32,7 +32,7 @@
 using namespace hhfft;
 using hhfft::HHFFT_1D_REAL_D;
 
-double* HHFFT_1D_REAL_D::allocate_memory()
+double* HHFFT_1D_REAL_D::allocate_memory() const
 {
     // For real data only n doubles are needed
     // For complex data 2*((n/2)+1) doubles are needed
@@ -327,7 +327,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
 
 
 
-void HHFFT_1D_REAL_D::fft(const double *in, double *out)
+void HHFFT_1D_REAL_D::fft(const double *in, double *out) const
 {
     // If there is just one step, run it directly
     if (forward_steps.size() == 1)
@@ -370,7 +370,7 @@ void HHFFT_1D_REAL_D::fft(const double *in, double *out)
     }
 }
 
-void HHFFT_1D_REAL_D::ifft(const double *in, double *out)
+void HHFFT_1D_REAL_D::ifft(const double *in, double *out) const
 {
     // If there is just one step, run it directly
     if (inverse_steps.size() == 1)
@@ -407,7 +407,7 @@ void HHFFT_1D_REAL_D::ifft(const double *in, double *out)
 }
 
 // Calculates convolution in Fourier space
-void HHFFT_1D_REAL_D::convolution(const double *in1, const double *in2, double *out)
+void HHFFT_1D_REAL_D::convolution(const double *in1, const double *in2, double *out) const
 {
     convolution_function(in1, in2, out, n/2 + 1);
 }

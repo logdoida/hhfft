@@ -105,7 +105,7 @@ template<size_t radix>
 }
 
 template<size_t radix, SizeType size_type>
-    void fft_2d_complex_column_twiddle_dit_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+    void fft_2d_complex_column_twiddle_dit_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t stride = step_info.stride;
     size_t repeats = step_info.repeats;    
@@ -124,7 +124,7 @@ template<size_t radix, SizeType size_type>
 
 // Combine reordering and first column wise reordering
 template<size_t radix, bool forward>
-    void fft_2d_complex_reorder2_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+    void fft_2d_complex_reorder2_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t m = step_info.size;
     uint32_t *reorder_table_columns = step_info.reorder_table;
@@ -230,7 +230,7 @@ template<size_t radix, bool forward>
 }
 
 // Combine reordering and first row wise FFT
-template<size_t radix> void fft_2d_complex_reorder2_rows_forward_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info)
+template<size_t radix> void fft_2d_complex_reorder2_rows_forward_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     // Only out of place reordering supported
     assert(data_in != data_out);
@@ -298,42 +298,42 @@ template<size_t radix> void fft_2d_complex_reorder2_rows_forward_avx_d(const dou
 }
 
 // Instantiations of the functions defined in this class
-template void fft_2d_complex_column_twiddle_dit_avx_d<2, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_avx_d<3, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_avx_d<4, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_avx_d<5, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_avx_d<6, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_avx_d<7, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_avx_d<8, SizeType::Size1>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<2, SizeType::Size1>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<3, SizeType::Size1>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<4, SizeType::Size1>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<5, SizeType::Size1>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<6, SizeType::Size1>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<7, SizeType::Size1>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<8, SizeType::Size1>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_2d_complex_column_twiddle_dit_avx_d<2, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_avx_d<3, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_avx_d<4, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_avx_d<5, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_avx_d<6, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_avx_d<7, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_column_twiddle_dit_avx_d<8, SizeType::SizeN>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<2, SizeType::SizeN>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<3, SizeType::SizeN>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<4, SizeType::SizeN>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<5, SizeType::SizeN>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<6, SizeType::SizeN>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<7, SizeType::SizeN>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_column_twiddle_dit_avx_d<8, SizeType::SizeN>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_2d_complex_reorder2_avx_d<2, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<2, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<3, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<3, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<4, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<4, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<5, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<5, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<6, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<6, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<7, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<7, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<8, true>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_avx_d<8, false>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<2, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<2, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<3, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<3, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<4, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<4, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<5, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<5, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<6, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<6, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<7, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<7, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<8, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_avx_d<8, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_2d_complex_reorder2_rows_forward_avx_d<2>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_rows_forward_avx_d<3>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_rows_forward_avx_d<4>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_rows_forward_avx_d<5>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_rows_forward_avx_d<6>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_rows_forward_avx_d<7>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
-template void fft_2d_complex_reorder2_rows_forward_avx_d<8>(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_avx_d<2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_avx_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_avx_d<4>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_avx_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_avx_d<6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_avx_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_avx_d<8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 

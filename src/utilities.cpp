@@ -47,6 +47,11 @@ inline void calculate_cos_sin(size_t a, size_t b, double &c, double &s)
     }
 }
 
+void hhfft::calculate_exp_neg_2_pi_i(size_t a, size_t b, double &re, double &im)
+{
+    calculate_cos_sin(a,b,re,im);
+}
+
 
 // Calculates twiddle factors for a given level for DIT
 hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, const std::vector<size_t> &N)

@@ -34,7 +34,7 @@
 using namespace hhfft;
 using hhfft::HHFFT_2D_D;
 
-double* HHFFT_2D_D::allocate_memory()
+double* HHFFT_2D_D::allocate_memory() const
 {
     return (double *) allocate_aligned_memory(2*n*m*sizeof(double));
 }
@@ -237,7 +237,7 @@ void HHFFT_2D_D::plan_vector(size_t n, InstructionSet instruction_set)
     twiddle_factors_rows = std::move(fft_1d.twiddle_factors);
 }
 
-void HHFFT_2D_D::fft(const double *in, double *out)
+void HHFFT_2D_D::fft(const double *in, double *out) const
 {
     // If there is just one step, run it directly
     if (forward_steps.size() == 1)
@@ -272,7 +272,7 @@ void HHFFT_2D_D::fft(const double *in, double *out)
     }
 }
 
-void HHFFT_2D_D::ifft(const double *in, double *out)
+void HHFFT_2D_D::ifft(const double *in, double *out) const
 {
     // If there is just one step, run it directly
     if (inverse_steps.size() == 1)
@@ -307,7 +307,7 @@ void HHFFT_2D_D::ifft(const double *in, double *out)
 }
 
 // Calculates convolution in Fourier space
-void HHFFT_2D_D::convolution(const double *in1, const double *in2, double *out)
+void HHFFT_2D_D::convolution(const double *in1, const double *in2, double *out) const
 {
     convolution_function(in1, in2, out, n*m);
 }

@@ -27,27 +27,27 @@ using namespace hhfft;
 
 // Actual implementations are in different .cpp-files
 template<size_t radix>
-    void fft_2d_complex_column_twiddle_dit_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_2d_complex_column_twiddle_dit_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType size_type>
-    void fft_2d_complex_column_twiddle_dit_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_2d_complex_column_twiddle_dit_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType size_type>
-    void fft_2d_complex_column_twiddle_dit_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_2d_complex_column_twiddle_dit_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType size_type>
-    void fft_2d_complex_column_twiddle_dit_avx512_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+    void fft_2d_complex_column_twiddle_dit_avx512_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 
 // Reorder both rows and columns and do FFT
 template<size_t radix, bool forward>
-void fft_2d_complex_reorder2_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_2d_complex_reorder2_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, bool forward>
-void fft_2d_complex_reorder2_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_2d_complex_reorder2_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, bool forward>
-void fft_2d_complex_reorder2_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_2d_complex_reorder2_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 
 //////////////////////// column-wise ////////////////////////////////////
@@ -204,13 +204,13 @@ void hhfft::HHFFT_2D_Complex_D_set_function_columns(StepInfoD &step_info, hhfft:
 
 // Reorder both rows and columns and do FFT on rows
 template<size_t radix>
-void fft_2d_complex_reorder2_rows_forward_avx_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_2d_complex_reorder2_rows_forward_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix>
-void fft_2d_complex_reorder2_rows_forward_sse2_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_2d_complex_reorder2_rows_forward_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix>
-void fft_2d_complex_reorder2_rows_forward_plain_d(const double *data_in, double *data_out, hhfft::StepInfo<double> &step_info);
+void fft_2d_complex_reorder2_rows_forward_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 
 template<size_t radix> void set_instruction_set_rows_2d_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)

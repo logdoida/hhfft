@@ -17,8 +17,8 @@
 *   along with HHFFT. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HHFFT_1D_D_H
-#define HHFFT_1D_D_H
+#ifndef HHFFT_RADERS_D_H
+#define HHFFT_RADERS_D_H
 
 #include "architecture.h"
 #include "step_info.h"
@@ -31,57 +31,57 @@ namespace hhfft
 {
 
 // This class is responsible of making a plan on how to calculate the the FFT and calls the proper functions
-class HHFFT_1D_D
+class RadersD
 {    
 public:
-    HHFFT_1D_D(size_t n, InstructionSet instruction_set = InstructionSet::automatic);
+    RadersD(size_t n, InstructionSet instruction_set = InstructionSet::automatic);
 
-    // Copying currently not allowed. Data and pointers must be copied properly when implemented!
-    HHFFT_1D_D(const HHFFT_1D_D &other) = delete;
-    HHFFT_1D_D& operator=(const HHFFT_1D_D &other) = delete;
+    // Copying not allowed
+    RadersD(const RadersD &other) = delete;
+    RadersD& operator=(const RadersD &other) = delete;
 
     // FFT with complex inputs and outputs
-    void fft(const double *in, double *out) const;
+    void fft(double *data) const;
 
     // IFFT with complex inputs and outputs
-    void ifft(const double *in, double *out) const;
-
-    // Calculates convolution of fourier transformed inputs
-    void convolution(const double *in1, const double *in2, double *out) const;
+    void ifft(double *data) const;
 
     // Allocate aligned array that contains enough space for the complex input and output data
-    double* allocate_memory() const;
+    double* allocate_memory();
 
     // Free memory
     static void free_memory(double *data);
 
-    static void print_complex_vector(const double *data, size_t n);
+    // Dimension of the vector (Number of complex numbers)
+    size_t n_org, n;
+
+    // Tables that are used in the beginning and end to reorder the data.
+    std::vector<uint32_t> reorder_table_raders_inverse;
+    std::vector<uint32_t> reorder_table_raders_inverse2;
+
+    AlignedVector<double> fft_b;
+
+    double scale;
 
 private:
 
-    // Dimension of the vector (Number of complex numbers)
-    size_t n;
+    void calculate_fft_b(const std::vector<uint32_t> &reorder_table_inverse, const std::vector<uint32_t> &reorder_table_raders);
+
+    // Size that is allocated from memory
+    size_t n_bytes_aligned;
 
     // Twiddle factors for each level
     std::vector<AlignedVector<double>> twiddle_factors;
 
-    // Table that is used in the beginning to reorder the data.
-    std::vector<uint32_t> reorder_table;
-
-    // Some algorithms might need extra space that is allocated at the beginning
-    size_t temp_data_size = 0;
+    std::vector<uint32_t> reorder_table_inverted;
+    //std::vector<uint32_t> reorder_table_raders;   // TODO if this is needed only during initialization, it can be removed from here
+    //std::vector<uint32_t> reorder_table_inverse;   // TODO if this is needed only during initialization, it can be removed from here
 
     // The actual fft plan is a sequence of individual steps
     std::vector<StepInfoD> forward_steps;
-    std::vector<StepInfoD> inverse_steps;
-
-    // This is a pointer to a function that performs the convolution
-    void (*convolution_function)(const double *, const double *, double *, size_t n) = nullptr;    
-
-    // 2D fft can copy the planning made in this class
-    friend class HHFFT_2D_D;
+    std::vector<StepInfoD> inverse_steps;    
 };
 
 }
 
-#endif // HHFFT_1D_D_H
+#endif // HHFFT_RADERS_D_H

@@ -24,7 +24,9 @@ set(SRC_LIST
 ./src/hhfft_2d_real_d.cpp
 ./src/2d_real/hhfft_2d_real_setter_d.cpp
 ./src/2d_real/hhfft_2d_real_plain_d.cpp
-./src/2d_real/hhfft_2d_real_sse2_d.cpp)
+./src/2d_real/hhfft_2d_real_sse2_d.cpp
+./src/raders/raders_d.cpp
+)
 
 # All files are compiled with atleast these flags
 add_compile_options(-std=c++11 -DNDEBUG -O3 -Wall)
