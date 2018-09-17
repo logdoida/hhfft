@@ -41,6 +41,23 @@ void HHFFT_1D_D::free_memory(double *data)
     free(data);
 }
 
+void HHFFT_1D_D::set_radix_raders(size_t radix, StepInfoD &step, InstructionSet instruction_set)
+{
+    if (radix <= 8)
+    {
+        // Normal
+        step.radix = radix;
+        step.radix_actual = radix;
+    } else
+    {
+        // Use Rader's algorithm instead
+        raders.push_back(std::unique_ptr<RadersD>(new RadersD(radix, instruction_set)));
+        step.raders = raders.back().get();
+        step.radix = 1;
+        step.radix_actual = radix;
+    }
+}
+
 // Does the planning step
 HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
 {
@@ -76,7 +93,7 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     std::vector<size_t> N = calculate_factorization(n);
 
     // TESTING print factorization    
-    //for (size_t i = 0; i < N.size(); i++)  { std::cout << N[i] << " ";} std::cout << std::endl;
+    for (size_t i = 0; i < N.size(); i++)  { std::cout << N[i] << " ";} std::cout << std::endl;
 
     // First calculate the reorder table
     reorder_table = calculate_reorder_table(N);
@@ -98,9 +115,9 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     // Put first fft step combined with reordering
     {
         hhfft::StepInfoD step;
-        step.radix = N[0];
+        set_radix_raders(N[0], step, instruction_set);
         step.stride = 1;
-        step.repeats = n / step.radix;
+        step.repeats = n / step.radix_actual;
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table.data();
@@ -114,9 +131,9 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     {
         hhfft::StepInfoD step;
         hhfft::StepInfoD &step_prev = forward_steps.back();
-        step.radix = N[i];
-        step.stride = step_prev.stride * step_prev.radix;
-        step.repeats = step_prev.repeats / step.radix;
+        set_radix_raders(N[i], step, instruction_set);
+        step.stride = step_prev.stride * step_prev.radix_actual;
+        step.repeats = step_prev.repeats / step.radix_actual;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors[i].data();

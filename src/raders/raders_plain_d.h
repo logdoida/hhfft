@@ -22,10 +22,41 @@
 #include "raders_d.h"
 #include "../common/hhfft_1d_complex_plain_common_d.h"
 
-// Fill input vector with zeros
-template<size_t radix> inline void init_coeff(double *x, hhfft::RadersD &raders)
+
+template<size_t radix> inline double *allocate_raders(const hhfft::RadersD &raders)
 {
-    if (radix == 0)
+    if (radix == 1)
+    {
+        return raders.allocate_memory();
+    } else
+    {
+        return nullptr;
+    }
+}
+
+template<size_t radix> inline void free_raders(const hhfft::RadersD &raders, double *data)
+{
+    if (radix == 1)
+    {
+        raders.free_memory(data);
+    }
+}
+
+template<size_t radix> inline size_t get_actual_radix(const hhfft::RadersD &raders)
+{
+    if (radix == 1)
+    {
+        return raders.n_org;
+    } else
+    {
+        return radix;
+    }
+}
+
+// Fill input vector with zeros
+template<size_t radix> inline void init_coeff(double *x, const hhfft::RadersD &raders)
+{
+    if (radix == 1)
     {
         size_t n = raders.n;
         for (size_t i = 0; i < 2*(n+2); i++)
@@ -38,7 +69,7 @@ template<size_t radix> inline void init_coeff(double *x, hhfft::RadersD &raders)
 // Write one complex number to input when performing fft
 template<size_t radix> inline void set_value(double *data_in, double *data_raders, size_t index, const hhfft::RadersD &raders, double re, double im)
 {
-    if (radix == 0)
+    if (radix == 1)
     {
         // Sum up the values and store it to extra space in the end
         size_t n  = raders.n;
@@ -56,10 +87,35 @@ template<size_t radix> inline void set_value(double *data_in, double *data_rader
     }
 }
 
+// Multiply one complex number and write it to input when performing fft
+template<size_t radix> inline void set_value_multiply_twiddle(double *data_in, double *data_raders, size_t index, const hhfft::RadersD &raders, double re, double im, double w_re, double w_im)
+{
+    // Multiply with twiddle factors
+    double re2 = w_re*re - w_im*im;
+    double im2 = w_im*re + w_re*im;
+
+    if (radix == 1)
+    {
+        // Sum up the values and store it to extra space in the end
+        size_t n  = raders.n;
+        data_raders[2*n + 0] += re2;
+        data_raders[2*n + 1] += im2;
+
+        const uint32_t *reorder_table_raders_inverse = raders.reorder_table_raders_inverse.data();
+        size_t i2 = reorder_table_raders_inverse[index];
+        data_raders[2*i2 + 0] = re2;
+        data_raders[2*i2 + 1] = im2;
+    } else
+    {
+        data_in[2*index + 0] = re2;
+        data_in[2*index + 1] = im2;
+    }
+}
+
 // Write one complex number to input when performing ifft
 template<size_t radix> inline void set_value_inverse(double *data_in, double *data_raders, size_t index, const hhfft::RadersD &raders, double re, double im)
 {
-    if (radix == 0)
+    if (radix == 1)
     {
         // Sum up the values and store it to extra space in the end
         size_t n  = raders.n;
@@ -90,7 +146,7 @@ template<size_t radix> inline void set_value_inverse(double *data_in, double *da
 // Read one complex number to input
 template<size_t radix> inline void get_value(double *data_out, double *data_raders, size_t index, const hhfft::RadersD &raders, double &re, double &im)
 {
-    if (radix == 0)
+    if (radix == 1)
     {        
         const uint32_t *reorder_table_raders_inverse = raders.reorder_table_raders_inverse2.data();
         size_t i2 = reorder_table_raders_inverse[index];
@@ -107,7 +163,7 @@ template<size_t radix> inline void get_value(double *data_out, double *data_rade
 // Do the actual Raders algorithm
 template<size_t radix> inline void multiply_coeff_forward(const double *x_in, double *x_out, double *data_raders, const hhfft::RadersD &raders)
 {
-    if (radix == 0)
+    if (radix == 1)
     {
         size_t n = raders.n;
         size_t n_org = raders.n_org;

@@ -257,9 +257,11 @@ std::vector<size_t> hhfft::calculate_factorization(size_t n)
     std::array<size_t, 7> radices = {6,8,4,2,3,5,7};
     //std::array<size_t, 4> radices = {2,3,5,7}; // for TESTING use 2 and 3 instead of 4 or 8 or 6
 
-    while(n > 1)
-    {
-        bool radix_found = false;
+    bool radix_found = true;
+    while(radix_found)
+    {                
+        // First try to use the small radices
+        radix_found = false;
         for (auto r: radices)
         {
             if(n%r == 0)
@@ -269,12 +271,19 @@ std::vector<size_t> hhfft::calculate_factorization(size_t n)
                 radix_found = true;
                 break;
             }
-        }
-        if (!radix_found)
+        }        
+    }
+
+    // Then start searching for larger ones
+    size_t r = 11;
+    while (n > 1)
+    {
+        while ((n % r) == 0)
         {
-            // TODO these should be combined (?) and taken care of with other algorithms!
-            throw(std::runtime_error("HHFFT error: size is not factorizable!"));
+            factors.push_back(r);
+            n = n / r;
         }
+        r++;
     }
 
     return factors;

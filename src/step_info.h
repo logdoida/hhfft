@@ -26,12 +26,17 @@
 namespace hhfft
 {
 
+// Forward declaration
+class RadersD;
+
 enum StepDataType {data_in = 0, data_out = 1, temp_data = 2};
 
 // StrideX -> stride = X
 // StrideXN -> stride divisible by X
 // StrideN -> stride something else
 enum SizeType{Size1, Size2, Size4, Size2N, Size4N, SizeN};
+
+enum RadixType{RadixNone = 0, Raders = 1, Radix2 = 2, Radix3 = 3, Radix4 = 4, Radix5 = 5, Radix6 = 6, Radix7 = 7, Radix8 = 8};
 
 template<typename T> struct StepInfo
 {
@@ -40,6 +45,7 @@ template<typename T> struct StepInfo
 
     // This constants are used inside the function
     size_t radix = 1;
+    size_t radix_actual = 1; // TODO
     size_t stride = 1;
     size_t repeats = 1;
     size_t size = 1;
@@ -49,6 +55,9 @@ template<typename T> struct StepInfo
 
     // Used in some step in ifft. Equal to 1/N
     T norm_factor = 1.0;
+
+    // If Rader's is needed
+    const RadersD *raders;
 
     // Twiddle factors or reorder table might be used in function
     T *twiddle_factors = nullptr;

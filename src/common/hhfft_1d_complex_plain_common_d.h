@@ -19,6 +19,9 @@
 
 // This header contains some small functions that are used many times
 
+#ifndef HHFFT_COMPLEX_PLAIN_COMMON
+#define HHFFT_COMPLEX_PLAIN_COMMON
+
 static const double coeff_radix_2[8] = {
     1, 0, 1, 0,
     1, 0, -1, 0};
@@ -259,5 +262,7 @@ template<hhfft::SizeType size_type> inline size_t get_size(size_t size)
     } else
     {
         return size;
-    }
+    }    
 }
+
+#endif

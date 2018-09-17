@@ -126,6 +126,7 @@ void HHFFT_2D_REAL_D::plan_vector(size_t n, InstructionSet instruction_set, bool
     twiddle_factors_rows = std::move(fft_1d_real.twiddle_factors);
     reorder_table_ifft_odd_rows = std::move(fft_1d_real.reorder_table_ifft_odd);
     reorder_table_columns = std::move(fft_1d_real.reorder_table_inverse);
+    //raders = std::move(fft_1d_real.raders); // TODO
 
     if (is_column)
     {
@@ -135,8 +136,6 @@ void HHFFT_2D_REAL_D::plan_vector(size_t n, InstructionSet instruction_set, bool
         step.step_function = fft_2d_real_one_column_conj;
         step.forward = (forward_steps.size() > 1) && ((n & 1) == 1); // Determine in which cases the first real value is in wrong position
         forward_steps.push_back(step);
-
-
     }
 }
 
@@ -449,7 +448,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.reorder_table = reorder_table_columns.data();
         step.radix = 1;
         step.repeats = n;
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        HHFFT_1D_Complex_D_set_reorder_function(step, instruction_set);
         forward_steps.push_back(step);
 
     } else {

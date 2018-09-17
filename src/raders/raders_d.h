@@ -47,7 +47,7 @@ public:
     void ifft(double *data) const;
 
     // Allocate aligned array that contains enough space for the complex input and output data
-    double* allocate_memory();
+    double* allocate_memory() const;
 
     // Free memory
     static void free_memory(double *data);

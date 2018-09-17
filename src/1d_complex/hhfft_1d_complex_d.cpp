@@ -116,6 +116,7 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {
+        /*
         if (step_info.twiddle_factors == nullptr)
         {
             // Check if reordering should be supported
@@ -129,11 +130,13 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
         {
             step_info.step_function = fft_1d_complex_twiddle_dit_avx_d<radix, stride_type>;
         }
+        */
     }
 #endif
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
+        /*
         if (step_info.twiddle_factors == nullptr)
         {
             // Check if reordering should be supported
@@ -147,6 +150,7 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
         {
             step_info.step_function = fft_1d_complex_twiddle_dit_sse2_d<radix, stride_type>;
         }
+        */
     }  
 
     if (instruction_set == hhfft::InstructionSet::none)
@@ -224,7 +228,10 @@ void set_radix_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
     size_t radix = step_info.radix;
 
-    if (radix == 2)
+    if (radix == 1)  // Rader's algorithm (radix can be something else)
+    {
+        set_stride_type_d<1>(step_info, instruction_set);
+    } else if (radix == 2)
     {
         set_stride_type_d<2>(step_info, instruction_set);
     } else if (radix == 3)
@@ -288,23 +295,31 @@ template<bool forward> void set_reorder_instruction_set_d(StepInfoD &step_info, 
     }
 }
 
-// This set pointer to correct fft functions based on radix and stride etc
-void hhfft::HHFFT_1D_Complex_D_set_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+void hhfft::HHFFT_1D_Complex_D_set_reorder_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
-    step_info.step_function = nullptr;    
+    step_info.step_function = nullptr;
 
     if (step_info.radix == 1 && (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr))
-    {        
+    {
         // Add reordering step
         if (step_info.forward)
             set_reorder_instruction_set_d<true>(step_info, instruction_set);
         else
-            set_reorder_instruction_set_d<false>(step_info, instruction_set);        
-    } else
-    {
-        // Add a fft step
-        set_radix_d(step_info, instruction_set);
+            set_reorder_instruction_set_d<false>(step_info, instruction_set);
     }
+
+    if (step_info.step_function == nullptr)
+    {
+        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+    }
+}
+
+void hhfft::HHFFT_1D_Complex_D_set_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+{
+    step_info.step_function = nullptr;    
+
+    // Add a fft step
+    set_radix_d(step_info, instruction_set);
 
     if (step_info.step_function == nullptr)
     {

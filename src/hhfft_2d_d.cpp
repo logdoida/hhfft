@@ -235,6 +235,7 @@ void HHFFT_2D_D::plan_vector(size_t n, InstructionSet instruction_set)
     forward_steps = std::move(fft_1d.forward_steps);
     inverse_steps = std::move(fft_1d.inverse_steps);
     twiddle_factors_rows = std::move(fft_1d.twiddle_factors);
+    raders = std::move(fft_1d.raders);
 }
 
 void HHFFT_2D_D::fft(const double *in, double *out) const

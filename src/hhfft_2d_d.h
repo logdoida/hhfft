@@ -23,9 +23,11 @@
 #include "architecture.h"
 #include "step_info.h"
 #include "aligned_arrays.h"
+#include "raders/raders_d.h"
 
 #include <vector>
 #include <array>
+#include <memory>
 
 namespace hhfft
 {
@@ -81,6 +83,9 @@ private:
     // The actual fft plan is a sequence of individual steps
     std::vector<StepInfoD> forward_steps;
     std::vector<StepInfoD> inverse_steps;
+
+    // On some levels Rader's algorithm might be needed
+    std::vector<std::unique_ptr<RadersD>> raders;
 
     // This is a pointer to a function that performs the convolution
     void (*convolution_function)(const double *, const double *, double *, size_t n);

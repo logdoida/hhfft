@@ -165,7 +165,7 @@ void RadersD::calculate_fft_b(const std::vector<uint32_t> &reorder_table_inverse
 }
 
 
-double* RadersD::allocate_memory()
+double* RadersD::allocate_memory() const
 {
     return (double *) allocate_aligned_memory(n_bytes_aligned);
 }
@@ -310,7 +310,7 @@ RadersD::RadersD(size_t n_org, InstructionSet instruction_set)
         hhfft::StepInfoD step;
         step.reorder_table_inplace = reorder_table_inverted.data();
         step.reorder_table_inplace_size = reorder_table_inverted.size();
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        HHFFT_1D_Complex_D_set_reorder_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
 
