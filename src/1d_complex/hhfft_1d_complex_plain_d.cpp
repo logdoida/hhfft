@@ -117,7 +117,7 @@ template<RadixType radix_type>
         // Initialize raders data with zeros
         init_coeff<radix_type>(data_raders, raders);
 
-        // Copy input data (squeeze)
+        // Copy input data and multiply with twiddle factors
         for (size_t j = 0; j < radix; j++)
         {
             size_t j2 = 2*k + 2*j*stride;
