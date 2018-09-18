@@ -44,8 +44,7 @@ template<typename T> struct StepInfo
     void (*step_function)(const T *, T *, const StepInfo &);
 
     // This constants are used inside the function
-    size_t radix = 1;
-    size_t radix_actual = 1; // TODO
+    size_t radix = 1;    
     size_t stride = 1;
     size_t repeats = 1;
     size_t size = 1;

@@ -43,18 +43,11 @@ void HHFFT_1D_D::free_memory(double *data)
 
 void HHFFT_1D_D::set_radix_raders(size_t radix, StepInfoD &step, InstructionSet instruction_set)
 {
-    if (radix <= 8)
-    {
-        // Normal
-        step.radix = radix;
-        step.radix_actual = radix;
-    } else
+    if (radix > 8)
     {
         // Use Rader's algorithm instead
         raders.push_back(std::unique_ptr<RadersD>(new RadersD(radix, instruction_set)));
-        step.raders = raders.back().get();
-        step.radix = 1;
-        step.radix_actual = radix;
+        step.raders = raders.back().get();        
     }
 }
 
@@ -117,7 +110,8 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
         hhfft::StepInfoD step;
         set_radix_raders(N[0], step, instruction_set);
         step.stride = 1;
-        step.repeats = n / step.radix_actual;
+        step.radix = N[0];
+        step.repeats = n / step.radix;
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table.data();
@@ -132,8 +126,9 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
         hhfft::StepInfoD step;
         hhfft::StepInfoD &step_prev = forward_steps.back();
         set_radix_raders(N[i], step, instruction_set);
-        step.stride = step_prev.stride * step_prev.radix_actual;
-        step.repeats = step_prev.repeats / step.radix_actual;
+        step.radix = N[i];
+        step.stride = step_prev.stride * step_prev.radix;
+        step.repeats = step_prev.repeats / step.radix;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors[i].data();

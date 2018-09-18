@@ -27,7 +27,7 @@ using namespace hhfft;
 
 // Actual implementations are in different .cpp-files
 // No twiddle factors
-template<size_t radix>
+template<RadixType radix_type>
     void fft_1d_complex_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType stride_type>
@@ -40,7 +40,7 @@ template<size_t radix, SizeType stride_type>
     void fft_1d_complex_avx512_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 // DIT
-template<size_t radix>
+template<RadixType radix_type>
     void fft_1d_complex_twiddle_dit_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType stride_type>
@@ -68,7 +68,7 @@ template<bool scale>
     void fft_1d_complex_reorder_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 // Reorder and do FFT
-template<size_t radix, bool forward>
+template<RadixType radix_type, bool forward>
 void fft_1d_complex_reorder2_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<size_t radix, SizeType stride_type, bool forward>
@@ -88,7 +88,7 @@ template<size_t n, bool forward> void fft_1d_complex_1level_sse2_d(const double 
 template<size_t n, bool forward> void fft_1d_complex_1level_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 
-template<size_t radix, SizeType stride_type, bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+template<RadixType radix_type, SizeType stride_type, bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
 
 #ifdef HHFFT_COMPILED_WITH_AVX512F
@@ -160,31 +160,31 @@ template<size_t radix, SizeType stride_type, bool forward> void set_instruction_
         {
            // Check if reordering should be supported
            if(step_info.reorder_table == nullptr)
-               step_info.step_function = fft_1d_complex_plain_d<radix>;
+               step_info.step_function = fft_1d_complex_plain_d<radix_type>;
            else if(step_info.stride == 1)
            {
-               step_info.step_function = fft_1d_complex_reorder2_plain_d<radix, forward>;
+               step_info.step_function = fft_1d_complex_reorder2_plain_d<radix_type, forward>;
            }
         } else
         {
-            step_info.step_function = fft_1d_complex_twiddle_dit_plain_d<radix>;
+            step_info.step_function = fft_1d_complex_twiddle_dit_plain_d<radix_type>;
         }
     }  
 }
 
 // These functions set different template parameters one at time
-template<size_t radix, SizeType stride_type> void set_forward_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+template<RadixType radix_type, SizeType stride_type> void set_forward_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
     if (step_info.forward)
     {
-        set_instruction_set_d<radix, stride_type, true>(step_info, instruction_set);
+        set_instruction_set_d<radix_type, stride_type, true>(step_info, instruction_set);
     } else
     {
-        set_instruction_set_d<radix, stride_type, false>(step_info, instruction_set);
+        set_instruction_set_d<radix_type, stride_type, false>(step_info, instruction_set);
     }
 }
 
-template<size_t radix> void set_stride_type_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+template<RadixType radix_type> void set_stride_type_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
     // Knowing something about the stride at compile time can help to optimize some cases
     size_t stride = step_info.stride;
@@ -192,10 +192,10 @@ template<size_t radix> void set_stride_type_d(StepInfoD &step_info, hhfft::Instr
     // Only stride = 1 and N are currently used
     if (stride == 1)
     {
-        set_forward_d<radix, SizeType::Size1>(step_info, instruction_set);
+        set_forward_d<radix_type, SizeType::Size1>(step_info, instruction_set);
     } else
     {
-        set_forward_d<radix, SizeType::SizeN>(step_info, instruction_set);
+        set_forward_d<radix_type, SizeType::SizeN>(step_info, instruction_set);
     }
 
     /*
@@ -228,30 +228,30 @@ void set_radix_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
     size_t radix = step_info.radix;
 
-    if (radix == 1)  // Rader's algorithm (radix can be something else)
+    if (radix > 8)  // Rader's algorithm (radix can be something else)
     {
-        set_stride_type_d<1>(step_info, instruction_set);
+        set_stride_type_d<Raders>(step_info, instruction_set);
     } else if (radix == 2)
     {
-        set_stride_type_d<2>(step_info, instruction_set);
+        set_stride_type_d<Radix2>(step_info, instruction_set);
     } else if (radix == 3)
     {
-        set_stride_type_d<3>(step_info, instruction_set);
+        set_stride_type_d<Radix3>(step_info, instruction_set);
     } else if (radix == 4)
     {
-        set_stride_type_d<4>(step_info, instruction_set);
+        set_stride_type_d<Radix4>(step_info, instruction_set);
     } else if (radix == 5)
     {
-        set_stride_type_d<5>(step_info, instruction_set);
+        set_stride_type_d<Radix5>(step_info, instruction_set);
     } else if (radix == 6)
     {
-        set_stride_type_d<6>(step_info, instruction_set);
+        set_stride_type_d<Radix6>(step_info, instruction_set);
     } else if (radix == 7)
     {
-        set_stride_type_d<7>(step_info, instruction_set);
+        set_stride_type_d<Radix7>(step_info, instruction_set);
     } else if (radix == 8)
     {
-        set_stride_type_d<8>(step_info, instruction_set);
+        set_stride_type_d<Radix8>(step_info, instruction_set);
     }
 }
 

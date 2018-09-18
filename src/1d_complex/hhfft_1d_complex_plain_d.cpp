@@ -50,7 +50,7 @@ void fft_1d_complex_reorder_in_place_plain_d(const double *, double *data_out,co
 
 template<bool forward> void fft_1d_complex_reorder_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {    
-    size_t n = step_info.radix_actual*step_info.repeats;
+    size_t n = step_info.radix*step_info.repeats;
     uint32_t *reorder_table = step_info.reorder_table;
 
     // Needed only in ifft. Equal to 1/N
@@ -76,124 +76,127 @@ template<bool forward> void fft_1d_complex_reorder_plain_d(const double *data_in
 }
 
 
-template<size_t radix>
+template<RadixType radix_type>
     inline void fft_1d_complex_plain_d_internal(const double *data_in, double *data_out, double *data_raders, const hhfft::RadersD &raders, size_t stride)
 {
-    double x_temp_in[2*radix];
-    double x_temp_out[2*radix];
-    size_t radix_actual = get_actual_radix<radix>(raders);
+    double x_temp_in[2*radix_type];
+    double x_temp_out[2*radix_type];
+    size_t radix = get_actual_radix<radix_type>(raders);
 
     for (size_t k = 0; k < stride; k++)
     {
         // Initialize raders data with zeros
-        init_coeff<radix>(data_raders, raders);
+        init_coeff<radix_type>(data_raders, raders);
 
         // Copy input data (squeeze)
-        for (size_t j = 0; j < radix_actual; j++)
+        for (size_t j = 0; j < radix; j++)
         {
-            set_value<radix>(x_temp_in, data_raders, j, raders, data_in[2*k + 2*j*stride + 0], data_in[2*k + 2*j*stride + 1]);
+            set_value<radix_type>(x_temp_in, data_raders, j, raders, data_in[2*k + 2*j*stride + 0], data_in[2*k + 2*j*stride + 1]);
         }
 
         // Multiply with coefficients
-        multiply_coeff_forward<radix>(x_temp_in, x_temp_out, data_raders, raders);
+        multiply_coeff_forward<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // Copy input data (un-squeeze)
-        for (size_t j = 0; j < radix_actual; j++)
+        for (size_t j = 0; j < radix; j++)
         {
-            get_value<radix>(x_temp_out, data_raders, j, raders, data_out[2*k + 2*j*stride + 0], data_out[2*k + 2*j*stride + 1]);
+            get_value<radix_type>(x_temp_out, data_raders, j, raders, data_out[2*k + 2*j*stride + 0], data_out[2*k + 2*j*stride + 1]);
         }
     }
 }
 
-template<size_t radix>
+template<RadixType radix_type>
     inline void fft_1d_complex_twiddle_dit_plain_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, double *data_raders, const hhfft::RadersD &raders, size_t stride)
 {    
-    double x_temp_in[2*radix];
-    double x_temp_out[2*radix];    
-    size_t radix_actual = get_actual_radix<radix>(raders);
+    double x_temp_in[2*radix_type];
+    double x_temp_out[2*radix_type];
+    size_t radix = get_actual_radix<radix_type>(raders);
 
     for (size_t k = 0; k < stride; k++)
     {
         // Initialize raders data with zeros
-        init_coeff<radix>(data_raders, raders);
+        init_coeff<radix_type>(data_raders, raders);
 
         // Copy input data (squeeze)
-        for (size_t j = 0; j < radix_actual; j++)
+        for (size_t j = 0; j < radix; j++)
         {
             size_t j2 = 2*k + 2*j*stride;
-            set_value_multiply_twiddle<radix>(x_temp_in, data_raders, j, raders, data_in[j2 + 0], data_in[j2 + 1], twiddle_factors[j2 + 0], twiddle_factors[j2 + 1]);
+            set_value_multiply_twiddle<radix_type>(x_temp_in, data_raders, j, raders, data_in[j2 + 0], data_in[j2 + 1], twiddle_factors[j2 + 0], twiddle_factors[j2 + 1]);
         }
 
         // Multiply with coefficients
-        multiply_coeff_forward<radix>(x_temp_in, x_temp_out, data_raders, raders);
+        multiply_coeff_forward<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // Copy input data (un-squeeze)
-        for (size_t j = 0; j < radix_actual; j++)
+        for (size_t j = 0; j < radix; j++)
         {
             size_t j2 = 2*k + 2*j*stride;
-            get_value<radix>(x_temp_out, data_raders, j, raders, data_out[j2 + 0], data_out[j2 + 1]);
+            get_value<radix_type>(x_temp_out, data_raders, j, raders, data_out[j2 + 0], data_out[j2 + 1]);
         }
     }    
 }
 
-template<size_t radix>
+template<RadixType radix_type>
     void fft_1d_complex_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t stride = step_info.stride;
     size_t repeats = step_info.repeats;    
+    size_t radix = get_actual_radix<radix_type>(*step_info.raders);
 
     // Allocate memory for Rader's algorithm if needed
-    double *data_raders = allocate_raders<radix>(*step_info.raders);
+    double *data_raders = allocate_raders<radix_type>(*step_info.raders);
 
     for (size_t i = 0; i < repeats; i++)
     {
-        fft_1d_complex_plain_d_internal<radix>
+        fft_1d_complex_plain_d_internal<radix_type>
                 (data_in + 2*i*radix*stride, data_out + 2*i*radix*stride, data_raders, *step_info.raders, stride);
     }
 
     // Free temporary memory
-    free_raders<radix>(*step_info.raders, data_raders);
+    free_raders<radix_type>(*step_info.raders, data_raders);
 }
 
 // Reordering and fft-step combined. In other version they really are!
-template<size_t radix, bool forward>
+template<RadixType radix_type, bool forward>
     void fft_1d_complex_reorder2_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {   
     size_t stride = step_info.stride;
     size_t repeats = step_info.repeats;
+    size_t radix = get_actual_radix<radix_type>(*step_info.raders);
 
     fft_1d_complex_reorder_plain_d<forward>(data_in, data_out, step_info);
 
     // Allocate memory for Rader's algorithm if needed
-    double *data_raders = allocate_raders<radix>(*step_info.raders);
+    double *data_raders = allocate_raders<radix_type>(*step_info.raders);
 
     for (size_t i = 0; i < repeats; i++)
     {
-        fft_1d_complex_plain_d_internal<radix>
+        fft_1d_complex_plain_d_internal<radix_type>
                 (data_out + 2*i*radix*stride, data_out + 2*i*radix*stride, data_raders, *step_info.raders, stride);
     }
 
     // Free temporary memory
-    free_raders<radix>(*step_info.raders, data_raders);
+    free_raders<radix_type>(*step_info.raders, data_raders);
 }
 
-template<size_t radix>
+template<RadixType radix_type>
     void fft_1d_complex_twiddle_dit_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t stride = step_info.stride;
     size_t repeats = step_info.repeats;
+    size_t radix = get_actual_radix<radix_type>(*step_info.raders);
 
     // Allocate memory for Rader's algorithm if needed
-    double *data_raders = allocate_raders<radix>(*step_info.raders);
+    double *data_raders = allocate_raders<radix_type>(*step_info.raders);
 
     for (size_t i = 0; i < repeats; i++)
     {
-        fft_1d_complex_twiddle_dit_plain_d_internal<radix>
+        fft_1d_complex_twiddle_dit_plain_d_internal<radix_type>
                 (data_in + 2*i*radix*stride, data_out + 2*i*radix*stride, step_info.twiddle_factors, data_raders, *step_info.raders, stride);
     }
 
     // Free temporary memory
-    free_raders<radix>(*step_info.raders, data_raders);
+    free_raders<radix_type>(*step_info.raders, data_raders);
 }
 
 void fft_1d_complex_convolution_plain_d(const double *in1, const double *in2, double *out, size_t n)
@@ -249,40 +252,40 @@ template<size_t n, bool forward> void fft_1d_complex_1level_plain_d(const double
 template void fft_1d_complex_reorder_plain_d<false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_reorder_plain_d<true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_1d_complex_reorder2_plain_d<1, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<1, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<2, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<2, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<3, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<3, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<4, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<4, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<5, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<5, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<6, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<6, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<7, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<7, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<8, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_reorder2_plain_d<8, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Raders, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Raders, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix2, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix2, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix3, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix3, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix4, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix4, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix5, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix5, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix6, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix6, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix7, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix7, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix8, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_plain_d<Radix8, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_1d_complex_plain_d<1>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_plain_d<2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_plain_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_plain_d<4>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_plain_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_plain_d<6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_plain_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_plain_d<8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_plain_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_plain_d<Radix2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_plain_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_plain_d<Radix4>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_plain_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_plain_d<Radix6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_plain_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_plain_d<Radix8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_1d_complex_twiddle_dit_plain_d<1>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dit_plain_d<2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dit_plain_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dit_plain_d<4>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dit_plain_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dit_plain_d<6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dit_plain_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_complex_twiddle_dit_plain_d<8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_twiddle_dit_plain_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_twiddle_dit_plain_d<Radix2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_twiddle_dit_plain_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_twiddle_dit_plain_d<Radix4>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_twiddle_dit_plain_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_twiddle_dit_plain_d<Radix6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_twiddle_dit_plain_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_twiddle_dit_plain_d<Radix8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template void fft_1d_complex_1level_plain_d<1, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_1level_plain_d<2, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
