@@ -19,6 +19,9 @@
 
 // This header contains some small functions that are used many times
 
+#ifndef HHFFT_COMPLEX_AVX_COMMON_D
+#define HHFFT_COMPLEX_AVX_COMMON_D
+
 #define ENABLE_AVX
 #include "hhfft_1d_complex_sse2_common_d.h"
 
@@ -95,6 +98,13 @@ inline void store_two_128_D2(ComplexD2 val, double *a, double *b)
     store_D(aa, a);
     ComplexD bb = _mm256_extractf128_pd(val, 1);
     store_D(bb, b);
+}
+
+// Divides the complex numbers to two separate numbers: [a1 a2 b1 b2] -> [a1 a2], [b1 b2]
+inline void divide_two_128_D2(ComplexD2 val, ComplexD &a, ComplexD &b)
+{
+    a = _mm256_castpd256_pd128(val);
+    b = _mm256_extractf128_pd(val, 1);
 }
 
 // Store only real parts [r1 x r2 x] -> [r1 r2]
@@ -768,3 +778,5 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         }
     }
 }
+
+#endif

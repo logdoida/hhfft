@@ -85,8 +85,23 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     // Calculate factorization
     std::vector<size_t> N = calculate_factorization(n);
 
+    // If Raders one level function is possible, do it here
+    if (N.size() == 1)
+    {
+        StepInfoD step_info_fft, step_info_ifft;
+        HHFFT_1D_Complex_D_set_1level_raders_function(step_info_fft, true, instruction_set);
+        HHFFT_1D_Complex_D_set_1level_raders_function(step_info_ifft, false, instruction_set);
+        step_info_fft.radix = n;
+        step_info_ifft.radix = n;
+        set_radix_raders(n, step_info_fft, instruction_set);
+        set_radix_raders(n, step_info_ifft, instruction_set);
+        forward_steps.push_back(step_info_fft);
+        inverse_steps.push_back(step_info_ifft);
+        return;
+    }
+
     // TESTING print factorization    
-    for (size_t i = 0; i < N.size(); i++)  { std::cout << N[i] << " ";} std::cout << std::endl;
+    //for (size_t i = 0; i < N.size(); i++)  { std::cout << N[i] << " ";} std::cout << std::endl;
 
     // First calculate the reorder table
     reorder_table = calculate_reorder_table(N);

@@ -31,8 +31,6 @@
 using namespace hhfft;
 using hhfft::RadersD;
 
-// TODO move these functions to utilities?
-
 // find the prime factorization of a number
 // TODO there are more efficient methods too... Like having a table of all small prime numbers
 std::vector<size_t> find_factors(size_t n)
@@ -51,6 +49,29 @@ std::vector<size_t> find_factors(size_t n)
     }
 
     return factors;
+}
+
+// Checks if number is composite of small factors 2,3 or 5
+bool has_small_factors(size_t n)
+{
+    std::array<size_t, 3> small_factors = {2,3,5};
+
+    bool radix_found = true;
+    while(radix_found)
+    {
+        radix_found = false;
+        for (auto r: small_factors)
+        {
+            if(n%r == 0)
+            {
+                n = n / r;
+                radix_found = true;
+                break;
+            }
+        }
+    }
+
+    return n == 1;
 }
 
 // find all prime factors of a number
@@ -165,9 +186,9 @@ void RadersD::calculate_fft_b(const std::vector<uint32_t> &reorder_table_inverse
 }
 
 
-double* RadersD::allocate_memory() const
+double* RadersD::allocate_memory(size_t scale) const
 {
-    return (double *) allocate_aligned_memory(n_bytes_aligned);
+    return (double *) allocate_aligned_memory(n_bytes_aligned * scale);
 }
 
 void RadersD::free_memory(double *data)
@@ -186,17 +207,25 @@ RadersD::RadersD(size_t n_org, InstructionSet instruction_set)
 
     this->n_org = n_org;
 
-    // TODO sometimes using n_org-1 might be possible
-    // Find a power of two that is atleast 2*n_org-3
-    n = 2;
-    while (n < 2*n_org-3)
+    // Check if using n_org-1 is possible
+    if (has_small_factors(n_org - 1))
     {
-        n = 2*n;
+        n = n_org - 1;
+    } else
+    {
+        // Find a power of two that is atleast 2*n_org-3
+        n = 2;
+        while (n < 2*n_org-3)
+        {
+            n = 2*n;
+        }
     }
+
     scale = 1.0/n;
 
     // Extra space for two complex numbers is allocated
     n_bytes_aligned = calculate_aligned_size(2*(n+2)*sizeof(double));
+    n_data_size = n_bytes_aligned/sizeof(double);
 
     // This limitation comes from using uint32 in reorder table
     if (n >= (1ul << 32ul))

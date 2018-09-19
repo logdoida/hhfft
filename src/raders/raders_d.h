@@ -47,13 +47,13 @@ public:
     void ifft(double *data) const;
 
     // Allocate aligned array that contains enough space for the complex input and output data
-    double* allocate_memory() const;
+    double* allocate_memory(size_t scale = 1) const;
 
     // Free memory
     static void free_memory(double *data);
 
     // Dimension of the vector (Number of complex numbers)
-    size_t n_org, n;
+    size_t n_org, n, n_data_size;
 
     // Tables that are used in the beginning and end to reorder the data.
     std::vector<uint32_t> reorder_table_raders_inverse;

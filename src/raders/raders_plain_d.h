@@ -22,7 +22,6 @@
 #include "raders_d.h"
 #include "../common/hhfft_1d_complex_plain_common_d.h"
 
-
 template<hhfft::RadixType radix_type> inline double *allocate_raders(const hhfft::RadersD &raders)
 {
     if (radix_type == hhfft::RadixType::Raders)
@@ -193,16 +192,13 @@ template<hhfft::RadixType radix_type> inline void multiply_coeff_forward(const d
 
         // Add first value to others
         double k = raders.scale;        
-        for (size_t i = 0; i < n_org; i++)
+        for (size_t i = 0; i < n_org - 1; i++)
         {
             data_raders[2*i + 0] = re_0 + k*data_raders[2*i + 0];
             data_raders[2*i + 1] = im_0 + k*data_raders[2*i + 1];
         }
-
     } else
     {
         multiply_coeff<radix_type,true>(x_in, x_out);
     }
-
-
 }

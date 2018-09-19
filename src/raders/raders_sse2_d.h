@@ -180,7 +180,7 @@ template<hhfft::RadixType radix_type> inline void multiply_coeff_forward_D(const
 
         // Add first value to others
         double k = raders.scale;        
-        for (size_t i = 0; i < n_org; i++)
+        for (size_t i = 0; i < n_org - 1; i++)
         {
             ComplexD res = x0 + k*load_D(data_raders + 2*i);
             store_D(res, data_raders + 2*i);

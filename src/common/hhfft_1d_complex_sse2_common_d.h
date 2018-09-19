@@ -21,8 +21,8 @@
 // if this is compiled using the -mavx flag, the outcome will be different
 // using flag ENABLE_AVX, will also enable the usage of more efficient instructions
 
-#ifndef HHFFT_COMPLEX_SSE2_COMMON
-#define HHFFT_COMPLEX_SSE2_COMMON
+#ifndef HHFFT_COMPLEX_SSE2_COMMON_D
+#define HHFFT_COMPLEX_SSE2_COMMON_D
 
 #include "hhfft_1d_complex_plain_common_d.h"
 #include <immintrin.h>

@@ -19,8 +19,8 @@
 
 // This header contains some small functions that are used many times
 
-#ifndef HHFFT_COMPLEX_PLAIN_COMMON
-#define HHFFT_COMPLEX_PLAIN_COMMON
+#ifndef HHFFT_COMPLEX_PLAIN_COMMON_D
+#define HHFFT_COMPLEX_PLAIN_COMMON_D
 
 static const double coeff_radix_2[8] = {
     1, 0, 1, 0,
