@@ -86,24 +86,25 @@ template<hhfft::RadixType radix_type> inline void set_value_D(ComplexD *data_in,
 }
 
 // Multiply one complex number and write it to input when performing fft
-template<hhfft::RadixType radix_type> inline void set_value_multiply_twiddle_D(ComplexD *data_in, double *data_raders, size_t index, const hhfft::RadersD &raders, ComplexD x, ComplexD w)
-{
-    // Multiply with twiddle factors
-    ComplexD x2 = mul_D(w,x);
-
+template<hhfft::RadixType radix_type> inline void set_value_twiddle_D(ComplexD *data_in, double *data_raders, ComplexD *data_twiddle, size_t index, const hhfft::RadersD &raders, ComplexD x, ComplexD w)
+{       
     if (radix_type == hhfft::RadixType::Raders)
     {
+        // Multiply with twiddle factors. First twiddle factor is assumed to be (1+0i)
+        ComplexD xw = mul_D(w,x);
+
         // Sum up the values and store it to extra space in the end
         size_t n  = raders.n;
-        ComplexD sum = load_D(data_raders + 2*n) + x2;
+        ComplexD sum = load_D(data_raders + 2*n) + xw;
         store_D(sum, data_raders + 2*n);
 
         const uint32_t *reorder_table_raders_inverse = raders.reorder_table_raders_inverse.data();
         size_t i2 = reorder_table_raders_inverse[index];
-        store_D(x2, data_raders + 2*i2);
+        store_D(xw, data_raders + 2*i2);
     } else
     {
-        data_in[index] = x2;
+        data_twiddle[index] = w;
+        data_in[index] = x;
     }
 }
 

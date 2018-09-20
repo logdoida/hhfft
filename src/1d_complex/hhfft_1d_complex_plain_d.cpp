@@ -110,6 +110,7 @@ template<RadixType radix_type>
 {    
     double x_temp_in[2*radix_type];
     double x_temp_out[2*radix_type];
+    double twiddle_temp[2*radix_type];
     size_t radix = get_actual_radix<radix_type>(raders);
 
     for (size_t k = 0; k < stride; k++)
@@ -121,10 +122,11 @@ template<RadixType radix_type>
         for (size_t j = 0; j < radix; j++)
         {
             size_t j2 = 2*k + 2*j*stride;
-            set_value_multiply_twiddle<radix_type>(x_temp_in, data_raders, j, raders, data_in[j2 + 0], data_in[j2 + 1], twiddle_factors[j2 + 0], twiddle_factors[j2 + 1]);
+            set_value_twiddle<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, data_in[j2 + 0], data_in[j2 + 1], twiddle_factors[j2 + 0], twiddle_factors[j2 + 1]);
         }
 
         // Multiply with coefficients
+        multiply_twiddle<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
         multiply_coeff_forward<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // Copy input data (un-squeeze)

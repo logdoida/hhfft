@@ -227,7 +227,7 @@ template<RadixType radix_type, bool forward>
                 if (i2 > 0)
                 {
                     ind = n - ind;
-                }                
+                }
                 ComplexD x = k*load_D(data_in + 2*ind);
                 set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
             }
@@ -239,7 +239,7 @@ template<RadixType radix_type, bool forward>
         // Save output to two memory locations.
         for (size_t j = 0; j < radix; j++)
         {
-            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);            
             store_D(x, data_out + 2*i*radix + 2*j);
         }
     }
@@ -324,13 +324,14 @@ template<RadixType radix_type, SizeType stride_type>
 
     // First use 256-bit variables
     {
-        ComplexD2 x_temp_in[radix_type];
-        ComplexD2 x_temp_out[radix_type];        
-
         for (k = 0; k+1 < stride; k+=2)
         {
             // Initialize raders data with zeros
             init_coeff_D2<radix_type>(data_raders, raders);
+
+            ComplexD2 x_temp_in[radix_type];
+            ComplexD2 x_temp_out[radix_type];
+            ComplexD2 twiddle_temp[radix_type];
 
             // Copy input data and multiply with twiddle factors
             for (size_t j = 0; j < radix; j++)
@@ -338,10 +339,11 @@ template<RadixType radix_type, SizeType stride_type>
                 size_t j2 = 2*k + 2*j*stride;
                 ComplexD2 x = load_D2(data_in + j2);
                 ComplexD2 w = load_D2(twiddle_factors + j2);
-                set_value_multiply_twiddle_D2<radix_type>(x_temp_in, data_raders, j, raders, x, w);
+                set_value_twiddle_D2<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
             }
 
             // Multiply with coefficients
+            multiply_twiddle_D2<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
             multiply_coeff_forward_D2<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // Copy output data (un-squeeze)
@@ -365,7 +367,8 @@ template<RadixType radix_type, SizeType stride_type>
         init_coeff_D<radix_type>(data_raders, raders);
 
         ComplexD x_temp_in[radix_type];
-        ComplexD x_temp_out[radix_type];        
+        ComplexD x_temp_out[radix_type];
+        ComplexD twiddle_temp[radix_type];
 
         // Copy input data (squeeze)
         for (size_t j = 0; j < radix; j++)
@@ -373,10 +376,11 @@ template<RadixType radix_type, SizeType stride_type>
             size_t j2 = 2*k + 2*j*stride;
             ComplexD x = load_D(data_in + j2);
             ComplexD w = load_D(twiddle_factors + j2);
-            set_value_multiply_twiddle_D<radix_type>(x_temp_in, data_raders, j, raders, x, w);
+            set_value_twiddle_D<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
         }
 
         // Multiply with coefficients
+        multiply_twiddle_D<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
         multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // Copy output data (un-squeeze)

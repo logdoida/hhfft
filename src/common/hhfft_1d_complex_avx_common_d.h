@@ -407,6 +407,12 @@ template<size_t radix> inline __attribute__((always_inline)) void multiply_coeff
 
 template<size_t radix, bool forward> inline __attribute__((always_inline)) void multiply_twiddle_D2(const ComplexD2 *x_in, ComplexD2 *x_out, const ComplexD2 *twiddle_factors)
 {
+    if (radix == 1)
+    {
+        // Not done for Rader's
+        return;
+    }
+
     // It is assumed that first twiddle factors are always (1 + 0i)
     x_out[0] = x_in[0];
 
