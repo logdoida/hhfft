@@ -120,7 +120,8 @@ template<size_t radix, bool forward>
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                size_t j2 = reorder_table_columns[i*radix + j];
+                size_t j1 = i*radix + j;
+                size_t j2 = reorder_table_columns[j1];
 
                 if (forward)
                 {
@@ -128,7 +129,7 @@ template<size_t radix, bool forward>
                     x_temp_in[2*j + 1] = data_in[2*j2*m + 2*k2 + 1];
                 } else
                 {
-                    if (i*radix + j > 0)
+                    if (j1 > 0)
                     {
                         j2 = n - j2;
                     }
@@ -142,8 +143,9 @@ template<size_t radix, bool forward>
             // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                data_out[2*i*radix*m + 2*j*m + 2*k + 0] = x_temp_out[2*j + 0];
-                data_out[2*i*radix*m + 2*j*m + 2*k + 1] = x_temp_out[2*j + 1];
+                size_t j1 = i*radix + j;
+                data_out[2*j1*m + 2*k + 0] = x_temp_out[2*j + 0];
+                data_out[2*j1*m + 2*k + 1] = x_temp_out[2*j + 1];
             }
         }
     }

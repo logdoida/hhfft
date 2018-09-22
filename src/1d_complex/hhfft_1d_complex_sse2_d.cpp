@@ -121,24 +121,28 @@ template<RadixType radix_type, bool forward>
         init_coeff_D<radix_type>(data_raders, raders);
 
         // Copy input data taking reordering into account
-        for (size_t j = 0; j < radix; j++)
+        // First index is copied seprately to improve performance
+        {
+            size_t i2 = i*radix;
+            size_t ind = reorder_table[i2];
+            if (!forward && i2 > 0)
+            {
+                ind = n - ind;
+            }
+            ComplexD x = load_D(data_in + 2*ind);
+            set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x);
+        }
+
+        for (size_t j = 1; j < radix; j++)
         {
             size_t i2 = i*radix + j;
             size_t ind = reorder_table[i2];
-
-            if (forward)
+            if (!forward)
             {
-                ComplexD x = load_D(data_in + 2*ind);
-                set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
-            } else
-            {
-                if (i2 > 0)
-                {
-                    ind = n - ind;
-                }
-                ComplexD x = k*load_D(data_in + 2*ind);
-                set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
+                ind = n - ind;
             }
+            ComplexD x = load_D(data_in + 2*ind);
+            set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
         }
 
         // Multiply with coefficients
@@ -148,6 +152,10 @@ template<RadixType radix_type, bool forward>
         for (size_t j = 0; j < radix; j++)
         {
             ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+            if (!forward)
+            {
+                x = k*x;
+            }
             store_D(x, data_out + 2*i*radix + 2*j);
         }
     }

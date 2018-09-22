@@ -160,22 +160,29 @@ template<size_t radix, bool forward>
                     k3 = m - k3;
                 }
 
-                // Copy input data (squeeze)
-                for (size_t j = 0; j < radix; j++)
+                // Copy input data
+                // First j is processed separately for better optimized code (if-clause j1 > 0 is not needed on rest iterations)
                 {
-                    size_t j2 = reorder_table_columns[i*radix + j];
+                    size_t j = 0;
+                    size_t j1 = i*radix + j;
+                    size_t j2 = reorder_table_columns[j1];
 
-                    if (forward)
+                    if (!forward && j1 > 0)
                     {
-                        x_temp_in[j] = load_two_128_D2(data_in + 2*j2*m + 2*k2, data_in + 2*j2*m + 2*k3);
-                    } else
-                    {
-                        if (i*radix + j > 0)
-                        {
-                            j2 = n - j2;
-                        }
-                        x_temp_in[j] = norm_factor256*load_two_128_D2(data_in + 2*j2*m + 2*k2, data_in + 2*j2*m + 2*k3);
+                        j2 = n - j2;
                     }
+                    x_temp_in[j] = load_two_128_D2(data_in + 2*j2*m + 2*k2, data_in + 2*j2*m + 2*k3);
+                }
+                for (size_t j = 1; j < radix; j++)
+                {
+                    size_t j1 = i*radix + j;
+                    size_t j2 = reorder_table_columns[j1];
+
+                    if (!forward)
+                    {
+                        j2 = n - j2;
+                    }
+                    x_temp_in[j] = load_two_128_D2(data_in + 2*j2*m + 2*k2, data_in + 2*j2*m + 2*k3);
                 }
 
                 multiply_coeff_D2<radix,true>(x_temp_in, x_temp_out);
@@ -183,7 +190,12 @@ template<size_t radix, bool forward>
                 // Copy output data (un-squeeze)
                 for (size_t j = 0; j < radix; j++)
                 {
-                    store_D2(x_temp_out[j], data_out + 2*i*radix*m + 2*j*m + 2*k);
+                    ComplexD2 x = x_temp_out[j];
+                    if (!forward)
+                    {
+                        x = x*norm_factor256;
+                    }
+                    store_D2(x, data_out + 2*i*radix*m + 2*j*m + 2*k);
                 }
             }
         }
@@ -203,19 +215,14 @@ template<size_t radix, bool forward>
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                size_t j2 = reorder_table_columns[i*radix + j];
+                size_t j1 = i*radix + j;
+                size_t j2 = reorder_table_columns[j1];
 
-                if (forward)
+                if (!forward && j1 > 0)
                 {
-                    x_temp_in[j] = load_D(data_in + 2*j2*m + 2*k2);
-                } else
-                {
-                    if (i*radix + j > 0)
-                    {
-                        j2 = n - j2;
-                    }
-                    x_temp_in[j] = norm_factor*load_D(data_in + 2*j2*m + 2*k2);
+                    j2 = n - j2;
                 }
+                x_temp_in[j] = load_D(data_in + 2*j2*m + 2*k2);
             }
 
             multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
@@ -223,7 +230,13 @@ template<size_t radix, bool forward>
             // Copy input data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                store_D(x_temp_out[j], data_out + 2*i*radix*m + 2*j*m + 2*k);
+                size_t j1 = i*radix + j;
+                ComplexD x = x_temp_out[j];
+                if (!forward)
+                {
+                    x = x*norm_factor;
+                }
+                store_D(x, data_out + 2*j1*m + 2*k);
             }
         }
     }
