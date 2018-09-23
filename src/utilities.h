@@ -34,6 +34,7 @@ namespace hhfft
     std::vector<uint32_t> calculate_inverse_reorder_table(const std::vector<uint32_t> &reorder);
     std::vector<uint32_t> calculate_reorder_table_in_place(const std::vector<uint32_t> &reorder);
     std::vector<uint32_t> calculate_reorder_table_ifft_odd(const std::vector<uint32_t> &reorder, const std::vector<size_t> &N);
+    void append_reorder_table(std::vector<uint32_t> &reorder_table, size_t n_extra);
     std::vector<size_t> calculate_factorization(size_t n);
     void calculate_exp_neg_2_pi_i(size_t a, size_t b, double &re, double &im);
 }

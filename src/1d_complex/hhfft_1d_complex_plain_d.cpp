@@ -52,23 +52,21 @@ template<bool forward> void fft_1d_complex_reorder_plain_d(const double *data_in
 {    
     size_t n = step_info.radix*step_info.repeats;
     uint32_t *reorder_table = step_info.reorder_table;
+    size_t reorder_table_size = step_info.reorder_table_size;
 
     // Needed only in ifft. Equal to 1/N
     double k = step_info.norm_factor;
 
     for (size_t i = 0; i < n; i++)
-    {
-        size_t i2 = reorder_table[i];
+    {        
         if (forward)
-        {            
+        {
+            size_t i2 = reorder_table[i];
             data_out[2*i+0] = data_in[2*i2+0];
             data_out[2*i+1] = data_in[2*i2+1];
         } else
-        {
-            if (i > 0)
-            {
-                i2 = n - i2;
-            }
+        {            
+            size_t i2 = reorder_table[reorder_table_size - i - 1];
             data_out[2*i+0] = k*data_in[2*i2+0];
             data_out[2*i+1] = k*data_in[2*i2+1];
         }

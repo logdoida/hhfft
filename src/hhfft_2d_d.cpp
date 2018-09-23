@@ -90,9 +90,9 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
     reorder_table_columns = calculate_reorder_table(N_columns);
     reorder_table_rows = calculate_reorder_table(N_rows);
 
-    // Then in-place version of the reorder table
-    reorder_table_in_place_columns = calculate_reorder_table_in_place(reorder_table_columns);
-    reorder_table_in_place_rows = calculate_reorder_table_in_place(reorder_table_rows);
+    // Add extra values to the end for ifft reordering
+    append_reorder_table(reorder_table_columns, n/N_columns.back());
+    append_reorder_table(reorder_table_rows, m/N_rows.back());
 
     // TESTING print reorder tables    
     //std::cout << "reorder_table_columns = " << std::endl;
@@ -134,11 +134,9 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table_columns.data();
-        step.reorder_table_inplace = reorder_table_in_place_columns.data(); // It is possible that data_in = data_out!
-        step.reorder_table_inplace_size = reorder_table_in_place_columns.size();
+        step.reorder_table_size = reorder_table_columns.size();
         step.reorder_table2 = reorder_table_rows.data();
-        step.reorder_table2_inplace = reorder_table_in_place_rows.data(); // It is possible that data_in = data_out!
-        step.reorder_table2_inplace_size = reorder_table_in_place_rows.size();
+        step.reorder_table2_size = reorder_table_rows.size();
         step.stride = n;
         step.size = m;
         step.radix = N_columns[0];
@@ -282,6 +280,7 @@ void HHFFT_2D_D::ifft(const double *in, double *out) const
         return;
     }
 
+    // If transform is made in-place, copy input to a temporary variable
     hhfft::AlignedVector<double> temp_data_in;
     if (in == out)
     {

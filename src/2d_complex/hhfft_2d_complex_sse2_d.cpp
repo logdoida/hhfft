@@ -92,8 +92,9 @@ template<size_t radix, bool forward>
     size_t m = step_info.size;
     uint32_t *reorder_table_columns = step_info.reorder_table;
     uint32_t *reorder_table_rows = step_info.reorder_table2;
-    size_t repeats = step_info.repeats;
-    size_t n = repeats*radix;
+    size_t repeats = step_info.repeats;    
+    size_t reorder_table_columns_size = step_info.reorder_table_size;
+    size_t reorder_table_rows_size = step_info.reorder_table2_size;
 
     // Needed only in ifft. Equal to 1/N
     ComplexD norm_factor = broadcast64_D(step_info.norm_factor);
@@ -106,29 +107,34 @@ template<size_t radix, bool forward>
 
         for (size_t k = 0; k < m; k++)
         {
-            size_t k2 = reorder_table_rows[k];
-
-            if (!forward && k > 0)
+            size_t k2;
+            if (forward)
             {
-                k2 = m - k2;
+                k2 = reorder_table_rows[k];
+            } else
+            {
+                k2 = reorder_table_rows[reorder_table_rows_size - k - 1];
             }
 
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
                 size_t j1 = i*radix + j;
-                size_t j2 = reorder_table_columns[j1];
-
-                if (!forward && j1 > 0)
+                size_t j2;
+                if (forward)
                 {
-                    j2 = n - j2;
+                    j2 = reorder_table_columns[j1];
+                } else
+                {
+                    j2 = reorder_table_columns[reorder_table_columns_size - j1 - 1];
                 }
+
                 x_temp_in[j] = load_D(data_in + 2*j2*m + 2*k2);
             }
 
             multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
 
-            // Copy input data (un-squeeze)
+            // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
             {
                 size_t j1 = i*radix + j;

@@ -106,6 +106,9 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     // First calculate the reorder table
     reorder_table = calculate_reorder_table(N);
 
+    // Add extra values to the end for ifft reordering
+    append_reorder_table(reorder_table, n/N.back());
+
     // TESTING print reorder tables
     //std::cout << "reorder = " << std::endl;
     //for (auto r: reorder_table)  { std::cout << r << " ";} std::cout << std::endl;
@@ -130,6 +133,7 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table.data();
+        step.reorder_table_size = reorder_table.size();
         step.norm_factor = 1.0;
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
         forward_steps.push_back(step);

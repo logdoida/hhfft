@@ -107,7 +107,7 @@ template<RadixType radix_type, bool forward>
     size_t radix = get_actual_radix<radix_type>(raders);
     uint32_t *reorder_table = step_info.reorder_table;
     double k = step_info.norm_factor;
-    size_t n = repeats*radix;
+    size_t reorder_table_size = step_info.reorder_table_size;
 
     ComplexD x_temp_in[radix_type];
     ComplexD x_temp_out[radix_type];
@@ -121,25 +121,16 @@ template<RadixType radix_type, bool forward>
         init_coeff_D<radix_type>(data_raders, raders);
 
         // Copy input data taking reordering into account
-        // First index is copied seprately to improve performance
-        {
-            size_t i2 = i*radix;
-            size_t ind = reorder_table[i2];
-            if (!forward && i2 > 0)
-            {
-                ind = n - ind;
-            }
-            ComplexD x = load_D(data_in + 2*ind);
-            set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x);
-        }
-
-        for (size_t j = 1; j < radix; j++)
+        for (size_t j = 0; j < radix; j++)
         {
             size_t i2 = i*radix + j;
-            size_t ind = reorder_table[i2];
-            if (!forward)
+            size_t ind;
+            if (forward)
             {
-                ind = n - ind;
+                ind = reorder_table[i2];
+            } else
+            {
+                ind = reorder_table[reorder_table_size - i2 - 1];
             }
             ComplexD x = load_D(data_in + 2*ind);
             set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);

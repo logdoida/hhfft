@@ -248,6 +248,16 @@ std::vector<uint32_t> hhfft::calculate_reorder_table_in_place(const std::vector<
     */
 }
 
+void hhfft::append_reorder_table(std::vector<uint32_t> &reorder_table, size_t n_extra)
+{
+    size_t n = reorder_table.size();
+    for (size_t i = 0; i < n_extra; i++)
+    {
+        reorder_table.push_back(n - reorder_table[n_extra - i -1]);
+    }
+    reorder_table.back() = 0;
+}
+
 // Finds an efficient factorization (not necassery a prime factorization)
 std::vector<size_t> hhfft::calculate_factorization(size_t n)
 {

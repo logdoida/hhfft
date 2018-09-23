@@ -148,7 +148,7 @@ template<RadixType radix_type, bool forward>
     double k = step_info.norm_factor;
     const hhfft::RadersD &raders = *step_info.raders;
     size_t radix = get_actual_radix<radix_type>(raders);
-    size_t n = repeats*radix;
+    size_t reorder_table_size = step_info.reorder_table_size;
 
     // Amount of Raders memory needed depends on repeats
     double *data_raders = nullptr;
@@ -157,46 +157,10 @@ template<RadixType radix_type, bool forward>
     else
         data_raders = allocate_raders_D<radix_type>(raders);
 
-    // On IFFT, use 128-bit variables first
-    // Extra if-clause (i2 > 0) is not needed in later iterations which improves performance
-    if (!forward)
-    {
-        // Initialize raders data with zeros
-        init_coeff_D<radix_type>(data_raders, raders);
-
-        ComplexD x_temp_in[radix_type];
-        ComplexD x_temp_out[radix_type];
-
-        // Copy input data taking reordering into account
-        for (size_t j = 0; j < radix; j++)
-        {
-            size_t i2 = i*radix + j;
-            size_t ind = reorder_table[i2];
-
-            if (i2 > 0)
-            {
-                    ind = n - ind;
-            }
-            ComplexD x = k*load_D(data_in + 2*ind);
-            set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
-        }
-
-        // Multiply with coefficients
-        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-        // Save output to two memory locations.
-        for (size_t j = 0; j < radix; j++)
-        {
-            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
-            store_D(x, data_out + 2*i*radix + 2*j);
-        }
-        i++;
-    }
-
-    // Then use 256-bit variables
+    // First use 256-bit variables
     ComplexD2 x_temp_in[radix_type];
     ComplexD2 x_temp_out[radix_type];
-    for (; i+1 < repeats; i+=2)
+    for (i = 0; i+1 < repeats; i+=2)
     {
         // Initialize raders data with zeros
         init_coeff_D2<radix_type>(data_raders, raders);
@@ -204,12 +168,15 @@ template<RadixType radix_type, bool forward>
         for (size_t j = 0; j < radix; j++)
         {
             size_t i2 = i*radix + j;
-            size_t ind0 = reorder_table[i2];
-            size_t ind1 = reorder_table[i2 + radix];
-            if (!forward)
+            size_t ind0, ind1;
+            if (forward)
             {
-                ind0 = n - ind0;
-                ind1 = n - ind1;
+                ind0 = reorder_table[i2];
+                ind1 = reorder_table[i2 + radix];
+            } else
+            {
+                ind0 = reorder_table[reorder_table_size - i2 - 1];
+                ind1 = reorder_table[reorder_table_size - i2 - radix - 1];
             }
             ComplexD2 x = load_two_128_D2(data_in + 2*ind0, data_in + 2*ind1);
             set_value_D2<radix_type>(x_temp_in, data_raders, j, raders, x);
@@ -245,15 +212,15 @@ template<RadixType radix_type, bool forward>
         for (size_t j = 0; j < radix; j++)
         {
             size_t i2 = i*radix + j;
-            size_t ind = reorder_table[i2];
 
             if (forward)
             {
+                size_t ind = reorder_table[i2];
                 ComplexD x = load_D(data_in + 2*ind);
                 set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
             } else
             {
-                ind = n - ind;
+                size_t ind = reorder_table[reorder_table_size - i2 - 1];
                 ComplexD x = k*load_D(data_in + 2*ind);
                 set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
             }

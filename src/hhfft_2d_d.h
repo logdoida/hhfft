@@ -74,9 +74,6 @@ private:
     // Table that is used in the beginning to reorder the data.
     std::vector<uint32_t> reorder_table_rows, reorder_table_columns;
 
-    // Table that is used to reorder the data in-place.
-    std::vector<uint32_t> reorder_table_in_place_rows, reorder_table_in_place_columns;
-
     // Some algorithms might need extra space that is allocated at the beginning
     size_t temp_data_size = 0;
 
