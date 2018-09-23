@@ -80,9 +80,6 @@ private:
     // Reorder table used in the ifft for odd sizes
     std::vector<uint32_t> reorder_table_ifft_odd;
 
-    // Table that is used to reorder the data in-place.
-    std::vector<uint32_t> reorder_table_in_place;
-
     // Some algorithms might need extra space that is allocated at the beginning
     size_t temp_data_size = 0;
 

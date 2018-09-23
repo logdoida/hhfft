@@ -77,7 +77,7 @@ private:
     std::vector<uint32_t> reorder_table_rows, reorder_table_columns;
 
     // Table that is used to reorder the data in-place.
-    std::vector<uint32_t> reorder_table_in_place_rows, reorder_table_in_place_columns;
+    std::vector<uint32_t> reorder_table_in_place_rows;
 
     // Reorder table used in the ifft for odd sizes
     std::vector<uint32_t> reorder_table_ifft_odd_rows;

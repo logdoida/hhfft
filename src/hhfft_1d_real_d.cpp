@@ -211,9 +211,6 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
     // Then calculate inverse reorder table
     reorder_table_inverse = calculate_inverse_reorder_table(reorder_table);
 
-    // Then in-place version of the reorder table
-    reorder_table_in_place = calculate_reorder_table_in_place(reorder_table);
-
     // TESTING print reorder tables
     //std::cout << "reorder = " << std::endl;
     //for (auto r: reorder_table)  { std::cout << r << " ";} std::cout << std::endl;

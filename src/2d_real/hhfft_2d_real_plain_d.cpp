@@ -174,9 +174,9 @@ void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_ou
 
     size_t m = step_info.stride;  // number of columns
     size_t m2 = m + 1;            // number of columns in input
-    size_t repeats = step_info.repeats;
-    size_t n = repeats*radix;
+    size_t repeats = step_info.repeats;    
     uint32_t *reorder_table_columns = step_info.reorder_table;
+    size_t reorder_table_size = step_info.reorder_table_size;
     double norm_factor = step_info.norm_factor;
 
     double x_temp_in[2*radix];
@@ -190,11 +190,7 @@ void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_ou
             for (size_t j = 0; j < radix; j++)
             {
                 size_t j1 = i*radix + j;
-                size_t j2 = reorder_table_columns[j1];
-                if (j1 > 0)
-                {
-                    j2 = n - j2;
-                }
+                size_t j2 = reorder_table_columns[reorder_table_size - j1 - 1];
 
                 double x0_r = data_in[2*j2*m2 + 0];
                 double x0_i = data_in[2*j2*m2 + 1];
@@ -226,12 +222,8 @@ void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_ou
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                size_t j1 = i*radix + j;
-                size_t j2 = reorder_table_columns[j1];
-                if (j1 > 0)
-                {
-                    j2 = n - j2;
-                }
+                size_t j1 = i*radix + j;                
+                size_t j2 = reorder_table_columns[reorder_table_size - j1 - 1];
 
                 x_temp_in[2*j + 0] = data_in[2*j2*m2 + 2*k + 0];
                 x_temp_in[2*j + 1] = data_in[2*j2*m2 + 2*k + 1];
@@ -323,8 +315,8 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_first_column_plain_d(co
     size_t m2 = 2*step_info.stride; // row size in input
     size_t repeats = step_info.repeats;
     uint32_t *reorder_table_columns = step_info.reorder_table;
+    size_t reorder_table_columns_size = step_info.reorder_table_size;
     double k = step_info.norm_factor;
-    size_t n = repeats*radix;
 
     for (size_t i = 0; i < repeats; i++)
     {
@@ -335,11 +327,7 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_first_column_plain_d(co
         for (size_t j = 0; j < radix; j++)
         {
             size_t i1 = i*radix + j;
-            size_t i2 = reorder_table_columns[i1];
-            if (i1 > 0)
-            {
-                i2 = n - i2;
-            }
+            size_t i2 = reorder_table_columns[reorder_table_columns_size - i1 - 1];
 
             x_temp_in[2*j + 0] = data_in[i2*m2 + 0] * k;
             x_temp_in[2*j + 1] = data_in[i2*m2 + 1] * k;
@@ -358,13 +346,13 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_first_column_plain_d(co
 
 // Reordering row- and columnwise, and first IFFT-step combined
 template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
-{
-    size_t n = step_info.repeats * radix;  // number of rows
+{ 
     size_t m2 = step_info.size; // row size in input
     size_t m = 2*m2 - 1;        // row size originally
     size_t repeats = step_info.repeats;
     uint32_t *reorder_table_columns = step_info.reorder_table;
     uint32_t *reorder_table_rows = step_info.reorder_table2;
+    size_t reorder_table_columns_size = step_info.reorder_table_size;
     double norm_factor = step_info.norm_factor;
 
     for (size_t i = 0; i < repeats; i++)
@@ -390,12 +378,13 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_plain_d(const d
             // Copy input data taking reordering and scaling into account
             for (size_t k = 0; k < radix; k++)
             {
-                size_t i2 = reorder_table_columns[i*radix + k];
-
-                // 0->0, 1->n-1, 2->n-2 ...
-                if (i2 > 0 && !conj)
+                size_t i2;
+                if (conj)
                 {
-                    i2 = n - i2;
+                    i2 = reorder_table_columns[i*radix + k];
+                } else
+                {
+                    i2 = reorder_table_columns[reorder_table_columns_size - i*radix - k - 1];
                 }
 
                 double real = data_in[i2*2*m2 + 2*j2 + 0] * norm_factor;

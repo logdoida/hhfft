@@ -119,8 +119,7 @@ void HHFFT_2D_REAL_D::plan_vector(size_t n, InstructionSet instruction_set, bool
 
     // Copy/move data from the 1d plan
     temp_data_size = fft_1d_real.temp_data_size;
-    reorder_table_rows = std::move(fft_1d_real.reorder_table);
-    reorder_table_in_place_rows = std::move(fft_1d_real.reorder_table_in_place);
+    reorder_table_rows = std::move(fft_1d_real.reorder_table);    
     forward_steps = std::move(fft_1d_real.forward_steps);
     inverse_steps = std::move(fft_1d_real.inverse_steps);
     twiddle_factors_rows = std::move(fft_1d_real.twiddle_factors);
@@ -148,6 +147,9 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
     // First calculate the reorder table
     reorder_table_columns = calculate_reorder_table(N_columns);
     reorder_table_rows = calculate_reorder_table(N_rows);
+
+    // Add extra values to the end for ifft reordering
+    append_reorder_table(reorder_table_columns, n/N_columns.back());
 
     // Calculate reorder table for ifft
     reorder_table_ifft_odd_rows = calculate_reorder_table_ifft_odd(reorder_table_rows, N_rows);
@@ -262,7 +264,8 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         hhfft::StepInfoD step;
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::temp_data;
-        step.reorder_table = reorder_table_columns.data();
+        step.reorder_table = reorder_table_columns.data();        
+        step.reorder_table_size = reorder_table_columns.size();
         step.stride = m2;
         step.radix = N_columns[0];
         step.repeats = n / step.radix;
@@ -303,6 +306,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table_columns.data();
+        step.reorder_table_size = reorder_table_columns.size();
         step.reorder_table2 = reorder_table_ifft_odd_rows.data();
         step.radix = N_columns[0];
         step.stride = 1;
@@ -395,8 +399,8 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
     reorder_table_columns = calculate_reorder_table(N_columns);
     reorder_table_rows = calculate_reorder_table(N_rows);
 
-    // Then in-place version of the reorder table
-    reorder_table_in_place_columns = calculate_reorder_table_in_place(reorder_table_columns);
+    // Add extra values to the end for ifft reordering
+    append_reorder_table(reorder_table_columns, n/N_columns.back());
 
     // Calculate reorder table in place "inverted" as input is actually reordered instead of calling ifft
     std::vector<uint32_t> reorder_table_rows_temp(m_complex);
@@ -550,6 +554,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table_columns.data();
+        step.reorder_table_size = reorder_table_columns.size();
         step.stride = m_complex;
         step.size = n;
         step.radix = N_columns[0];
