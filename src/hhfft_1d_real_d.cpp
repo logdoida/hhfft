@@ -95,6 +95,16 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n, InstructionSet instruction_set)
     }    
 }
 
+void HHFFT_1D_REAL_D::set_radix_raders(size_t radix, StepInfoD &step, InstructionSet instruction_set)
+{
+    if (radix > 8)
+    {
+        // Use Rader's algorithm instead
+        raders.push_back(std::unique_ptr<RadersD>(new RadersD(radix, instruction_set)));
+        step.raders = raders.back().get();
+    }
+}
+
 void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
 {
     //throw(std::runtime_error("HHFFT error: odd n fft size not supported!"));
@@ -107,6 +117,21 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
 
     // First calculate the reorder table
     reorder_table = calculate_reorder_table(N);
+
+    // If Raders one level function is possible, do it here
+    if (N.size() == 1)
+    {
+        StepInfoD step_info_fft, step_info_ifft;
+        HHFFT_1D_Real_D_set_1level_raders_function(step_info_fft, true, instruction_set);
+        HHFFT_1D_Real_D_set_1level_raders_function(step_info_ifft, false, instruction_set);
+        step_info_fft.radix = n;
+        step_info_ifft.radix = n;
+        set_radix_raders(n, step_info_fft, instruction_set);
+        set_radix_raders(n, step_info_ifft, instruction_set);
+        forward_steps.push_back(step_info_fft);
+        inverse_steps.push_back(step_info_ifft);
+        return;
+    }
 
     // Calculate reorder table for inverse fft
     reorder_table_ifft_odd = calculate_reorder_table_ifft_odd(reorder_table, N);
@@ -131,6 +156,7 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
     // Put first fft step combined with reordering
     {
         hhfft::StepInfoD step;
+        set_radix_raders(N[0], step, instruction_set);
         step.radix = N[0];
         step.stride = 1;
         step.repeats = n / step.radix;
@@ -147,6 +173,7 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
     {
         hhfft::StepInfoD step;
         hhfft::StepInfoD &step_prev = forward_steps.back();
+        set_radix_raders(N[i], step, instruction_set);
         step.radix = N[i];
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;
@@ -164,6 +191,7 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
     // Put first fft step combined with reordering
     {
         hhfft::StepInfoD step;
+        set_radix_raders(N[0], step, instruction_set);
         step.radix = N[0];
         step.stride = 1;
         step.repeats = (n / step.radix + 1)/2;
@@ -181,6 +209,7 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
     {
         hhfft::StepInfoD step;
         hhfft::StepInfoD &step_prev = inverse_steps.back();
+        set_radix_raders(N[i], step, instruction_set);
         step.radix = N[i];
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = ((2*step_prev.repeats - 1) / step.radix + 1)/2;
@@ -238,6 +267,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
     // Put first fft step combined with reordering
     {
         hhfft::StepInfoD step;
+        set_radix_raders(N[0], step, instruction_set);
         step.radix = N[0];
         step.stride = 1;
         step.repeats = n_complex / step.radix;
@@ -254,6 +284,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
     {
         hhfft::StepInfoD step;
         hhfft::StepInfoD &step_prev = forward_steps.back();
+        set_radix_raders(N[i], step, instruction_set);
         step.radix = N[i];
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;
@@ -296,7 +327,8 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
     // Put first ifft step
     {
         hhfft::StepInfoD step;
-        step.radix = N[0];
+        set_radix_raders(N[0], step, instruction_set);
+        step.radix = N[0];        
         step.stride = 1;
         step.repeats = n_complex / step.radix;
         step.data_type_in = hhfft::StepDataType::data_out;
@@ -311,6 +343,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
     {
         hhfft::StepInfoD step;
         hhfft::StepInfoD &step_prev = inverse_steps.back();
+        set_radix_raders(N[i], step, instruction_set);
         step.radix = N[i];
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;
@@ -325,13 +358,13 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
 
 
 void HHFFT_1D_REAL_D::fft(const double *in, double *out) const
-{
+{    
     // If there is just one step, run it directly
     if (forward_steps.size() == 1)
     {
         forward_steps[0].step_function(in,out,forward_steps[0]);
         return;
-    }
+    }    
 
     // If transform is made in-place, copy input to a temporary variable
     hhfft::AlignedVector<double> temp_data_in;

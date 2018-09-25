@@ -469,11 +469,24 @@ inline __attribute__((always_inline)) ComplexD2S load_D2S(const double *r, const
     return out;
 }
 
-// Read complex numbers [r0 c0 r1 c1] and reorder them to real and complex parts [r0 r1] & [i0 i1]
+// Read complex numbers [r0 i0 r1 i1] and reorder them to real and complex parts [r0 r1] & [i0 i1]
 inline __attribute__((always_inline)) const ComplexD2S load256s_D2S(const double *x)
 {
     __m128d x0 = _mm_loadu_pd(x);
     __m128d x1 = _mm_loadu_pd(x + 2);
+
+    ComplexD2S out;
+    out.real = _mm_unpacklo_pd(x0, x1);
+    out.imag = _mm_unpackhi_pd(x0, x1);
+
+    return out;
+}
+
+// Read complex numbers [r0 i0] and [r1 i1] from memory and reorder them to real and complex parts [r0 r1] & [i0 i1]
+inline __attribute__((always_inline)) const ComplexD2S load_two_128_D2S(const double *a, const double *b)
+{
+    __m128d x0 = _mm_loadu_pd(a);
+    __m128d x1 = _mm_loadu_pd(b);
 
     ComplexD2S out;
     out.real = _mm_unpacklo_pd(x0, x1);
@@ -495,6 +508,13 @@ inline __attribute__((always_inline)) void store_D2S(ComplexD2S val, double *r, 
 {
     _mm_storeu_pd(r, val.real);
     _mm_storeu_pd(i, val.imag);
+}
+
+// Converts two complex numbers from [r0 r1] & [i0 i1] to [r0 i0] [r1 i1]
+inline __attribute__((always_inline)) void divide_two_128_D2S(ComplexD2S val, ComplexD &a, ComplexD &b)
+{
+    a = _mm_unpacklo_pd(val.real, val.imag);
+    b = _mm_unpackhi_pd(val.real, val.imag);
 }
 
 // Multiplies four complex numbers.

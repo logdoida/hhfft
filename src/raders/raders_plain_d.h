@@ -67,9 +67,9 @@ template<hhfft::RadixType radix_type> inline void init_coeff(double *x, const hh
 
 // Write one complex number to input when performing fft
 template<hhfft::RadixType radix_type> inline void set_value(double *data_in, double *data_raders, size_t index, const hhfft::RadersD &raders, double re, double im)
-{
+{    
     if (radix_type == hhfft::RadixType::Raders)
-    {
+    {        
         // Sum up the values and store it to extra space in the end
         size_t n  = raders.n;
         data_raders[2*n + 0] += re;
@@ -90,7 +90,7 @@ template<hhfft::RadixType radix_type> inline void set_value(double *data_in, dou
 template<hhfft::RadixType radix_type> inline void set_value_twiddle(double *data_in, double *data_raders, double *twiddle_factors, size_t index, const hhfft::RadersD &raders, double re, double im, double w_re, double w_im)
 {    
     if (radix_type == hhfft::RadixType::Raders)
-    {
+    {        
         // Multiply with twiddle factors
         double re2 = w_re*re - w_im*im;
         double im2 = w_im*re + w_re*im;
@@ -158,6 +158,21 @@ template<hhfft::RadixType radix_type> inline void get_value(double *data_out, do
     {
         re = data_out[2*index + 0];
         im = data_out[2*index + 1];
+    }
+}
+
+// Read one complex number to input. Used for real odd
+template<hhfft::RadixType radix_type> inline void get_value_real_odd_forward(double *data_out, double *data_raders, size_t index, const hhfft::RadersD &raders, double &re, double &im)
+{
+    size_t radix = get_actual_radix<radix_type>(raders);
+
+    if ((index & 1) == 0)
+    {
+        get_value<radix_type>(data_out, data_raders, index/2, raders, re, im);
+    } else
+    {
+        get_value<radix_type>(data_out, data_raders, radix - index/2 - 1, raders, re, im);
+        im = -im; // conjugate
     }
 }
 

@@ -24,6 +24,7 @@
 #include <cmath>
 
 #include "../common/hhfft_1d_complex_plain_common_d.h"
+#include "../raders/raders_plain_d.h"
 
 using namespace hhfft;
 
@@ -139,67 +140,86 @@ void fft_1d_complex_to_complex_packed_ifft_plain_d(const double *data_in, double
 }
 
 // This function is used on the first level of odd real fft
-template<size_t radix> void fft_1d_real_first_level_forward_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_1d_real_first_level_forward_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t repeats = step_info.repeats;
     uint32_t *reorder_table = step_info.reorder_table;
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
 
-    double x_temp_in[2*radix];
-    double x_temp_out[2*radix];
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders = allocate_raders<radix_type>(raders);
+
+    double x_temp_in[2*radix_type];
+    double x_temp_out[2*radix_type];
     bool dir_out = true;
     for (size_t i = 0; i < repeats; i++)
     {
+        // Initialize raders data with zeros
+        init_coeff<radix_type>(data_raders, raders);
+
         // Copy input data taking reordering into account
         for (size_t j = 0; j < radix; j++)
         {
             size_t ind = reorder_table[i*radix + j];
-            x_temp_in[2*j + 0] = data_in[ind];
-            x_temp_in[2*j + 1] = 0;
+            set_value<radix_type>(x_temp_in, data_raders, j, raders, data_in[ind], 0);
         }
 
         // Multiply with coefficients
-        multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+        multiply_coeff_forward<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // Save only about half of the output
         // First/ last one is real
         if (dir_out) // direction normal
-        {
-            data_out[i*radix + 0] = x_temp_out[0];
+        {            
+            double dummy;
+            get_value<radix_type>(x_temp_out, data_raders, 0, raders, data_out[i*radix + 0], dummy);
 
             for (size_t j = 1; j < radix/2 + 1; j++)
-            {
-                data_out[i*radix + 2*j - 1] = x_temp_out[2*j + 0];
-                data_out[i*radix + 2*j + 0] = x_temp_out[2*j + 1];
+            {                
+                get_value<radix_type>(x_temp_out, data_raders, j, raders, data_out[i*radix + 2*j - 1], data_out[i*radix + 2*j + 0]);
             }
         } else // direction inverted
-        {
-            data_out[i*radix + radix - 1] = x_temp_out[0];
+        {                        
+            double dummy;
+            get_value<radix_type>(x_temp_out, data_raders, 0, raders, data_out[i*radix + radix - 1], dummy);
 
             for (size_t j = 1; j < radix/2 + 1; j++)
             {
-                data_out[i*radix + radix - 2*j - 1] = x_temp_out[2*j + 0];
-                data_out[i*radix + radix - 2*j + 0] = x_temp_out[2*j + 1];
+                get_value<radix_type>(x_temp_out, data_raders, j, raders, data_out[i*radix + radix - 2*j - 1], data_out[i*radix + radix - 2*j + 0]);
             }
         }
         dir_out = !dir_out;
     }
+
+    // Free temporary memory
+    free_raders<radix_type>(raders, data_raders);
 }
 
 // This function is used on the first level of odd real ifft
-template<size_t radix> void fft_1d_real_first_level_inverse_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_1d_real_first_level_inverse_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t repeats = step_info.repeats;
     uint32_t *reorder_table = step_info.reorder_table;
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
     size_t n = radix * (2*step_info.repeats - 1);
     double norm_factor = step_info.norm_factor;
 
-    double x_temp_in[2*radix];
-    double x_temp_out[2*radix];
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders = allocate_raders<radix_type>(raders);
+
+    double x_temp_in[2*radix_type];
+    double x_temp_out[2*radix_type];
 
     // In the first repeat input is r, (r+i), (r+i) ... and output is r,r,r,r,r...
     {
-        x_temp_in[0] = norm_factor*data_in[0];
-        x_temp_in[1] = 0;
+        // Initialize raders data with zeros
+        init_coeff<radix_type>(data_raders, raders);
+
+        double real = norm_factor*data_in[0];
+        double imag = 0;
+        set_value<radix_type>(x_temp_in, data_raders, 0, raders, real, imag);
 
         // Read other inputs and conjugate them
         for (size_t j = 1; j <= radix/2; j++)
@@ -207,25 +227,28 @@ template<size_t radix> void fft_1d_real_first_level_inverse_plain_d(const double
             size_t ind = reorder_table[j];
             double real = norm_factor*data_in[2*ind + 0];
             double imag = norm_factor*data_in[2*ind + 1];
-            x_temp_in[2*j + 0] = real;
-            x_temp_in[2*j + 1] = -imag;
-            x_temp_in[2*(radix-j) + 0] = real;
-            x_temp_in[2*(radix-j) + 1] = imag;
+
+            set_value<radix_type>(x_temp_in, data_raders, j, raders, real, -imag);
+            set_value<radix_type>(x_temp_in, data_raders, radix-j, raders, real, imag);
         }
 
         // Multiply with coefficients
-        multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+        multiply_coeff_forward<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // Write only real parts of the data
         for (size_t j = 0; j < radix; j++)
         {
-            data_out[j] = x_temp_out[2*j + 0];
+            double imag; // dummy parameter
+            get_value<radix_type>(x_temp_out, data_raders, j, raders, data_out[j], imag);
         }
     }
 
     // Other repeats are more usual, data ordering changes from r,i,r,i,r,i... to r,r,r...i,i,i...
     for (size_t i = 1; i < repeats; i++)
     {
+        // Initialize raders data with zeros
+        init_coeff<radix_type>(data_raders, raders);
+
         // Copy input data taking reordering into account
         for (size_t j = 0; j < radix; j++)
         {
@@ -233,33 +256,37 @@ template<size_t radix> void fft_1d_real_first_level_inverse_plain_d(const double
             //std::cout << "i = " << i << ", j = " << j << ", ind = " << ind << std::endl;
             if (ind <= n/2)
             {
-                x_temp_in[2*j + 0] = norm_factor*data_in[2*ind + 0];
-                x_temp_in[2*j + 1] = norm_factor*data_in[2*ind + 1];
+                double real = norm_factor*data_in[2*ind + 0];
+                double imag = norm_factor*data_in[2*ind + 1];
+                set_value<radix_type>(x_temp_in, data_raders, j, raders, real, imag);
             } else
             {
                 // If input is from the lower part, it needs to be conjugated
                 ind = n - ind;
-                x_temp_in[2*j + 0] = norm_factor*data_in[2*ind + 0];
-                x_temp_in[2*j + 1] = -norm_factor*data_in[2*ind + 1];
+                double real = norm_factor*data_in[2*ind + 0];
+                double imag = -norm_factor*data_in[2*ind + 1];
+                set_value<radix_type>(x_temp_in, data_raders, j, raders, real, imag);
             }
         }
 
         // Multiply with coefficients
-        multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+        multiply_coeff_forward<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // Store real and imag parts separately
         for (size_t j = 0; j < radix; j++)
         {
-            data_out[2*i*radix - radix + j] = x_temp_out[2*j + 0];
-            data_out[2*i*radix + j] = x_temp_out[2*j + 1];
+            get_value<radix_type>(x_temp_out, data_raders, j, raders, data_out[2*i*radix - radix + j], data_out[2*i*radix + j]);
         }
     }
+
+    // Free temporary memory
+    free_raders<radix_type>(raders, data_raders);
 }
 
 // This function is used on first level of the odd real 2d ifft
 template<size_t radix> void fft_2d_real_odd_rows_first_level_inverse_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
-    size_t repeats = step_info.repeats;
+    size_t repeats = step_info.repeats;    
     size_t m = radix * (2*step_info.repeats - 1);
     size_t n = step_info.size;
 
@@ -323,43 +350,56 @@ inline size_t index_dir_stride_odd(size_t dir_in, size_t stride, size_t k)
     return dir_in*(4*k - stride) + stride - 2*k - 1;
 }
 
-template<size_t radix> void fft_1d_real_one_level_forward_plain_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride, bool dir_out)
+template<RadixType radix_type> void fft_1d_real_one_level_forward_plain_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, double *data_raders, const hhfft::RadersD &raders, size_t stride, bool dir_out)
 {
+    size_t radix = get_actual_radix<radix_type>(raders);
+
     // The first/last value in each stride is real
     {
-        double x0_temp_in[2*radix];
-        double x0_temp_out[2*radix];
+        // Initialize raders data with zeros
+        init_coeff<radix_type>(data_raders, raders);
+
+        double x0_temp_in[2*radix_type];
+        double x0_temp_out[2*radix_type];
 
         bool dir_in = dir_out;
         for (size_t j = 0; j < radix; j++)
         {
+            double real;
             if (dir_in)
             {
-                x0_temp_in[2*j + 0] = data_in[j*stride + 0];
+                real = data_in[j*stride + 0];
             } else
             {
-                x0_temp_in[2*j + 0] = data_in[j*stride + stride - 1];
+                real = data_in[j*stride + stride - 1];
             }
-            x0_temp_in[2*j + 1] = 0;
+            double imag = 0;
+            set_value<radix_type>(x0_temp_in, data_raders, j, raders, real, imag);
 
             dir_in = !dir_in;
         }
 
-        multiply_coeff<radix,true>(x0_temp_in, x0_temp_out);
+        // Multiply with coefficients
+        multiply_coeff_forward<radix_type>(x0_temp_in, x0_temp_out, data_raders, raders);
+
+        double imag; // dummy
+        if (dir_out)
+        {
+            get_value<radix_type>(x0_temp_out, data_raders, 0, raders, data_out[0], imag);
+        } else
+        {
+            get_value<radix_type>(x0_temp_out, data_raders, 0, raders, data_out[radix*stride - 1], imag);
+        }
 
         // only about half is written
         for (size_t j = 1; j < (radix+1)/2; j++)
         {
             if (dir_out)
             {
-                data_out[0] = x0_temp_out[0];
-                data_out[2*j*stride - 1] = x0_temp_out[2*j + 0];
-                data_out[2*j*stride + 0] = x0_temp_out[2*j + 1];
+                get_value<radix_type>(x0_temp_out, data_raders, j, raders, data_out[2*j*stride - 1], data_out[2*j*stride + 0]);
             } else
             {
-                data_out[radix*stride - 1] = x0_temp_out[0];
-                data_out[2*j*stride - stride - 1] = x0_temp_out[2*((radix+1)/2 - j) + 0];
-                data_out[2*j*stride - stride + 0] = x0_temp_out[2*((radix+1)/2 - j) + 1];
+                get_value<radix_type>(x0_temp_out, data_raders, (radix+1)/2 - j, raders, data_out[2*j*stride - stride - 1], data_out[2*j*stride - stride + 0]);
             }
         }      
     }
@@ -367,27 +407,27 @@ template<size_t radix> void fft_1d_real_one_level_forward_plain_d_internal(const
     // Rest of the values represent complex numbers
     for (size_t k = 1; k < (stride+1)/2; k++)
     {
-        double x_temp_in[2*radix];
-        double x_temp_out[2*radix];
-        double twiddle_temp[2*radix];
+        // Initialize raders data with zeros
+        init_coeff<radix_type>(data_raders, raders);
+
+        double x_temp_in[2*radix_type];
+        double x_temp_out[2*radix_type];
+        double twiddle_temp[2*radix_type];
         size_t dir_in = dir_out;
 
         // Copy the values and twiddle factors
         for (size_t j = 0; j < radix; j++)
         {
             size_t index2 = index_dir_stride_odd(dir_in, stride, k);
-            x_temp_in[2*j + 0]  = data_in[j*stride + index2 + 0];
-            x_temp_in[2*j + 1]  = data_in[j*stride + index2 + 1];
-
-            twiddle_temp[2*j + 0] = twiddle_factors[2*k + 2*j*stride + 0];
-            twiddle_temp[2*j + 1] = twiddle_factors[2*k + 2*j*stride + 1];
-
+            set_value_twiddle<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders,
+                                          data_in[j*stride + index2 + 0], data_in[j*stride + index2 + 1],
+                                          twiddle_factors[2*k + 2*j*stride + 0], twiddle_factors[2*k + 2*j*stride + 1]);
             dir_in = !dir_in;
         }
 
-        multiply_twiddle<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
-
-        multiply_coeff_real_odd_forward<radix>(x_temp_in, x_temp_out);
+        // Multiply with coefficients
+        multiply_twiddle<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+        multiply_coeff_forward<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // save output taking the directions into account
         dir_in = dir_out;
@@ -397,13 +437,11 @@ template<size_t radix> void fft_1d_real_one_level_forward_plain_d_internal(const
 
             // reverse the output order if required
             if (dir_out)
-            {
-                data_out[j*stride + index2 + 0] = x_temp_out[2*j + 0];
-                data_out[j*stride + index2 + 1] = x_temp_out[2*j + 1];
+            {                
+                get_value_real_odd_forward<radix_type>(x_temp_out, data_raders, j, raders, data_out[j*stride + index2 + 0], data_out[j*stride + index2 + 1]);
             } else
             {
-                data_out[j*stride + index2 + 0] = x_temp_out[2*(radix - j - 1) + 0];
-                data_out[j*stride + index2 + 1] = x_temp_out[2*(radix - j - 1) + 1];
+                get_value_real_odd_forward<radix_type>(x_temp_out, data_raders, radix - j - 1, raders, data_out[j*stride + index2 + 0], data_out[j*stride + index2 + 1]);
             }
 
             dir_in = !dir_in;
@@ -412,19 +450,27 @@ template<size_t radix> void fft_1d_real_one_level_forward_plain_d_internal(const
 }
 
 // This function is used on rest of the odd real fft
-template<size_t radix> void fft_1d_real_one_level_forward_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_1d_real_one_level_forward_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t stride = step_info.stride;
     size_t repeats = step_info.repeats;
     double *twiddle_factors = step_info.twiddle_factors;
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
+
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders = allocate_raders<radix_type>(raders);
 
     bool dir_out = true;
     for (size_t i = 0; i < repeats; i++)
     {
-        fft_1d_real_one_level_forward_plain_d_internal<radix>(data_in + i*radix*stride, data_out + i*radix*stride, twiddle_factors, stride, dir_out);
+        fft_1d_real_one_level_forward_plain_d_internal<radix_type>(data_in + i*radix*stride, data_out + i*radix*stride, twiddle_factors, data_raders, raders, stride, dir_out);
 
         dir_out = !dir_out;
     }
+
+    // Free temporary memory
+    free_raders<radix_type>(raders, data_raders);
 }
 
 // This function is used on rest of the odd real 2d fft
@@ -441,8 +487,11 @@ template<size_t radix> void fft_2d_real_odd_rows_forward_plain_d(const double *d
         bool dir_out = true;
         for (size_t i = 0; i < repeats; i++)
         {
+            // TODO convert to use Rader's
+            /*
             fft_1d_real_one_level_forward_plain_d_internal<radix>(data_in + j*m + i*radix*stride + 1, data_out + j*m + i*radix*stride + 1,
                                                                   twiddle_factors, stride, dir_out);
+                                                                  */
 
             dir_out = !dir_out;
         }
@@ -450,74 +499,87 @@ template<size_t radix> void fft_2d_real_odd_rows_forward_plain_d(const double *d
 }
 
 // This function is used on on rest of the odd real ifft
-template<size_t radix> void fft_1d_real_one_level_inverse_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_1d_real_one_level_inverse_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {    
     size_t repeats = step_info.repeats;
     size_t stride = step_info.stride;
     double *twiddle_factors = step_info.twiddle_factors;
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
 
-    double x_temp_in[2*radix];
-    double x_temp_out[2*radix];
-    double twiddle_temp[2*radix];
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders = allocate_raders<radix_type>(raders);
+
+    double x_temp_in[2*radix_type];
+    double x_temp_out[2*radix_type];
+    double twiddle_temp[2*radix_type];
 
     // In the first repeat input is r,r,r,... (r+i), (r+i) ... and output is r,r,r,r,r...
     for (size_t k = 0; k < stride; k++)
     {
-        x_temp_in[0] = data_in[k];
-        x_temp_in[1] = 0;
+        // Initialize raders data with zeros
+        init_coeff<radix_type>(data_raders, raders);
 
-        // Read other inputs, only about half of them is needed
+        // Set first real value
+        set_value_twiddle<radix_type>(x_temp_in, data_raders, twiddle_temp, 0, raders, data_in[k], 0, 1, 0);
+
+        // Read other inputs, only about half of them are needed, conjugate other half
         for (size_t j = 1; j <= radix/2; j++)
         {
-            x_temp_in[2*j + 0] = data_in[2*j*stride - stride + k];
-            x_temp_in[2*j + 1] = data_in[2*j*stride + k];
+            double x_re = data_in[2*j*stride - stride + k];
+            double x_im = data_in[2*j*stride + k];
+            double w_re = twiddle_factors[2*j*stride + 2*k + 0];
+            double w_im = twiddle_factors[2*j*stride + 2*k + 1];
 
-            twiddle_temp[2*j + 0] = twiddle_factors[2*j*stride + 2*k + 0];
-            twiddle_temp[2*j + 1] = twiddle_factors[2*j*stride + 2*k + 1];
+            set_value_twiddle<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x_re, x_im, w_re, w_im);
+            set_value_twiddle<radix_type>(x_temp_in, data_raders, twiddle_temp, radix - j, raders, x_re, -x_im, w_re, -w_im);
         }
 
-        // Multiply with twiddle factors
-        multiply_conj_twiddle_odd<radix>(x_temp_in, x_temp_in, twiddle_temp);
-
-        // Multiply with coefficients
-        multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+        // Multiply with twiddle factors and coefficients
+        multiply_twiddle<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+        multiply_coeff_forward<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // Write only real parts of the data
         for (size_t j = 0; j < radix; j++)
         {
-            data_out[j*stride + k] = x_temp_out[2*j + 0];
+            double imag; // dummy parameter
+            get_value<radix_type>(x_temp_out, data_raders, j, raders, data_out[j*stride + k], imag);
         }        
     }
 
     // Other repeats are more usual, however both inputs and outputs have real and imag parts separated
     for (size_t i = 1; i < repeats; i++)
-    {
+    {                
         for (size_t k = 0; k < stride; k++)
         {
+            // Initialize raders data with zeros
+            init_coeff<radix_type>(data_raders, raders);
+
             // Read real and imag parts separately
             for (size_t j = 0; j < radix; j++)
             {
-                x_temp_in[2*j + 0] = data_in[2*i*stride*radix + 2*j*stride - stride*radix + k];
-                x_temp_in[2*j + 1] = data_in[2*i*stride*radix + 2*j*stride - stride*radix + stride + k];
+                double x_re = data_in[2*i*stride*radix + 2*j*stride - stride*radix + k];
+                double x_im = data_in[2*i*stride*radix + 2*j*stride - stride*radix + stride + k];
+                double w_re = twiddle_factors[2*j*stride + 2*k + 0];
+                double w_im = twiddle_factors[2*j*stride + 2*k + 1];
 
-                twiddle_temp[2*j + 0] = twiddle_factors[2*j*stride + 2*k + 0];
-                twiddle_temp[2*j + 1] = twiddle_factors[2*j*stride + 2*k + 1];
+                set_value_twiddle<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x_re, x_im, w_re, w_im);
             }
 
-            // Multiply with twiddle factors
-            multiply_twiddle<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
-
-            // Multiply with coefficients
-            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+            // Multiply with twiddle factors and coefficients
+            multiply_twiddle<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_coeff_forward<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // Store real and imag parts separately
             for (size_t j = 0; j < radix; j++)
             {
-                data_out[2*i*stride*radix + j*stride - stride*radix + k] = x_temp_out[2*j + 0];
-                data_out[2*i*stride*radix + j*stride + k] = x_temp_out[2*j + 1];
+                get_value<radix_type>(x_temp_out, data_raders, j, raders, data_out[2*i*stride*radix + j*stride - stride*radix + k], data_out[2*i*stride*radix + j*stride + k]);
             }
         }
     }    
+
+    // Free temporary memory
+    free_raders<radix_type>(raders, data_raders);
 }
 
 // This is used in 2d real for odd row sizes
@@ -530,7 +592,10 @@ template<size_t radix> void fft_2d_real_odd_rows_inverse_plain_d(const double *d
     // Process all rows separately
     for (size_t j = 0; j < n; j++)
     {
+        // TODO convert to use Rader's algorithm
+        /*
         fft_1d_real_one_level_inverse_plain_d<radix>(data_in + j*m, data_out + j*m, step_info);
+        */
     }
 }
 
@@ -707,25 +772,85 @@ template<size_t n, bool forward> void fft_1d_real_1level_plain_d(const double *d
     }
 }
 
+// For problems that need only one level Rader's
+template<bool forward> void fft_1d_real_1level_raders_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+{
+    size_t n = step_info.radix;
+    double k = 1.0/n;
+
+    // Allocate memory for Rader's algorithm
+    const hhfft::RadersD &raders = *step_info.raders;
+    double *data_raders = allocate_raders<Raders>(raders);
+
+    // Initialize raders data with zeros
+    init_coeff<Raders>(data_raders, raders);
+
+    if (forward)
+    {
+        // FFT
+
+        for (size_t j = 0; j < n; j++)
+        {
+            set_value<Raders>(nullptr, data_raders, j, raders, data_in[j], 0);
+        }
+
+        multiply_coeff_forward<Raders>(nullptr, nullptr, data_raders, raders);
+
+        for (size_t j = 0; j < (n+1)/2; j++)
+        {
+            get_value<Raders>(nullptr, data_raders, j, raders, data_out[2*j + 0], data_out[2*j + 1]);
+        }
+    } else
+    {
+        // IFFT
+
+        set_value_inverse<Raders>(nullptr, data_raders, 0, raders, data_in[0], 0);
+        for (size_t j = 1; j < (n+1)/2; j++)
+        {
+            double re = data_in[2*j + 0];
+            double im = data_in[2*j + 1];
+            set_value_inverse<Raders>(nullptr, data_raders, j, raders, re, im);
+            set_value_inverse<Raders>(nullptr, data_raders, n-j, raders, re, -im);
+        }
+
+        multiply_coeff_forward<Raders>(nullptr, nullptr, data_raders, raders);
+
+        for (size_t j = 0; j < n; j++)
+        {
+            double re, im;
+            get_value<Raders>(nullptr, data_raders, j, raders, re, im);
+            data_out[j] = k*re;
+        }
+    }
+
+    // Free temporary memory
+    free_raders<Raders>(raders, data_raders);
+}
+
+
 // Instantiations of the functions defined in this class
 template void fft_1d_complex_to_complex_packed_plain_d<false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_to_complex_packed_plain_d<true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_1d_real_first_level_forward_plain_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_first_level_forward_plain_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_first_level_forward_plain_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_forward_plain_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_forward_plain_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_forward_plain_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_forward_plain_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_1d_real_first_level_inverse_plain_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_first_level_inverse_plain_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_first_level_inverse_plain_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_inverse_plain_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_inverse_plain_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_inverse_plain_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_inverse_plain_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_1d_real_one_level_forward_plain_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_one_level_forward_plain_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_one_level_forward_plain_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_forward_plain_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_forward_plain_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_forward_plain_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_forward_plain_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_1d_real_one_level_inverse_plain_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_one_level_inverse_plain_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_one_level_inverse_plain_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_inverse_plain_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_inverse_plain_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_inverse_plain_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_inverse_plain_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template void fft_2d_real_odd_rows_forward_plain_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_odd_rows_forward_plain_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
@@ -763,3 +888,6 @@ template void fft_1d_real_1level_plain_d<10, true>(const double *data_in, double
 template void fft_1d_real_1level_plain_d<12, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_plain_d<14, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_plain_d<16, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+
+template void fft_1d_real_1level_raders_plain_d<false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_raders_plain_d<true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);

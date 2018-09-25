@@ -24,6 +24,7 @@
 #include <cmath>
 
 #include "../common/hhfft_1d_complex_avx_common_d.h"
+#include "../raders/raders_avx_d.h"
 
 using namespace hhfft;
 
@@ -859,6 +860,62 @@ template<size_t n, bool forward> void fft_1d_real_1level_avx_d(const double *dat
     }
 }
 
+// For problems that need only one level Rader's
+template<bool forward> void fft_1d_real_1level_raders_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+{
+    size_t n = step_info.radix;
+    double k = 1.0/n;
+
+    // Allocate memory for Rader's algorithm
+    const hhfft::RadersD &raders = *step_info.raders;
+    double *data_raders = allocate_raders_D<Raders>(raders);
+
+    // Initialize raders data with zeros
+    init_coeff_D<Raders>(data_raders, raders);
+
+    if (forward)
+    {
+        // FFT
+
+        for (size_t j = 0; j < n; j++)
+        {
+            ComplexD x = load_real_D(data_in + j);
+            set_value_D<Raders>(nullptr, data_raders, j, raders, x);
+        }
+
+        multiply_coeff_forward_D<Raders>(nullptr, nullptr, data_raders, raders);
+
+        for (size_t j = 0; j < (n+1)/2; j++)
+        {
+            ComplexD x = get_value_D<Raders>(nullptr, data_raders, j, raders);
+            store_D(x, data_out + 2*j);
+        }
+    } else
+    {
+        // IFFT
+        ComplexD x = load_real_D(data_in + 0);
+        set_value_inverse_D<Raders>(nullptr, data_raders, 0, raders, x);
+
+        for (size_t j = 1; j < (n+1)/2; j++)
+        {
+            ComplexD x = load_D(data_in + 2*j);
+            set_value_inverse_D<Raders>(nullptr, data_raders, j, raders, x);
+            set_value_inverse_D<Raders>(nullptr, data_raders, n-j, raders, conj_D(x));
+        }
+
+        multiply_coeff_forward_D<Raders>(nullptr, nullptr, data_raders, raders);
+
+        for (size_t j = 0; j < n; j++)
+        {
+            ComplexD x = k*get_value_D<Raders>(nullptr, data_raders, j, raders);
+            store_real_D(x, data_out + j);
+        }
+
+    }
+
+    // Free temporary memory
+    free_raders_D<Raders>(raders, data_raders);
+}
 
 // Instantiations of the functions defined in this class
 template void fft_1d_complex_to_complex_packed_avx_d<false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
@@ -916,3 +973,6 @@ template void fft_2d_real_odd_rows_first_level_inverse_avx_d<7>(const double *da
 template void fft_2d_real_odd_rows_inverse_avx_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_odd_rows_inverse_avx_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_odd_rows_inverse_avx_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+
+template void fft_1d_real_1level_raders_avx_d<false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_1level_raders_avx_d<true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);

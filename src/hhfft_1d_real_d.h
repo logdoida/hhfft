@@ -23,9 +23,12 @@
 #include "architecture.h"
 #include "step_info.h"
 #include "aligned_arrays.h"
+#include "raders/raders_d.h"
 
 #include <vector>
 #include <array>
+#include <memory>
+
 
 namespace hhfft
 {
@@ -63,7 +66,8 @@ public:
 private:
 
     void plan_even(InstructionSet instruction_set);
-    void plan_odd(InstructionSet instruction_set);
+    void plan_odd(InstructionSet instruction_set);    
+    void set_radix_raders(size_t radix, StepInfoD &step, InstructionSet instruction_set);
 
     // Dimension of the vector (Number of complex numbers)
     size_t n;
@@ -86,6 +90,9 @@ private:
     // The actual fft plan is a sequence of individual steps
     std::vector<StepInfoD> forward_steps;
     std::vector<StepInfoD> inverse_steps;
+
+    // On some levels Rader's algorithm might be needed
+    std::vector<std::unique_ptr<RadersD>> raders;
 
     // This is a pointer to a function that performs the convolution
     void (*convolution_function)(const double *, const double *, double *, size_t n);
