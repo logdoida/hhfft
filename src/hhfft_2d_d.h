@@ -61,6 +61,8 @@ public:
 
 private:
 
+    void set_radix_raders(size_t radix, StepInfoD &step, InstructionSet instruction_set);
+
     // Used for cases when n=1 or m=1
     void plan_vector(size_t n, InstructionSet instruction_set);
 

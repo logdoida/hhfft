@@ -26,33 +26,33 @@
 using namespace hhfft;
 
 // Actual implementations are in different .cpp-files
-template<size_t radix>
+template<RadixType radix_type>
     void fft_2d_complex_column_twiddle_dit_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, SizeType size_type>
+template<RadixType radix_type, SizeType size_type>
     void fft_2d_complex_column_twiddle_dit_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, SizeType size_type>
+template<RadixType radix_type, SizeType size_type>
     void fft_2d_complex_column_twiddle_dit_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, SizeType size_type>
+template<RadixType radix_type, SizeType size_type>
     void fft_2d_complex_column_twiddle_dit_avx512_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 
 // Reorder both rows and columns and do FFT
-template<size_t radix, bool forward>
+template<RadixType radix_type, bool forward>
 void fft_2d_complex_reorder2_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, bool forward>
+template<RadixType radix_type, bool forward>
 void fft_2d_complex_reorder2_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template<size_t radix, bool forward>
+template<RadixType radix_type, bool forward>
 void fft_2d_complex_reorder2_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 
 //////////////////////// column-wise ////////////////////////////////////
 
-template<size_t radix, SizeType size_type, bool forward> void set_instruction_set_columns_2d_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+template<RadixType radix_type, SizeType size_type, bool forward> void set_instruction_set_columns_2d_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
 
 #ifdef HHFFT_COMPILED_WITH_AVX512F
@@ -66,10 +66,10 @@ template<size_t radix, SizeType size_type, bool forward> void set_instruction_se
     if (instruction_set == hhfft::InstructionSet::avx)
     {
         if (step_info.reorder_table == nullptr && step_info.reorder_table2 == nullptr && step_info.twiddle_factors != nullptr)
-            step_info.step_function = fft_2d_complex_column_twiddle_dit_avx_d<radix, size_type>;
+            step_info.step_function = fft_2d_complex_column_twiddle_dit_avx_d<radix_type, size_type>;
         if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr && step_info.twiddle_factors == nullptr)
         {            
-            step_info.step_function = fft_2d_complex_reorder2_avx_d<radix, forward>;
+            step_info.step_function = fft_2d_complex_reorder2_avx_d<radix_type, forward>;
         }
     }
 #endif
@@ -77,37 +77,37 @@ template<size_t radix, SizeType size_type, bool forward> void set_instruction_se
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
         if (step_info.reorder_table == nullptr && step_info.reorder_table2 == nullptr && step_info.twiddle_factors != nullptr)
-            step_info.step_function = fft_2d_complex_column_twiddle_dit_sse2_d<radix, size_type>;
+            step_info.step_function = fft_2d_complex_column_twiddle_dit_sse2_d<radix_type, size_type>;
         if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr && step_info.twiddle_factors == nullptr)
         {            
-            step_info.step_function = fft_2d_complex_reorder2_sse2_d<radix, forward>;
+            step_info.step_function = fft_2d_complex_reorder2_sse2_d<radix_type, forward>;
         }
-    }
+    }  
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
         if (step_info.reorder_table == nullptr && step_info.reorder_table2 == nullptr && step_info.twiddle_factors != nullptr)
-            step_info.step_function = fft_2d_complex_column_twiddle_dit_plain_d<radix>;
+            step_info.step_function = fft_2d_complex_column_twiddle_dit_plain_d<radix_type>;
         if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr && step_info.twiddle_factors == nullptr)
         {            
-            step_info.step_function = fft_2d_complex_reorder2_plain_d<radix, forward>;
+            step_info.step_function = fft_2d_complex_reorder2_plain_d<radix_type, forward>;
         }
     }
 }
 
 // These functions set different template parameters one at time
-template<size_t radix, SizeType size_type> void set_forward_2d_columns_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+template<RadixType radix_type, SizeType size_type> void set_forward_2d_columns_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
     if (step_info.forward)
     {
-        set_instruction_set_columns_2d_d<radix, size_type, true>(step_info, instruction_set);
+        set_instruction_set_columns_2d_d<radix_type, size_type, true>(step_info, instruction_set);
     } else
     {
-        set_instruction_set_columns_2d_d<radix, size_type, false>(step_info, instruction_set);
+        set_instruction_set_columns_2d_d<radix_type, size_type, false>(step_info, instruction_set);
     }
 }
 
-template<size_t radix> void set_stride_type_2d_columns_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+template<RadixType radix_type> void set_stride_type_2d_columns_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
     // Knowing something about the row length at compile time can help to optimize some cases
     // NOTE for row-wise the stride is used instead!
@@ -116,10 +116,10 @@ template<size_t radix> void set_stride_type_2d_columns_d(StepInfoD &step_info, h
     // Only stride = 1 and N are currently used
     if (n_size == 1)
     {
-        set_forward_2d_columns_d<radix, SizeType::Size1>(step_info, instruction_set);
+        set_forward_2d_columns_d<radix_type, SizeType::Size1>(step_info, instruction_set);
     } else
     {
-        set_forward_2d_columns_d<radix, SizeType::SizeN>(step_info, instruction_set);
+        set_forward_2d_columns_d<radix_type, SizeType::SizeN>(step_info, instruction_set);
     }
 
     /*
@@ -149,27 +149,30 @@ void set_radix_2d_colums_d(StepInfoD &step_info, hhfft::InstructionSet instructi
 {
     size_t radix = step_info.radix;
 
-    if (radix == 2)
+    if (radix > 8)
     {
-        set_stride_type_2d_columns_d<2>(step_info, instruction_set);
-    } if (radix == 3)
+        set_stride_type_2d_columns_d<Raders>(step_info, instruction_set);
+    } else if (radix == 2)
     {
-        set_stride_type_2d_columns_d<3>(step_info, instruction_set);
-    } if (radix == 4)
+        set_stride_type_2d_columns_d<Radix2>(step_info, instruction_set);
+    } else if (radix == 3)
     {
-        set_stride_type_2d_columns_d<4>(step_info, instruction_set);
-    } if (radix == 5)
+        set_stride_type_2d_columns_d<Radix3>(step_info, instruction_set);
+    } else if (radix == 4)
     {
-        set_stride_type_2d_columns_d<5>(step_info, instruction_set);
-    } if (radix == 6)
+        set_stride_type_2d_columns_d<Radix4>(step_info, instruction_set);
+    } else if (radix == 5)
     {
-        set_stride_type_2d_columns_d<6>(step_info, instruction_set);
-    } if (radix == 7)
+        set_stride_type_2d_columns_d<Radix5>(step_info, instruction_set);
+    } else if (radix == 6)
     {
-        set_stride_type_2d_columns_d<7>(step_info, instruction_set);
-    } if (radix == 8)
+        set_stride_type_2d_columns_d<Radix6>(step_info, instruction_set);
+    } else if (radix == 7)
     {
-       set_stride_type_2d_columns_d<8>(step_info, instruction_set);
+        set_stride_type_2d_columns_d<Radix7>(step_info, instruction_set);
+    } else if (radix == 8)
+    {
+       set_stride_type_2d_columns_d<Radix8>(step_info, instruction_set);
     }
 }
 
@@ -203,17 +206,17 @@ void hhfft::HHFFT_2D_Complex_D_set_function_columns(StepInfoD &step_info, hhfft:
 
 
 // Reorder both rows and columns and do FFT on rows
-template<size_t radix>
+template<RadixType radix_type>
 void fft_2d_complex_reorder2_rows_forward_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template<size_t radix>
+template<RadixType radix_type>
 void fft_2d_complex_reorder2_rows_forward_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template<size_t radix>
+template<RadixType radix_type>
 void fft_2d_complex_reorder2_rows_forward_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 
-template<size_t radix> void set_instruction_set_rows_2d_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+template<RadixType radix_type> void set_instruction_set_rows_2d_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
 
 #ifdef HHFFT_COMPILED_WITH_AVX512F
@@ -228,7 +231,7 @@ template<size_t radix> void set_instruction_set_rows_2d_d(StepInfoD &step_info, 
     {
         if (step_info.forward)
         {
-            step_info.step_function = fft_2d_complex_reorder2_rows_forward_avx_d<radix>;
+            step_info.step_function = fft_2d_complex_reorder2_rows_forward_avx_d<radix_type>;
         } else
         {
             throw(std::runtime_error("HHFFT error: Unable to set a function!"));
@@ -240,18 +243,18 @@ template<size_t radix> void set_instruction_set_rows_2d_d(StepInfoD &step_info, 
     {
         if (step_info.forward)
         {
-            step_info.step_function = fft_2d_complex_reorder2_rows_forward_sse2_d<radix>;
+            step_info.step_function = fft_2d_complex_reorder2_rows_forward_sse2_d<radix_type>;
         } else
         {
             throw(std::runtime_error("HHFFT error: Unable to set a function!"));
         }
-    }
+    }  
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
         if (step_info.forward)
         {
-            step_info.step_function = fft_2d_complex_reorder2_rows_forward_plain_d<radix>;
+            step_info.step_function = fft_2d_complex_reorder2_rows_forward_plain_d<radix_type>;
         } else
         {
             throw(std::runtime_error("HHFFT error: Unable to set a function!"));
@@ -264,27 +267,30 @@ void set_radix_2d_rows_d(StepInfoD &step_info, hhfft::InstructionSet instruction
 {
     size_t radix = step_info.radix;
 
-    if (radix == 2)
+    if (radix > 8)
     {
-        set_instruction_set_rows_2d_d<2>(step_info, instruction_set);
+        set_instruction_set_rows_2d_d<Raders>(step_info, instruction_set);
+    } if (radix == 2)
+    {
+        set_instruction_set_rows_2d_d<Radix2>(step_info, instruction_set);
     } if (radix == 3)
     {
-        set_instruction_set_rows_2d_d<3>(step_info, instruction_set);
+        set_instruction_set_rows_2d_d<Radix3>(step_info, instruction_set);
     } if (radix == 4)
     {
-        set_instruction_set_rows_2d_d<4>(step_info, instruction_set);
+        set_instruction_set_rows_2d_d<Radix4>(step_info, instruction_set);
     } if (radix == 5)
     {
-        set_instruction_set_rows_2d_d<5>(step_info, instruction_set);
+        set_instruction_set_rows_2d_d<Radix5>(step_info, instruction_set);
     } if (radix == 6)
     {
-        set_instruction_set_rows_2d_d<6>(step_info, instruction_set);
+        set_instruction_set_rows_2d_d<Radix6>(step_info, instruction_set);
     } if (radix == 7)
     {
-        set_instruction_set_rows_2d_d<7>(step_info, instruction_set);
+        set_instruction_set_rows_2d_d<Radix7>(step_info, instruction_set);
     } if (radix == 8)
     {
-       set_instruction_set_rows_2d_d<8>(step_info, instruction_set);
+       set_instruction_set_rows_2d_d<Radix8>(step_info, instruction_set);
     }
 }
 

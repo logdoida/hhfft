@@ -44,6 +44,16 @@ void HHFFT_2D_D::free_memory(double *data)
     free(data);
 }
 
+void HHFFT_2D_D::set_radix_raders(size_t radix, StepInfoD &step, InstructionSet instruction_set)
+{
+    if (radix > 8)
+    {
+        // Use Rader's algorithm instead
+        raders.push_back(std::unique_ptr<RadersD>(new RadersD(radix, instruction_set)));
+        step.raders = raders.back().get();
+    }
+}
+
 // Does the planning step
 HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
 {
@@ -139,6 +149,7 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
         step.reorder_table2_size = reorder_table_rows.size();
         step.stride = n;
         step.size = m;
+        set_radix_raders(N_columns[0], step, instruction_set);
         step.radix = N_columns[0];
         step.repeats = n / step.radix;
         HHFFT_2D_Complex_D_set_function_columns(step, instruction_set);
@@ -151,6 +162,7 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
     {
         hhfft::StepInfoD step;
         hhfft::StepInfoD &step_prev = forward_steps.back();
+        set_radix_raders(N_columns[i], step, instruction_set);
         step.radix = N_columns[i];
         step.stride = step_prev.stride * step_prev.radix;
         if (i == 1)
@@ -171,6 +183,7 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
     // NOTE actually 1D fft is used as no twiddle factors are involved
     {
         hhfft::StepInfoD step;
+        set_radix_raders(N_rows[0], step, instruction_set);
         step.radix = N_rows[0];
         step.stride = 1;
         step.repeats = m * n / step.radix;
@@ -186,6 +199,7 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
     {
         hhfft::StepInfoD step;
         hhfft::StepInfoD &step_prev = forward_steps.back();
+        set_radix_raders(N_rows[i], step, instruction_set);
         step.radix = N_rows[i];
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;
