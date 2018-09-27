@@ -226,47 +226,63 @@ template<bool forward, size_t n> void fft_1d_complex_to_complex_packed_1level_av
 
 // This function is used on the first level of odd real fft
 // Note this does not use avx
-template<size_t radix> void fft_1d_real_first_level_forward_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_1d_real_first_level_forward_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t repeats = step_info.repeats;
     uint32_t *reorder_table = step_info.reorder_table;
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
 
-    ComplexD x_temp_in[radix];
-    ComplexD x_temp_out[radix];
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders = allocate_raders_D<radix_type>(raders);
+
+    ComplexD x_temp_in[radix_type];
+    ComplexD x_temp_out[radix_type];
     bool dir_out = true;
     for (size_t i = 0; i < repeats; i++)
     {
+        // Initialize raders data with zeros
+        init_coeff_D<radix_type>(data_raders, raders);
+
         // Copy input data taking reordering into account
         for (size_t j = 0; j < radix; j++)
         {
             size_t ind = reorder_table[i*radix + j];
-            x_temp_in[j] = load_real_D(data_in + ind);
+            ComplexD x = load_real_D(data_in + ind);
+            set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
         }
 
         // Multiply with coefficients
-        multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
+        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // Save only about half of the output
         // First/ last one is real
         if (dir_out) // direction normal
         {
-            store_real_D(x_temp_out[0], data_out + i*radix); // only real part
+            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, 0, raders);
+            store_real_D(x, data_out + i*radix); // only real part
 
             for (size_t j = 1; j < radix/2 + 1; j++)
             {
-                store_D(x_temp_out[j], data_out + i*radix + 2*j - 1);
+                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+                store_D(x, data_out + i*radix + 2*j - 1);
             }
         } else // direction inverted
         {
-            store_real_D(x_temp_out[0], data_out + i*radix + radix - 1); // only real part
+            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, 0, raders);
+            store_real_D(x, data_out + i*radix + radix - 1); // only real part
 
             for (size_t j = 1; j < radix/2 + 1; j++)
             {
-                store_D(x_temp_out[j], data_out + i*radix + radix - 2*j - 1);
+                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+                store_D(x, data_out + i*radix + radix - 2*j - 1);
             }
         }
         dir_out = !dir_out;
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 inline size_t index_dir_stride_odd(size_t dir_in, size_t stride, size_t k)
@@ -274,47 +290,58 @@ inline size_t index_dir_stride_odd(size_t dir_in, size_t stride, size_t k)
     return dir_in*(4*k - stride) + stride - 2*k - 1;
 }
 
-template<size_t radix> inline __attribute__((always_inline)) void fft_1d_real_one_level_forward_avx_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, size_t stride, bool dir_out)
-{
+template<RadixType radix_type> inline __attribute__((always_inline)) void fft_1d_real_one_level_forward_avx_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, double *data_raders, const hhfft::RadersD &raders, size_t stride, bool dir_out)
+{    
+    size_t radix = get_actual_radix<radix_type>(raders);
+
     // The first/last value in each stride is real
     {
-        ComplexD x0_temp_in[radix];
-        ComplexD x0_temp_out[radix];
+        // Initialize raders data with zeros
+        init_coeff_D<radix_type>(data_raders, raders);
+
+        ComplexD x0_temp_in[radix_type];
+        ComplexD x0_temp_out[radix_type];
 
         // Read the inputs
         bool dir_in = dir_out;
         for (size_t j = 0; j < radix; j++)
         {
+            ComplexD x0;
             if (dir_in)
             {
-                x0_temp_in[j] = load_real_D(data_in + j*stride);
+                x0 = load_real_D(data_in + j*stride);
             } else
             {
-                x0_temp_in[j] = load_real_D(data_in + j*stride + stride - 1);
+                x0 = load_real_D(data_in + j*stride + stride - 1);
             }
+            set_value_D<radix_type>(x0_temp_in, data_raders, j, raders, x0);
 
             dir_in = !dir_in;
         }
 
-        multiply_coeff_D<radix,true>(x0_temp_in, x0_temp_out);
+        multiply_coeff_forward_D<radix_type>(x0_temp_in, x0_temp_out, data_raders, raders);
 
         // first/last output is real
         if (dir_out)
         {
-            store_real_D(x0_temp_out[0], data_out);
+            ComplexD x = get_value_D<radix_type>(x0_temp_out, data_raders, 0, raders);
+            store_real_D(x, data_out);
         } else
         {
-            store_real_D(x0_temp_out[0], data_out + radix*stride - 1);
+            ComplexD x = get_value_D<radix_type>(x0_temp_out, data_raders, 0, raders);
+            store_real_D(x, data_out + radix*stride - 1);
         }
         // only about half is written
         for (size_t j = 1; j < (radix+1)/2; j++)
         {
             if (dir_out)
             {
-                store_D(x0_temp_out[j], data_out + 2*j*stride - 1);
+                ComplexD x = get_value_D<radix_type>(x0_temp_out, data_raders, j, raders);
+                store_D(x, data_out + 2*j*stride - 1);
             } else
             {
-                store_D(x0_temp_out[(radix+1)/2 - j], data_out + 2*j*stride - stride - 1);
+                ComplexD x = get_value_D<radix_type>(x0_temp_out, data_raders, (radix+1)/2 - j, raders);
+                store_D(x, data_out + 2*j*stride - stride - 1);
             }
         }
     }
@@ -323,50 +350,54 @@ template<size_t radix> inline __attribute__((always_inline)) void fft_1d_real_on
     // First use 256-bit variables
     for (; k + 1 < (stride+1)/2; k+=2)
     {
-        ComplexD2 x_temp_in[radix];
-        ComplexD2 x_temp_out[radix];
-        ComplexD2 twiddle_temp[radix];
+        // Initialize raders data with zeros
+        init_coeff_D2<radix_type>(data_raders, raders);
+
+        ComplexD2 x_temp_in[radix_type];
+        ComplexD2 x_temp_out[radix_type];
+        ComplexD2 twiddle_temp[radix_type];
         size_t dir_in = dir_out;
 
         // Copy the values and twiddle factors
         for (size_t j = 0; j < radix; j++)
         {
+            ComplexD2 x0;
             if (dir_in)
             {
-                x_temp_in[j] = load_D2(data_in + j*stride + 2*k - 1);
+                x0 = load_D2(data_in + j*stride + 2*k - 1);
             } else
             {
-                x_temp_in[j] = load_two_128_D2(data_in + j*stride + stride - 2*k - 1, data_in + j*stride + stride - 2*k - 3);
+                x0 = load_two_128_D2(data_in + j*stride + stride - 2*k - 1, data_in + j*stride + stride - 2*k - 3);
             }
-
-            twiddle_temp[j] = load_D2(twiddle_factors + 2*k + 2*j*stride);
+            ComplexD2 w = load_D2(twiddle_factors + 2*k + 2*j*stride);
+            set_value_twiddle_D2<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x0, w);
             dir_in = !dir_in;
         }
 
-        multiply_twiddle_D2<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
-
-        multiply_coeff_real_odd_forward_D2<radix>(x_temp_in, x_temp_out);
+        // Multiply with coefficients
+        multiply_twiddle_D2<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+        multiply_coeff_forward_D2<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // save output taking the directions into account
         dir_in = dir_out;
         for (size_t j = 0; j < radix; j++)
         {
             // reverse the output order if required
-            ComplexD2 temp_out;
+            ComplexD2 x;
             if (dir_out)
             {
-                temp_out = x_temp_out[j];
+                x = get_value_real_odd_forward_D2<radix_type>(x_temp_out, data_raders, j, raders);
             } else
             {
-                temp_out = x_temp_out[radix - j - 1];
+                x = get_value_real_odd_forward_D2<radix_type>(x_temp_out, data_raders, radix - j - 1, raders);
             }
 
             if (dir_in)
             {
-                store_D2(temp_out, data_out + j*stride + 2*k - 1);
+                store_D2(x, data_out + j*stride + 2*k - 1);
             } else
             {
-                store_two_128_D2(temp_out, data_out + j*stride + stride - 2*k - 1, data_out + j*stride + stride - 2*k - 3);
+                store_two_128_D2(x, data_out + j*stride + stride - 2*k - 1, data_out + j*stride + stride - 2*k - 3);
             }
 
             dir_in = !dir_in;
@@ -377,9 +408,12 @@ template<size_t radix> inline __attribute__((always_inline)) void fft_1d_real_on
     // Then, if necessary, use 128-bit variables
     if (k < (stride+1)/2)
     {
-        ComplexD x_temp_in[radix];
-        ComplexD x_temp_out[radix];
-        ComplexD twiddle_temp[radix];
+        // Initialize raders data with zeros
+        init_coeff_D<radix_type>(data_raders, raders);
+
+        ComplexD x_temp_in[radix_type];
+        ComplexD x_temp_out[radix_type];
+        ComplexD twiddle_temp[radix_type];
         size_t dir_in = dir_out;
 
         // Copy the values and twiddle factors
@@ -387,14 +421,15 @@ template<size_t radix> inline __attribute__((always_inline)) void fft_1d_real_on
         {
             size_t index2 = index_dir_stride_odd(dir_in, stride, k);
 
-            x_temp_in[j] = load_D(data_in + j*stride + index2);
-            twiddle_temp[j] = load_D(twiddle_factors + 2*k + 2*j*stride);
+            ComplexD x = load_D(data_in + j*stride + index2);
+            ComplexD w = load_D(twiddle_factors + 2*k + 2*j*stride);
+            set_value_twiddle_D<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
             dir_in = !dir_in;
         }
 
-        multiply_twiddle_D<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
-
-        multiply_coeff_real_odd_forward_D<radix>(x_temp_in, x_temp_out);
+        // Multiply with coefficients
+        multiply_twiddle_D<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // save output taking the directions into account
         dir_in = dir_out;
@@ -405,10 +440,12 @@ template<size_t radix> inline __attribute__((always_inline)) void fft_1d_real_on
             // reverse the output order if required
             if (dir_out)
             {
-                store_D(x_temp_out[j], data_out + j*stride + index2);
+                ComplexD x = get_value_real_odd_forward_D<radix_type>(x_temp_out, data_raders, j, raders);
+                store_D(x, data_out + j*stride + index2);
             } else
             {
-                store_D(x_temp_out[radix - j - 1], data_out + j*stride + index2);
+                ComplexD x = get_value_real_odd_forward_D<radix_type>(x_temp_out, data_raders, radix - j - 1, raders);
+                store_D(x, data_out + j*stride + index2);
             }
 
             dir_in = !dir_in;
@@ -417,19 +454,31 @@ template<size_t radix> inline __attribute__((always_inline)) void fft_1d_real_on
 }
 
 // This function is used on rest of the odd real fft
-template<size_t radix> void fft_1d_real_one_level_forward_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_1d_real_one_level_forward_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t stride = step_info.stride;
     size_t repeats = step_info.repeats;
     double *twiddle_factors = step_info.twiddle_factors;
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
+
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders;
+    if (stride < 3)
+        data_raders = allocate_raders_D<radix_type>(raders);
+    else
+        data_raders = allocate_raders_D2<radix_type>(raders);
 
     bool dir_out = true;
     for (size_t i = 0; i < repeats; i++)
     {
-        fft_1d_real_one_level_forward_avx_d_internal<radix>(data_in + i*radix*stride, data_out + i*radix*stride, twiddle_factors, stride, dir_out);
+        fft_1d_real_one_level_forward_avx_d_internal<radix_type>(data_in + i*radix*stride, data_out + i*radix*stride, twiddle_factors, data_raders, raders, stride, dir_out);
 
         dir_out = !dir_out;
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 // This function is used on rest of the odd real 2d fft
@@ -446,8 +495,11 @@ template<size_t radix> void fft_2d_real_odd_rows_forward_avx_d(const double *dat
         bool dir_out = true;
         for (size_t i = 0; i < repeats; i++)
         {
-            fft_1d_real_one_level_forward_avx_d_internal<radix>(data_in + j*m + i*radix*stride + 1, data_out + j*m + i*radix*stride + 1,
-                                                                  twiddle_factors, stride, dir_out);
+            // TODO
+            /*
+            fft_1d_real_one_level_forward_avx_d_internal<radix_type>(data_in + j*m + i*radix*stride + 1, data_out + j*m + i*radix*stride + 1, twiddle_factors, stride, dir_out);
+            */
+
 
             dir_out = !dir_out;
         }
@@ -458,67 +510,86 @@ template<size_t radix> void fft_2d_real_odd_rows_forward_avx_d(const double *dat
 
 // This function is used on the first level of odd real ifft
 // Note this does not use avx
-template<size_t radix> void fft_1d_real_first_level_inverse_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_1d_real_first_level_inverse_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t repeats = step_info.repeats;
     uint32_t *reorder_table = step_info.reorder_table;
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
     size_t n = radix * (2*step_info.repeats - 1);
     ComplexD norm_factor = broadcast64_D(step_info.norm_factor);
 
-    ComplexD x_temp_in[radix];
-    ComplexD x_temp_out[radix];
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders = allocate_raders_D<radix_type>(raders);
+
+    ComplexD x_temp_in[radix_type];
+    ComplexD x_temp_out[radix_type];
 
     // In the first repeat input is r, (r+i), (r+i) ... and output is r,r,r,r,r...
     {
-        x_temp_in[0] = norm_factor*load_real_D(data_in + 0);
+        // Initialize raders data with zeros
+        init_coeff_D<radix_type>(data_raders, raders);
+
+        ComplexD x = norm_factor*load_real_D(data_in + 0);
+        set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x);
 
         // Read other inputs and conjugate them
         for (size_t j = 1; j <= radix/2; j++)
         {
             size_t ind = reorder_table[j];
             ComplexD x = norm_factor*load_D(data_in + 2*ind);
-            x_temp_in[j] = conj_D(x);
-            x_temp_in[radix-j] = x;
+
+            set_value_D<radix_type>(x_temp_in, data_raders, j, raders, conj_D(x));
+            set_value_D<radix_type>(x_temp_in, data_raders, radix-j, raders, x);
         }
 
-        // NOTE this could be optimized as actually only the real part of output is used and input has symmetry
         // Multiply with coefficients
-        multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
+        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // Write only real parts of the data
         for (size_t j = 0; j < radix; j++)
         {
-            store_real_D(x_temp_out[j], data_out + j);
+            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+            store_real_D(x, data_out + j);
         }
     }
 
     // Other repeats are more usual, data ordering changes from r,i,r,i,r,i... to r,r,r...i,i,i...
     for (size_t i = 1; i < repeats; i++)
     {
+        // Initialize raders data with zeros
+        init_coeff_D<radix_type>(data_raders, raders);
+
         // Copy input data taking reordering into account
         for (size_t j = 0; j < radix; j++)
         {
             size_t ind = n - reorder_table[i*radix - radix/2 + j];
             if (ind <= n/2)
             {
-                x_temp_in[j] = norm_factor*load_D(data_in + 2*ind);
+                ComplexD x = norm_factor*load_D(data_in + 2*ind);
+                set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
             } else
             {
                 // If input is from the lower part, it needs to be conjugated
                 ind = n - ind;
-                x_temp_in[j] = conj_D(norm_factor*load_D(data_in + 2*ind));
+                ComplexD x = conj_D(norm_factor*load_D(data_in + 2*ind));
+                set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
             }
         }
 
         // Multiply with coefficients
-        multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
+        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // Store real and imag parts separately
         for (size_t j = 0; j < radix; j++)
         {
-            store_D(x_temp_out[j], data_out[2*i*radix - radix + j], data_out[2*i*radix + j]);
+            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+            store_D(x, data_out[2*i*radix - radix + j], data_out[2*i*radix + j]);
         }
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 // This function is used on first level of the odd real 2d ifft
@@ -579,71 +650,93 @@ template<size_t radix> void fft_2d_real_odd_rows_first_level_inverse_avx_d(const
 }
 
 // This function is used on on rest of the odd real ifft
-template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_1d_real_one_level_inverse_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t repeats = step_info.repeats;
     size_t stride = step_info.stride;
     double *twiddle_factors = step_info.twiddle_factors;
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
+
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders;
+    if (stride < 4)
+        data_raders = allocate_raders_D2<radix_type>(raders);
+    else
+        data_raders = allocate_raders_D4S<radix_type>(raders);
 
     // In the first repeat input is r,r,r,... r,r,r, ... i,i,i, ... and output is r,r,r,r,r...
     {
         size_t k;
         for (k = 0; k + 1 < stride; k+=2)
         {
-            ComplexD2 x_temp_in[radix];
-            ComplexD2 x_temp_out[radix];
-            ComplexD2 twiddle_temp[radix];
+            // Initialize raders data with zeros
+            init_coeff_D2<radix_type>(data_raders, raders);
+            ComplexD2 x_temp_in[radix_type];
+            ComplexD2 x_temp_out[radix_type];
+            ComplexD2 twiddle_temp[radix_type];
 
-            x_temp_in[0] = load_real_D2(data_in + k);
+            // Set first real value
+            ComplexD2 x = load_real_D2(data_in + k);
+            ComplexD2 w = load_D2(1,0,1,0);
+            set_value_twiddle_D2<radix_type>(x_temp_in, data_raders, twiddle_temp, 0, raders, x, w);
 
-            // Read other inputs, only about half of them is needed
+            // Read other inputs, only about half of them is needed, conjugate other half
             for (size_t j = 1; j <= radix/2; j++)
             {
-                x_temp_in[j] = load_D2(data_in[2*j*stride - stride + k], data_in[2*j*stride + k],
+                ComplexD2 x = load_D2(data_in[2*j*stride - stride + k], data_in[2*j*stride + k],
                                        data_in[2*j*stride - stride + k + 1], data_in[2*j*stride + k + 1]);
-                twiddle_temp[j] = load_D2(twiddle_factors + 2*j*stride + 2*k + 0);
+                ComplexD2 w = load_D2(twiddle_factors + 2*j*stride + 2*k + 0);
+
+                set_value_twiddle_D2<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
+                set_value_twiddle_D2<radix_type>(x_temp_in, data_raders, twiddle_temp, radix - j, raders, conj_D2(x), conj_D2(w));
             }
 
-            // Multiply with twiddle factors
-            multiply_conj_twiddle_odd_D2<radix>(x_temp_in, x_temp_in, twiddle_temp);
-
-            // NOTE this could be optimized as actually only the real part of output is used and input has symmetry
-            // Multiply with coefficients
-            multiply_coeff_D2<radix,true>(x_temp_in, x_temp_out);
+            // Multiply with twiddle factors and coefficients
+            multiply_twiddle_D2<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_coeff_forward_D2<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // Write only real parts of the data
             for (size_t j = 0; j < radix; j++)
             {
-                store_real_D2(x_temp_out[j], data_out + j*stride + k);
+                ComplexD2 x = get_value_D2<radix_type>(x_temp_out, data_raders, j, raders);
+                store_real_D2(x, data_out + j*stride + k);
             }
         }
 
         if (k < stride)
         {
-            ComplexD x_temp_in[radix];
-            ComplexD x_temp_out[radix];
-            ComplexD twiddle_temp[radix];
+            // Initialize raders data with zeros
+            init_coeff_D<radix_type>(data_raders, raders);
 
-            x_temp_in[0] = load_real_D(data_in + k);
+            ComplexD x_temp_in[radix_type];
+            ComplexD x_temp_out[radix_type];
+            ComplexD twiddle_temp[radix_type];
 
-            // Read other inputs, only about half of them is needed
+            // Set first real value
+            ComplexD x = load_real_D(data_in + k);
+            ComplexD w = load_D(1,0);
+            set_value_twiddle_D<radix_type>(x_temp_in, data_raders, twiddle_temp, 0, raders, x, w);
+
+            // Read other inputs, only about half of them is needed, conjugate other half
             for (size_t j = 1; j <= radix/2; j++)
             {
-                x_temp_in[j] = load_D(data_in[2*j*stride - stride + k], data_in[2*j*stride + k]);
-                twiddle_temp[j] = load_D(twiddle_factors + 2*j*stride + 2*k + 0);
+                ComplexD x = load_D(data_in[2*j*stride - stride + k], data_in[2*j*stride + k]);
+                ComplexD w = load_D(twiddle_factors + 2*j*stride + 2*k + 0);
+
+                set_value_twiddle_D<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
+                set_value_twiddle_D<radix_type>(x_temp_in, data_raders, twiddle_temp, radix - j, raders, conj_D(x), conj_D(w));
             }
 
-            // Multiply with twiddle factors
-            multiply_conj_twiddle_odd_D<radix>(x_temp_in, x_temp_in, twiddle_temp);
-
-            // NOTE this could be optimized as actually only the real part of output is used and input has symmetry
-            // Multiply with coefficients
-            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
+            // Multiply with twiddle factors and coefficients
+            multiply_twiddle_D<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // Write only real parts of the data
             for (size_t j = 0; j < radix; j++)
             {
-                store_real_D(x_temp_out[j], data_out + j*stride + k);
+                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+                store_real_D(x, data_out + j*stride + k);
             }
         }
     }
@@ -655,58 +748,66 @@ template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *da
         size_t k;
         for (k = 0; k + 3 < stride; k+=4)
         {
-            ComplexD4S x_temp_in[radix];
-            ComplexD4S x_temp_out[radix];
-            ComplexD4S twiddle_temp[radix];
+            // Initialize raders data with zeros
+            init_coeff_D4S<radix_type>(data_raders, raders);
+
+            ComplexD4S x_temp_in[radix_type];
+            ComplexD4S x_temp_out[radix_type];
+            ComplexD4S twiddle_temp[radix_type];
 
             // Read real and imag parts separately
             for (size_t j = 0; j < radix; j++)
             {
                 size_t index = 2*i*stride*radix + 2*j*stride - stride*radix;
-                x_temp_in[j] = load_D4S(data_in + index + k, data_in + index + stride + k);
-                twiddle_temp[j] = load512_D4S(twiddle_factors + 2*j*stride + 2*k);
+                ComplexD4S x = load_D4S(data_in + index + k, data_in + index + stride + k);
+                ComplexD4S w = load512_D4S(twiddle_factors + 2*j*stride + 2*k);
+
+                set_value_twiddle_D4S<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
             }
 
-            // Multiply with twiddle factors
-            multiply_twiddle_D4S<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
-
-            // Multiply with coefficients
-            multiply_coeff_D4S<radix,true>(x_temp_in, x_temp_out);
+            // Multiply with twiddle factors and coefficients
+            multiply_twiddle_D4S<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_coeff_forward_D4S<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // Store real and imag parts separately
             for (size_t j = 0; j < radix; j++)
             {
                 size_t index = 2*i*stride*radix + j*stride;
-                store_D4S(x_temp_out[j], data_out + index - stride*radix + k, data_out + index + k);
+                ComplexD4S x = get_value_D4S<radix_type>(x_temp_out, data_raders, j, raders);
+                store_D4S(x, data_out + index - stride*radix + k, data_out + index + k);
             }
         }
 
         // Load two complex numbers at a time (r,r) and (i,i)        
         if (k + 1 < stride)
         {
-            ComplexD2S x_temp_in[radix];
-            ComplexD2S x_temp_out[radix];
-            ComplexD2S twiddle_temp[radix];
+            // Initialize raders data with zeros
+            init_coeff_D2S<radix_type>(data_raders, raders);
+
+            ComplexD2S x_temp_in[radix_type];
+            ComplexD2S x_temp_out[radix_type];
+            ComplexD2S twiddle_temp[radix_type];
 
             // Read real and imag parts separately
             for (size_t j = 0; j < radix; j++)
             {
                 size_t index = 2*i*stride*radix + 2*j*stride - stride*radix;
-                x_temp_in[j] = load_D2S(data_in + index + k, data_in + index + stride + k);
-                twiddle_temp[j] = load256s_D2S(twiddle_factors + 2*j*stride + 2*k);
+                ComplexD2S x = load_D2S(data_in + index + k, data_in + index + stride + k);
+                ComplexD2S w = load256s_D2S(twiddle_factors + 2*j*stride + 2*k);
+
+                set_value_twiddle_D2S<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
             }
 
-            // Multiply with twiddle factors
-            multiply_twiddle_D2S<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
-
-            // Multiply with coefficients
-            multiply_coeff_D2S<radix,true>(x_temp_in, x_temp_out);
+            // Multiply with twiddle factors and coefficients
+            multiply_twiddle_D2S<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_coeff_forward_D2S<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // Store real and imag parts separately
             for (size_t j = 0; j < radix; j++)
             {
                 size_t index = 2*i*stride*radix + j*stride;
-                store_D2S(x_temp_out[j], data_out + index - stride*radix + k, data_out + index + k);
+                ComplexD2S x = get_value_D2S<radix_type>(x_temp_out, data_raders, j, raders);
+                store_D2S(x, data_out + index - stride*radix + k, data_out + index + k);
             }
             k += 2;
         }        
@@ -714,33 +815,39 @@ template<size_t radix> void fft_1d_real_one_level_inverse_avx_d(const double *da
         // Load one complex number at a time r and i separated
         if (k < stride)
         {
-            ComplexD x_temp_in[radix];
-            ComplexD x_temp_out[radix];
-            ComplexD twiddle_temp[radix];
+            // Initialize raders data with zeros
+            init_coeff_D<radix_type>(data_raders, raders);
+
+            ComplexD x_temp_in[radix_type];
+            ComplexD x_temp_out[radix_type];
+            ComplexD twiddle_temp[radix_type];
 
             // Read real and imag parts separately
             for (size_t j = 0; j < radix; j++)
             {
                 size_t index = 2*i*stride*radix + 2*j*stride - stride*radix;
-                x_temp_in[j] = load_D(data_in[index + k], data_in[index + stride + k]);
+                ComplexD x = load_D(data_in[index + k], data_in[index + stride + k]);
+                ComplexD w = load_D(twiddle_factors + 2*j*stride + 2*k + 0);
 
-                twiddle_temp[j] = load_D(twiddle_factors + 2*j*stride + 2*k + 0);
+                set_value_twiddle_D<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
             }
 
-            // Multiply with twiddle factors
-            multiply_twiddle_D<radix,true>(x_temp_in, x_temp_in, twiddle_temp);
-
-            // Multiply with coefficients
-            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
+            // Multiply with twiddle factors and coefficients
+            multiply_twiddle_D<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // Store real and imag parts separately
             for (size_t j = 0; j < radix; j++)
             {
                 size_t index = 2*i*stride*radix + j*stride;
-                store_D(x_temp_out[j], data_out[index - stride*radix + k], data_out[index + k]);
+                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+                store_D(x, data_out[index - stride*radix + k], data_out[index + k]);
             }
         }
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 // This is used in 2d real for odd row sizes
@@ -753,7 +860,10 @@ template<size_t radix> void fft_2d_real_odd_rows_inverse_avx_d(const double *dat
     // Process all rows separately
     for (size_t j = 0; j < n; j++)
     {
-        fft_1d_real_one_level_inverse_avx_d<radix>(data_in + j*m, data_out + j*m, step_info);
+        // TODO
+        /*
+        fft_1d_real_one_level_inverse_avx_d<radix_type>(data_in + j*m, data_out + j*m, step_info);
+        */
     }
 }
 
@@ -946,21 +1056,25 @@ template void fft_1d_real_1level_avx_d<12, true>(const double *data_in, double *
 template void fft_1d_real_1level_avx_d<14, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_avx_d<16, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_1d_real_first_level_forward_avx_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_first_level_forward_avx_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_first_level_forward_avx_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_forward_avx_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_forward_avx_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_forward_avx_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_forward_avx_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_1d_real_first_level_inverse_avx_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_first_level_inverse_avx_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_first_level_inverse_avx_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_inverse_avx_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_inverse_avx_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_inverse_avx_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_first_level_inverse_avx_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_1d_real_one_level_forward_avx_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_one_level_forward_avx_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_one_level_forward_avx_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_forward_avx_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_forward_avx_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_forward_avx_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_forward_avx_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_1d_real_one_level_inverse_avx_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_one_level_inverse_avx_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_1d_real_one_level_inverse_avx_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_inverse_avx_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_inverse_avx_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_inverse_avx_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_real_one_level_inverse_avx_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template void fft_2d_real_odd_rows_forward_avx_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_odd_rows_forward_avx_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);

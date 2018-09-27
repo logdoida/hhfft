@@ -80,6 +80,9 @@ template<RadixType radix_type>
 
     for (size_t k = 0; k < stride; k++)
     {
+        // Initialize raders data with zeros
+        init_coeff_D<radix_type>(data_raders, raders);
+
         // Copy input data (squeeze)
         for (size_t j = 0; j < radix; j++)
         {            
@@ -150,6 +153,9 @@ template<RadixType radix_type, bool forward>
             store_D(x, data_out + 2*i*radix + 2*j);
         }
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 

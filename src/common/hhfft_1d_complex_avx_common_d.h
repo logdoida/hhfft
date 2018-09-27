@@ -507,6 +507,20 @@ inline __attribute__((always_inline)) const ComplexD4S load512_D4S(const double 
     return out;
 }
 
+
+// Read complex numbers [r0 i0], [r1 i1], [r2 i2], [r3 i3] from memory and reorder them to real and complex parts [r0 r1 r2 r3] & [i0 i1 i2 i3]
+inline __attribute__((always_inline)) const ComplexD4S load_four_128_D4S(const double *a, const double *b, const double *c, const double *d)
+{
+    ComplexD2 x0 = load_two_128_D2(a,c);
+    ComplexD2 x1 = load_two_128_D2(b,d);
+
+    ComplexD4S out;
+    out.real = _mm256_unpacklo_pd(x0, x1);
+    out.imag = _mm256_unpackhi_pd(x0, x1);
+
+    return out;
+}
+
 // Store four complex numbers [r0 r2 r1 r3] & [i0 i2 i1 i3]
 inline __attribute__((always_inline)) void store512s_D4S(ComplexD4S val, double *v)
 {
@@ -523,6 +537,16 @@ inline __attribute__((always_inline)) void store_D4S(ComplexD4S val, double *r, 
 {
     _mm256_storeu_pd(r, val.real);
     _mm256_storeu_pd(i, val.imag);
+}
+
+// Converts two complex numbers from [r0 r1 r2 r3] & [i0 i1 i2 i3] to [r0 i0], [r1 i1], [r2 i2], [r3 i3]
+inline __attribute__((always_inline)) void divide_four_128_D4S(ComplexD4S val, ComplexD &a, ComplexD &b, ComplexD &c, ComplexD &d)
+{
+    ComplexD2 x0 = _mm256_unpacklo_pd(val.real, val.imag);
+    ComplexD2 x1 = _mm256_unpackhi_pd(val.real, val.imag);
+
+    divide_two_128_D2(x0, a, c);
+    divide_two_128_D2(x1, b, d);
 }
 
 inline __attribute__((always_inline)) ComplexD4S broadcast64_D4S(double x)
