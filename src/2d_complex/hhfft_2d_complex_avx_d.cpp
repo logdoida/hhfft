@@ -47,13 +47,14 @@ template<RadixType radix_type>
             ComplexD2 x_temp_out[radix_type];
             ComplexD2 twiddle_temp[radix_type];
 
-            // NOTE it would be possible to copy twiddle factors only once here
-            /*
-            for (size_t j = 0; j < radix; j++)
+            // Copying twiddle factors already here improves performance, but is not possible with Rader's algorithm
+            if (radix_type != Raders)
             {
-                twiddle_temp[j] = broadcast128_D2(twiddle_factors + 2*i + 2*j*stride);
+                for (size_t j = 0; j < radix; j++)
+                {
+                    twiddle_temp[j] = broadcast128_D2(twiddle_factors + 2*i + 2*j*stride);
+                }
             }
-            */
 
             for (k = 0; k+1 < length; k+=2)
             {
@@ -62,10 +63,10 @@ template<RadixType radix_type>
 
                 // Copy input data (squeeze)
                 for (size_t j = 0; j < radix; j++)
-                {
-                    ComplexD2 w = broadcast128_D2(twiddle_factors + 2*i + 2*j*stride);
+                {                    
                     ComplexD2 x = load_D2(data_in +  2*j*stride*length + 2*i*length + 2*k);
-                    set_value_twiddle_D2<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
+                    ComplexD2 w = broadcast128_D2(twiddle_factors + 2*i + 2*j*stride);
+                    set_value_twiddle_D2<radix_type,false>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
                 }
 
                 // Multiply with coefficients
@@ -346,7 +347,7 @@ template<RadixType radix_type> void fft_2d_complex_reorder2_rows_forward_avx_d(c
                 size_t j2 = reorder_table_rows[j*radix + k];
 
                 ComplexD x = load_D(data_in + 2*i2*m + 2*j2);
-                set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
+                set_value_D<radix_type>(x_temp_in, data_raders, k, raders, x);
             }
 
             // Multiply with coefficients
@@ -355,7 +356,7 @@ template<RadixType radix_type> void fft_2d_complex_reorder2_rows_forward_avx_d(c
             // Copy output data (un-squeeze)
             for (size_t k = 0; k < radix; k++)
             {
-                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, k, raders);
                 store_D(x, data_out + 2*i*m + 2*j*radix + 2*k);
             }
         }

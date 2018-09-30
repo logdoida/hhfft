@@ -94,7 +94,7 @@ template<hhfft::RadixType radix_type> inline void set_value_D2(ComplexD2 *data_i
 }
 
 // Multiply one complex number and write it to input when performing fft
-template<hhfft::RadixType radix_type> inline void set_value_twiddle_D2(ComplexD2 *data_in, double *data_raders, ComplexD2 *data_twiddle, size_t index, const hhfft::RadersD &raders, ComplexD2 x, ComplexD2 w)
+template<hhfft::RadixType radix_type, bool copy_twiddle = true> inline void set_value_twiddle_D2(ComplexD2 *data_in, double *data_raders, ComplexD2 *data_twiddle, size_t index, const hhfft::RadersD &raders, ComplexD2 x, ComplexD2 w)
 {
     if (radix_type == hhfft::RadixType::Raders)
     {        
@@ -120,8 +120,11 @@ template<hhfft::RadixType radix_type> inline void set_value_twiddle_D2(ComplexD2
         store_D(x1, data_raders + n_data + 2*i2);        
     } else
     {
-        // For optimization reasons, twiddle factors are not yet compiled
-        data_twiddle[index] = w;
+        // For optimization reasons, twiddle factors might not be copied here
+        if(copy_twiddle)
+        {
+            data_twiddle[index] = w;
+        }
         data_in[index] = x;
     }
 }

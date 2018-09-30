@@ -67,7 +67,7 @@ template<hhfft::RadixType radix_type> inline void init_coeff(double *x, const hh
 
 // Write one complex number to input when performing fft
 template<hhfft::RadixType radix_type> inline void set_value(double *data_in, double *data_raders, size_t index, const hhfft::RadersD &raders, double re, double im)
-{    
+{
     if (radix_type == hhfft::RadixType::Raders)
     {        
         // Sum up the values and store it to extra space in the end
@@ -146,7 +146,7 @@ template<hhfft::RadixType radix_type> inline void set_value_inverse(double *data
 
 // Read one complex number to input
 template<hhfft::RadixType radix_type> inline void get_value(double *data_out, double *data_raders, size_t index, const hhfft::RadersD &raders, double &re, double &im)
-{
+{    
     if (radix_type == hhfft::RadixType::Raders)
     {        
         const uint32_t *reorder_table_raders_inverse = raders.reorder_table_raders_inverse2.data();

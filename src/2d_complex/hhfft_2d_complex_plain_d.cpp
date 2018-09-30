@@ -202,6 +202,7 @@ template<RadixType radix_type> void fft_2d_complex_reorder2_rows_forward_plain_d
         {
             // Initialize raders data with zeros
             init_coeff<radix_type>(data_raders, raders);
+
             double x_temp_in[2*radix_type];
             double x_temp_out[2*radix_type];
 
@@ -212,7 +213,7 @@ template<RadixType radix_type> void fft_2d_complex_reorder2_rows_forward_plain_d
 
                 double x_re = data_in[2*i2*m + 2*j2 + 0];
                 double x_im = data_in[2*i2*m + 2*j2 + 1];
-                set_value<radix_type>(x_temp_in, data_raders, j, raders, x_re, x_im);
+                set_value<radix_type>(x_temp_in, data_raders, k, raders, x_re, x_im);
             }
 
             // Multiply with coefficients
@@ -222,7 +223,7 @@ template<RadixType radix_type> void fft_2d_complex_reorder2_rows_forward_plain_d
             for (size_t k = 0; k < radix; k++)
             {
                 double x_re, x_im;
-                get_value<radix_type>(x_temp_out, data_raders, j, raders, x_re, x_im);
+                get_value<radix_type>(x_temp_out, data_raders, k, raders, x_re, x_im);
                 data_out[2*i*m + 2*j*radix + 2*k + 0] = x_re;
                 data_out[2*i*m + 2*j*radix + 2*k + 1] = x_im;
             }

@@ -24,6 +24,7 @@
 #include <cmath>
 
 #include "../common/hhfft_1d_complex_plain_common_d.h"
+#include "../raders/raders_plain_d.h"
 
 using namespace hhfft;
 
@@ -166,26 +167,31 @@ template<bool forward>
     }
 }
 
-template<size_t radix>
+template<RadixType radix_type>
 void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
-{    
-    // In-place not supported
-    assert (data_in != data_out);
-
+{
     size_t m = step_info.stride;  // number of columns
     size_t m2 = m + 1;            // number of columns in input
     size_t repeats = step_info.repeats;    
     uint32_t *reorder_table_columns = step_info.reorder_table;
     size_t reorder_table_size = step_info.reorder_table_size;
     double norm_factor = step_info.norm_factor;
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
 
-    double x_temp_in[2*radix];
-    double x_temp_out[2*radix];
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders = allocate_raders<radix_type>(raders);
+
+    double x_temp_in[2*radix_type];
+    double x_temp_out[2*radix_type];
 
     for (size_t i = 0; i < repeats; i++)
     {
         // The first column is calculated from first and last column
         {
+            // Initialize raders data with zeros
+            init_coeff<radix_type>(data_raders, raders);
+
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
@@ -202,43 +208,57 @@ void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_ou
                 double t3 = 0.5*(x0_r - x1_r);
                 double t4 = 0.5*(x0_i + x1_i);
 
-                x_temp_in[2*j + 0] = t1 + t2;
-                x_temp_in[2*j + 1] = t3 + t4;
+                double re = t1 + t2;
+                double im = t3 + t4;
+                set_value<radix_type>(x_temp_in, data_raders, j, raders, re, im);
             }
 
-            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+            // Multiply with coefficients
+            multiply_coeff_forward<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                data_out[2*i*radix*m + 2*j*m + 0] = norm_factor*x_temp_out[2*j + 0];
-                data_out[2*i*radix*m + 2*j*m + 1] = norm_factor*x_temp_out[2*j + 1];
+                double re,im;
+                get_value<radix_type>(x_temp_out, data_raders, j, raders, re, im);
+                data_out[2*i*radix*m + 2*j*m + 0] = norm_factor*re;
+                data_out[2*i*radix*m + 2*j*m + 1] = norm_factor*im;
             }
         }
 
         // do other columns
         for (size_t k = 1; k < m; k++)
         {
+            // Initialize raders data with zeros
+            init_coeff<radix_type>(data_raders, raders);
+
             // Copy input data (squeeze)
             for (size_t j = 0; j < radix; j++)
             {
                 size_t j1 = i*radix + j;                
                 size_t j2 = reorder_table_columns[reorder_table_size - j1 - 1];
 
-                x_temp_in[2*j + 0] = data_in[2*j2*m2 + 2*k + 0];
-                x_temp_in[2*j + 1] = data_in[2*j2*m2 + 2*k + 1];
+                double re = data_in[2*j2*m2 + 2*k + 0];
+                double im = data_in[2*j2*m2 + 2*k + 1];
+                set_value<radix_type>(x_temp_in, data_raders, j, raders, re, im);
             }
 
-            multiply_coeff<radix,true>(x_temp_in, x_temp_out);
+            // Multiply with coefficients
+            multiply_coeff_forward<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // Copy output data (un-squeeze)
             for (size_t j = 0; j < radix; j++)
             {
-                data_out[2*i*radix*m + 2*j*m + 2*k + 0] = norm_factor*x_temp_out[2*j + 0];
-                data_out[2*i*radix*m + 2*j*m + 2*k + 1] = norm_factor*x_temp_out[2*j + 1];
+                double re,im;
+                get_value<radix_type>(x_temp_out, data_raders, j, raders, re, im);
+                data_out[2*i*radix*m + 2*j*m + 2*k + 0] = norm_factor*re;
+                data_out[2*i*radix*m + 2*j*m + 2*k + 1] = norm_factor*im;
             }
         }
     }
+
+    // Free temporary memory
+    free_raders<radix_type>(raders, data_raders);
 }
 
 
@@ -418,13 +438,14 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_plain_d(const d
 template void fft_2d_complex_to_complex_packed_plain_d<false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_complex_to_complex_packed_plain_d<true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_2d_real_reorder2_inverse_plain_d<2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_inverse_plain_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_inverse_plain_d<4>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_inverse_plain_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_inverse_plain_d<6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_inverse_plain_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_inverse_plain_d<8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_inverse_plain_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_inverse_plain_d<Radix2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_inverse_plain_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_inverse_plain_d<Radix4>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_inverse_plain_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_inverse_plain_d<Radix6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_inverse_plain_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_inverse_plain_d<Radix8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template void fft_2d_real_reorder2_odd_rows_forward_plain_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_odd_rows_forward_plain_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);

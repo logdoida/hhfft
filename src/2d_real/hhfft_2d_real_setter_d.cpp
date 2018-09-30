@@ -210,12 +210,12 @@ void hhfft::HHFFT_2D_Real_D_set_complex_to_complex_packed_first_column_function(
 
 
 // Reorder and do FFT
-template<size_t radix> void fft_2d_real_reorder2_inverse_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template<size_t radix> void fft_2d_real_reorder2_inverse_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template<size_t radix> void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<RadixType radix_type> void fft_2d_real_reorder2_inverse_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<RadixType radix_type> void fft_2d_real_reorder2_inverse_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template<RadixType radix_type> void fft_2d_real_reorder2_inverse_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 
-template<size_t radix> void set_instruction_set_2d_real_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+template<RadixType radix_type> void set_instruction_set_2d_real_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
 
 #ifdef HHFFT_COMPILED_WITH_AVX512F
@@ -228,18 +228,19 @@ template<size_t radix> void set_instruction_set_2d_real_d(StepInfoD &step_info, 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {        
-        step_info.step_function = fft_2d_real_reorder2_inverse_avx_d<radix>;
+        step_info.step_function = fft_2d_real_reorder2_inverse_avx_d<radix_type>;
     }
 #endif
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {        
-        step_info.step_function = fft_2d_real_reorder2_inverse_sse2_d<radix>;
+        step_info.step_function = fft_2d_real_reorder2_inverse_sse2_d<radix_type>;
     }
+
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
-        step_info.step_function = fft_2d_real_reorder2_inverse_plain_d<radix>;
+        step_info.step_function = fft_2d_real_reorder2_inverse_plain_d<radix_type>;
     }
 }
 
@@ -247,27 +248,31 @@ void set_radix_2d_real_d(StepInfoD &step_info, hhfft::InstructionSet instruction
 {
     size_t radix = step_info.radix;
 
-    if (radix == 2)
+    if (radix > 8)
     {
-        set_instruction_set_2d_real_d<2>(step_info, instruction_set);
-    } if (radix == 3)
+        set_instruction_set_2d_real_d<Raders>(step_info, instruction_set);
+    }
+    else if (radix == 2)
     {
-        set_instruction_set_2d_real_d<3>(step_info, instruction_set);
-    } if (radix == 4)
+        set_instruction_set_2d_real_d<Radix2>(step_info, instruction_set);
+    } else if (radix == 3)
     {
-        set_instruction_set_2d_real_d<4>(step_info, instruction_set);
-    } if (radix == 5)
+        set_instruction_set_2d_real_d<Radix3>(step_info, instruction_set);
+    } else if (radix == 4)
     {
-        set_instruction_set_2d_real_d<5>(step_info, instruction_set);
-    } if (radix == 6)
+        set_instruction_set_2d_real_d<Radix4>(step_info, instruction_set);
+    } else if (radix == 5)
     {
-        set_instruction_set_2d_real_d<6>(step_info, instruction_set);
-    } if (radix == 7)
+        set_instruction_set_2d_real_d<Radix5>(step_info, instruction_set);
+    } else if (radix == 6)
     {
-        set_instruction_set_2d_real_d<7>(step_info, instruction_set);
-    } if (radix == 8)
+        set_instruction_set_2d_real_d<Radix6>(step_info, instruction_set);
+    } else if (radix == 7)
     {
-       set_instruction_set_2d_real_d<8>(step_info, instruction_set);
+        set_instruction_set_2d_real_d<Radix7>(step_info, instruction_set);
+    } else if (radix == 8)
+    {
+       set_instruction_set_2d_real_d<Radix8>(step_info, instruction_set);
     }
 }
 
