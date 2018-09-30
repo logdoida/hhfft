@@ -256,17 +256,19 @@ void fft_2d_real_reorder2_inverse_sse2_d(const double *data_in, double *data_out
 //////////////////////// Odd number of columns ////////////////////////////
 
 // Combine reordering and first row wise FFT
-template<size_t radix> void fft_2d_real_reorder2_odd_rows_forward_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_2d_real_reorder2_odd_rows_forward_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
-    // Only out of place reordering supported
-    assert(data_in != data_out);
-
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
     size_t n = step_info.size;
     size_t m = step_info.repeats * radix;  // row size in input
     size_t m2 = m+1; // row size in output
     size_t repeats = step_info.repeats;
     uint32_t *reorder_table_columns = step_info.reorder_table;
     uint32_t *reorder_table_rows = step_info.reorder_table2;
+
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders = allocate_raders_D<radix_type>(raders);
 
     // FFT and reordering
     for (size_t i = 0; i < n; i++)
@@ -279,78 +281,104 @@ template<size_t radix> void fft_2d_real_reorder2_odd_rows_forward_sse2_d(const d
         bool dir_out = true;
         for (size_t j = 0; j < repeats; j++)
         {
-            ComplexD x_temp_in[radix];
-            ComplexD x_temp_out[radix];
+            // Initialize raders data with zeros
+            init_coeff_D<radix_type>(data_raders, raders);
+
+            ComplexD x_temp_in[radix_type];
+            ComplexD x_temp_out[radix_type];
 
             // Copy input data taking reordering into account
             for (size_t k = 0; k < radix; k++)
             {
                 size_t j2 = reorder_table_rows[j*radix + k];
 
-                x_temp_in[k] = load_real_D(data_in + i2*m + j2);
+                ComplexD x = load_real_D(data_in + i2*m + j2);
+                set_value_D<radix_type>(x_temp_in, data_raders, k, raders, x);
             }
 
-            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
+            // Multiply with coefficients
+            multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // Save only about half of the output
             // First/ last one is real
             if (dir_out) // direction normal
             {
-                store_real_D(x_temp_out[0], data_out + i*m2 + j*radix + 1);
+                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, 0, raders);
+                store_real_D(x, data_out + i*m2 + j*radix + 1);
 
                 for (size_t k = 1; k < radix/2 + 1; k++)
                 {
-                    store_D(x_temp_out[k], data_out + i*m2 + j*radix + 2*k);
+                    ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, k, raders);
+                    store_D(x, data_out + i*m2 + j*radix + 2*k);
                 }
             } else // direction inverted
             {
-                store_real_D(x_temp_out[0], data_out + i*m2 + j*radix + radix);
+                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, 0, raders);
+                store_real_D(x, data_out + i*m2 + j*radix + radix);
 
                 for (size_t k = 1; k < radix/2 + 1; k++)
                 {
-                    store_D(x_temp_out[k], data_out + i*m2 + j*radix + radix - 2*k);
+                    ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, k, raders);
+                    store_D(x, data_out + i*m2 + j*radix + radix - 2*k);
                 }
             }
             dir_out = !dir_out;
         }
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 
 // Calculates first ifft step for the first column and saves it to a temporary variable
-template<size_t radix> void fft_2d_real_odd_rows_reorder_first_column_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_2d_real_odd_rows_reorder_first_column_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t m2 = 2*step_info.stride; // row size in input
     size_t repeats = step_info.repeats;
     uint32_t *reorder_table_columns = step_info.reorder_table;
     size_t reorder_table_columns_size = step_info.reorder_table_size;
     double k = step_info.norm_factor;
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
+
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders = allocate_raders_D<radix_type>(raders);
 
     for (size_t i = 0; i < repeats; i++)
     {
-        ComplexD x_temp_in[radix];
-        ComplexD x_temp_out[radix];
+        // Initialize raders data with zeros
+        init_coeff_D<radix_type>(data_raders, raders);
+
+        ComplexD x_temp_in[radix_type];
+        ComplexD x_temp_out[radix_type];
 
         // Copy input data taking reordering and scaling into account
         for (size_t j = 0; j < radix; j++)
         {
             size_t i1 = i*radix + j;
             size_t i2 = reorder_table_columns[reorder_table_columns_size - i1 - 1];
-            x_temp_in[j] = load_D(data_in + i2*m2)*k;
+            ComplexD x = load_D(data_in + i2*m2)*k;
+            set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
         }
 
-        multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
+        // Multiply with coefficients
+        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // save output
         for (size_t j = 0; j < radix; j++)
         {
-            store_D(x_temp_out[j], data_out + 2*(i*radix + j));
+            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+            store_D(x, data_out + 2*(i*radix + j));
         }
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 // Reordering row- and columnwise, and first IFFT-step combined
-template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_2d_real_odd_rows_reorder_columns_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {    
     size_t m2 = step_info.size; // row size in input
     size_t m = 2*m2 - 1;        // row size originally
@@ -359,12 +387,20 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_sse2_d(const do
     uint32_t *reorder_table_rows = step_info.reorder_table2;
     size_t reorder_table_columns_size = step_info.reorder_table_size;
     double norm_factor = step_info.norm_factor;
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
+
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders = allocate_raders_D<radix_type>(raders);
 
     for (size_t i = 0; i < repeats; i++)
     {
         // all columns, skip the first one as it is processed in temp variable
         for (size_t j = 1; j < m2; j++)
         {
+            // Initialize raders data with zeros
+            init_coeff_D<radix_type>(data_raders, raders);
+
             size_t j2 = m - reorder_table_rows[j];
 
             // For some of the columns the output should be conjugated
@@ -377,8 +413,8 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_sse2_d(const do
                 conj = true;
             }
 
-            ComplexD x_temp_in[radix];
-            ComplexD x_temp_out[radix];
+            ComplexD x_temp_in[radix_type];
+            ComplexD x_temp_out[radix_type];
 
             // Copy input data taking reordering and scaling into account
             for (size_t k = 0; k < radix; k++)
@@ -396,22 +432,27 @@ template<size_t radix> void fft_2d_real_odd_rows_reorder_columns_sse2_d(const do
 
                 if (conj)
                 {
-                    x_temp_in[k] = conj_D(x);
+                    set_value_D<radix_type>(x_temp_in, data_raders, k, raders, conj_D(x));
                 } else
                 {
-                    x_temp_in[k] = x;
+                    set_value_D<radix_type>(x_temp_in, data_raders, k, raders, x);
                 }
             }
 
-            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
+            // Multiply with coefficients
+            multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // save output. The row size is decreased to m2-1 so that all data fits
             for (size_t k = 0; k < radix; k++)
             {
-                store_D(x_temp_out[k], data_out + 2*(i*radix + k)*(m2-1) + 2*j - 2);
+                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, k, raders);
+                store_D(x, data_out + 2*(i*radix + k)*(m2-1) + 2*j - 2);
             }
         }
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 // Instantiations of the functions defined in this class
@@ -427,22 +468,25 @@ template void fft_2d_real_reorder2_inverse_sse2_d<Radix6>(const double *data_in,
 template void fft_2d_real_reorder2_inverse_sse2_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_sse2_d<Radix8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<4>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix4>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_2d_real_odd_rows_reorder_columns_sse2_d<2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_reorder_columns_sse2_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_reorder_columns_sse2_d<4>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_reorder_columns_sse2_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_reorder_columns_sse2_d<6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_reorder_columns_sse2_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_reorder_columns_sse2_d<8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix4>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);

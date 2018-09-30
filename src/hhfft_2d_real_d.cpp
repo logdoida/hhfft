@@ -76,6 +76,9 @@ HHFFT_2D_REAL_D::HHFFT_2D_REAL_D(size_t n, size_t m, InstructionSet instruction_
         instruction_set = hhfft::get_best_instruction_set();
     }
 
+    // Set the convolution function
+    convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
+
     if ((n == 1) || (m == 1))
     {
         // Use 1d fft to calculate the transformation
@@ -96,9 +99,6 @@ HHFFT_2D_REAL_D::HHFFT_2D_REAL_D(size_t n, size_t m, InstructionSet instruction_
     {        
         plan_odd(instruction_set);
     }
-
-    // Set the convolution function
-    convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
 }
 
 // This function is used as the final step when m = 1
@@ -135,7 +135,7 @@ void HHFFT_2D_REAL_D::plan_vector(size_t n, InstructionSet instruction_set, bool
     twiddle_factors_rows = std::move(fft_1d_real.twiddle_factors);
     reorder_table_ifft_odd_rows = std::move(fft_1d_real.reorder_table_ifft_odd);
     reorder_table_columns = std::move(fft_1d_real.reorder_table_inverse);
-    //raders = std::move(fft_1d_real.raders); // TODO
+    raders = std::move(fft_1d_real.raders);
 
     if (is_column)
     {
@@ -197,6 +197,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table_columns.data();
         step.reorder_table2 = reorder_table_rows.data();
+        set_radix_raders(N_rows[0], step, instruction_set);
         step.radix = N_rows[0];
         step.stride = 1;
         step.repeats = m / step.radix;
@@ -210,6 +211,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
     {
         hhfft::StepInfoD step;
         hhfft::StepInfoD &step_prev = forward_steps.back();
+        set_radix_raders(N_rows[i], step, instruction_set);
         step.radix = N_rows[i];
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;      
@@ -243,6 +245,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.stride = m2;
+        set_radix_raders(N_columns[0], step, instruction_set);
         step.radix = N_columns[0];
         step.repeats = n / step.radix;
         HHFFT_1D_Complex_D_set_function(step, instruction_set);
@@ -254,6 +257,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
     {
         hhfft::StepInfoD step;
         hhfft::StepInfoD &step_prev = forward_steps.back();
+        set_radix_raders(N_columns[i], step, instruction_set);
         step.radix = N_columns[i];
         step.stride = step_prev.stride * step_prev.radix;
         if (i == 1)
@@ -277,6 +281,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.reorder_table = reorder_table_columns.data();        
         step.reorder_table_size = reorder_table_columns.size();
         step.stride = m2;
+        set_radix_raders(N_columns[0], step, instruction_set);
         step.radix = N_columns[0];
         step.repeats = n / step.radix;
         step.forward = false;
@@ -291,6 +296,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
     {
         hhfft::StepInfoD step;
         hhfft::StepInfoD &step_prev = inverse_steps.back();
+        set_radix_raders(N_columns[i], step, instruction_set);
         step.radix = N_columns[i];
         if (i == 1)
         {
@@ -318,6 +324,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.reorder_table = reorder_table_columns.data();
         step.reorder_table_size = reorder_table_columns.size();
         step.reorder_table2 = reorder_table_ifft_odd_rows.data();
+        set_radix_raders(N_columns[0], step, instruction_set);
         step.radix = N_columns[0];
         step.stride = 1;
         step.repeats = n / step.radix;
@@ -335,6 +342,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         hhfft::StepInfoD &step_prev = inverse_steps.back();
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
+        set_radix_raders(N_columns[i], step, instruction_set);
         step.radix = N_columns[i];
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;
@@ -365,6 +373,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         hhfft::StepInfoD step;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
+        set_radix_raders(N_rows[0], step, instruction_set);
         step.radix = N_rows[0];
         step.stride = 1;
         step.repeats = (m / step.radix + 1)/2;
@@ -379,6 +388,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
     {
         hhfft::StepInfoD step;
         hhfft::StepInfoD &step_prev = inverse_steps.back();
+        set_radix_raders(N_rows[i], step, instruction_set);
         step.radix = N_rows[i];
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = ((2*step_prev.repeats - 1) / step.radix + 1)/2;

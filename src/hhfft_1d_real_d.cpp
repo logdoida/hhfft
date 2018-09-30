@@ -126,6 +126,10 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
         HHFFT_1D_Real_D_set_1level_raders_function(step_info_ifft, false, instruction_set);
         step_info_fft.radix = n;
         step_info_ifft.radix = n;
+        step_info_fft.data_type_in = hhfft::StepDataType::data_in;
+        step_info_fft.data_type_out = hhfft::StepDataType::data_out;
+        step_info_ifft.data_type_in = hhfft::StepDataType::data_in;
+        step_info_ifft.data_type_out = hhfft::StepDataType::data_out;
         set_radix_raders(n, step_info_fft, instruction_set);
         set_radix_raders(n, step_info_ifft, instruction_set);
         forward_steps.push_back(step_info_fft);

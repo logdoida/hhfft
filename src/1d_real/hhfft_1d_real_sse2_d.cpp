@@ -367,28 +367,33 @@ template<RadixType radix_type> void fft_1d_real_one_level_forward_sse2_d(const d
 }
 
 // This function is used on rest of the odd real 2d fft
-template<size_t radix> void fft_2d_real_odd_rows_forward_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_2d_real_odd_rows_forward_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
     size_t n = step_info.size;
     size_t stride = step_info.stride;
     size_t repeats = step_info.repeats;
     size_t m = stride*repeats*radix + 1;
     double *twiddle_factors = step_info.twiddle_factors;
 
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders = allocate_raders_D<radix_type>(raders);
+
     for (size_t j = 0; j < n; j++)
     {
         bool dir_out = true;
         for (size_t i = 0; i < repeats; i++)
-        {
-            // TODO
-            /*
-            fft_1d_real_one_level_forward_sse2_d_internal<radix>(data_in + j*m + i*radix*stride + 1, data_out + j*m + i*radix*stride + 1,
-                                                                  twiddle_factors, stride, dir_out);
-                                                                  */
+        {            
+            fft_1d_real_one_level_forward_sse2_d_internal<radix_type>(data_in + j*m + i*radix*stride + 1, data_out + j*m + i*radix*stride + 1,
+                                                                  twiddle_factors, data_raders, raders, stride, dir_out);
 
             dir_out = !dir_out;
         }
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 ////////////////////////////////////// Odd real IFFT ////////////////////////////////////////////////////
@@ -477,74 +482,87 @@ template<RadixType radix_type> void fft_1d_real_first_level_inverse_sse2_d(const
 }
 
 // This function is used on first level of the odd real 2d ifft
-template<size_t radix> void fft_2d_real_odd_rows_first_level_inverse_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_2d_real_odd_rows_first_level_inverse_sse2_d(const double *data_in, double *data_out, const hhfft::StepInfo<double> &step_info)
 {
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
     size_t repeats = step_info.repeats;
     size_t m = radix * (2*step_info.repeats - 1);
     size_t n = step_info.size;
 
-    ComplexD x_temp_in[radix];
-    ComplexD x_temp_out[radix];
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders = allocate_raders_D<radix_type>(raders);
+
+    ComplexD x_temp_in[radix_type];
+    ComplexD x_temp_out[radix_type];
 
     // Loop over all rows
     for (size_t k = 0; k < n; k++)
     {
         // In the first repeat input is r, (r+i), (r+i) ... and output is r,r,r,r,r...
         {
-            x_temp_in[0] = load_real_D(data_in + k*m);
+            // Initialize raders data with zeros
+            init_coeff_D<radix_type>(data_raders, raders);
+
+            ComplexD x = load_real_D(data_in + k*m);
+            set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x);
 
             // Read other inputs and conjugate them
             for (size_t j = 1; j <= radix/2; j++)
             {
                 ComplexD x = load_D(data_in + k*m + 2*j - 1);
-                x_temp_in[j] = x;
-                x_temp_in[radix-j] = conj_D(x);
+                set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
+                set_value_D<radix_type>(x_temp_in, data_raders, radix-j, raders, conj_D(x));
             }
 
             // Multiply with coefficients
-            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
+            multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // Write only real parts of the data
             for (size_t j = 0; j < radix; j++)
             {
-                store_real_D(x_temp_out[j], data_out + k*m + j);
+                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+                store_real_D(x, data_out + k*m + j);
             }
         }
 
         // Other repeats are more usual, data ordering changes from r,i,r,i,r,i... to r,r,r...i,i,i...
         for (size_t i = 1; i < repeats; i++)
         {
+            // Initialize raders data with zeros
+            init_coeff_D<radix_type>(data_raders, raders);
+
             // Copy input data
             for (size_t j = 0; j < radix; j++)
             {
-                x_temp_in[j] = load_D(data_in + k*m + 2*i*radix - radix + 2*j);
+                ComplexD x = load_D(data_in + k*m + 2*i*radix - radix + 2*j);
+                set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
             }
 
             // Multiply with coefficients
-            multiply_coeff_D<radix,true>(x_temp_in, x_temp_out);
+            multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
             // Store real and imag parts separately
             for (size_t j = 0; j < radix; j++)
             {
-                store_D(x_temp_out[j], data_out[k*m + 2*i*radix - radix + j], data_out[k*m + 2*i*radix + j]);
+                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+                store_D(x, data_out[k*m + 2*i*radix - radix + j], data_out[k*m + 2*i*radix + j]);
             }
         }
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 
 // This function is used on on rest of the odd real ifft
-template<RadixType radix_type> void fft_1d_real_one_level_inverse_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> inline void fft_1d_real_one_level_inverse_sse2_internal_d(const double *data_in, double *data_out, double *data_raders, const hhfft::RadersD &raders, const hhfft::StepInfo<double> &step_info)
 {    
     size_t repeats = step_info.repeats;
     size_t stride = step_info.stride;
-    double *twiddle_factors = step_info.twiddle_factors;
-    const hhfft::RadersD &raders = *step_info.raders;
+    double *twiddle_factors = step_info.twiddle_factors;    
     size_t radix = get_actual_radix<radix_type>(raders);
-
-    // Allocate memory for Rader's algorithm if needed
-    // use allocate_raders_D2S as stride always > 1!
-    double *data_raders = allocate_raders_D2S<radix_type>(raders);
 
     // In the first repeat input is r,r,r,... r,r,r, ... i,i,i, ... and output is r,r,r,r,r...
     {        
@@ -654,26 +672,47 @@ template<RadixType radix_type> void fft_1d_real_one_level_inverse_sse2_d(const d
             }
         }
     }
+}
+
+template<RadixType radix_type> void fft_1d_real_one_level_inverse_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+{
+    const hhfft::RadersD &raders = *step_info.raders;
+
+    // Allocate memory for Rader's algorithm if needed
+    // use allocate_raders_D2S as stride always > 1!
+    double *data_raders = allocate_raders_D2S<radix_type>(raders);
+
+    // Call the actual function
+    fft_1d_real_one_level_inverse_sse2_internal_d<radix_type>(data_in, data_out, data_raders, raders, step_info);
 
     // Free temporary memory
     free_raders_D<radix_type>(raders, data_raders);
 }
 
 // This is used in 2d real for odd row sizes
-template<size_t radix> void fft_2d_real_odd_rows_inverse_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> void fft_2d_real_odd_rows_inverse_sse2_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
     size_t n = step_info.size;
     size_t stride = step_info.stride;
-    size_t m = stride*radix*(2*step_info.repeats - 1);
+    size_t m = stride*radix*(2*step_info.repeats - 1);    
+
+    // Allocate memory for Rader's algorithm if needed
+    double *data_raders;
+    if (stride == 1)
+        data_raders = allocate_raders_D<radix_type>(raders);
+    else
+        data_raders = allocate_raders_D2S<radix_type>(raders);
 
     // Process all rows separately
     for (size_t j = 0; j < n; j++)
-    {
-        // TODO
-        /*
-        fft_1d_real_one_level_inverse_sse2_d<radix>(data_in + j*m, data_out + j*m, step_info);
-        */
+    {        
+        fft_1d_real_one_level_inverse_sse2_internal_d<radix_type>(data_in + j*m, data_out + j*m, data_raders, raders, step_info);
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 /////////////////////////////////// Small sizes ///////////////////////////////////////
@@ -835,7 +874,6 @@ template<bool forward> void fft_1d_real_1level_raders_sse2_d(const double *data_
             ComplexD x = k*get_value_D<Raders>(nullptr, data_raders, j, raders);
             store_real_D(x, data_out + j);
         }
-
     }
 
     // Free temporary memory
@@ -891,17 +929,20 @@ template void fft_1d_real_one_level_inverse_sse2_d<Radix3>(const double *data_in
 template void fft_1d_real_one_level_inverse_sse2_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_one_level_inverse_sse2_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_2d_real_odd_rows_forward_sse2_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_forward_sse2_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_forward_sse2_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_forward_sse2_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_forward_sse2_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_forward_sse2_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_forward_sse2_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_2d_real_odd_rows_first_level_inverse_sse2_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_first_level_inverse_sse2_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_first_level_inverse_sse2_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_first_level_inverse_sse2_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_first_level_inverse_sse2_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_first_level_inverse_sse2_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_first_level_inverse_sse2_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
-template void fft_2d_real_odd_rows_inverse_sse2_d<3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_inverse_sse2_d<5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
-template void fft_2d_real_odd_rows_inverse_sse2_d<7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_inverse_sse2_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_inverse_sse2_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_inverse_sse2_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_inverse_sse2_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template void fft_1d_real_1level_raders_sse2_d<false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_1d_real_1level_raders_sse2_d<true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
