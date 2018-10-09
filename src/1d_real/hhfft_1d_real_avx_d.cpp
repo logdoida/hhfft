@@ -676,7 +676,7 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_first_level_inverse_avx
 }
 
 // This function is used on on rest of the odd real ifft
-template<RadixType radix_type> inline void fft_1d_real_one_level_inverse_avx_internal_d(const double *data_in, double *data_out, double *data_raders, const hhfft::RadersD &raders, const hhfft::StepInfo<double> &step_info)
+template<RadixType radix_type> inline __attribute__((always_inline)) void fft_1d_real_one_level_inverse_avx_internal_d(const double *data_in, double *data_out, double *data_raders, const hhfft::RadersD &raders, const hhfft::StepInfo<double> &step_info)
 {
     size_t repeats = step_info.repeats;
     size_t stride = step_info.stride;

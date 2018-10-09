@@ -418,6 +418,9 @@ template<RadixType radix_type> void fft_2d_real_reorder2_odd_rows_forward_avx_d(
             dir_out = !dir_out;
         }
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 
@@ -653,6 +656,9 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_reorder_columns_avx_d(c
             }
         }
     }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
 }
 
 // Instantiations of the functions defined in this class
