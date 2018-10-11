@@ -73,6 +73,18 @@ static const double coeff_radix_7[98] = {
     1, 0, -k7,  k8, -k9, -k10, k5, -k6,  k5,  k6, -k9,  k10, -k7, -k8,
     1, 0,  k5,  k6, -k7,  k8, -k9,  k10,-k9, -k10, -k7, -k8, k5, -k6};
 
+
+static const double coeff_radix_7_cos[9] = {
+    k5, -k7, -k9,
+    -k7, -k9,  k5,
+    -k9,  k5, -k7};
+
+static const double coeff_radix_7_sin[9] = {
+    -k6, -k8, -k10,
+    -k8, k10, k6,
+    -k10, k6, -k8};
+
+
 static const double k11 = sqrt(0.5);
 static const double coeff_radix_8[128] = {
 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0,
@@ -114,7 +126,77 @@ template<size_t radix, bool forward> inline void multiply_coeff(const double *x_
         coeff = coeff_radix_6;
     } else if (radix == 7)
     {
-        coeff = coeff_radix_7;
+        // For Radix 7, use faster apporach. This could be extended for other prime radices
+
+        const double *coeff_cos = coeff_radix_7_cos;
+        const double *coeff_sin = coeff_radix_7_sin;
+
+        // Calculate sums and differences
+        double sums[2*3];
+        double diffs[2*3];
+        for (size_t i = 0; i < 3; i++)
+        {
+            sums[2*i + 0] = x_in[2*(i+1) + 0] + x_in[2*(radix - i - 1) + 0];
+            sums[2*i + 1] = x_in[2*(i+1) + 1] + x_in[2*(radix - i - 1) + 1];
+
+            diffs[2*i + 0] = x_in[2*(radix - i - 1) + 1] - x_in[2*(i+1) + 1];
+            diffs[2*i + 1] = x_in[2*(radix - i - 1) + 0] - x_in[2*(i+1) + 0];
+        }
+
+        // Initialize all outputs with x_in[0]
+        for (size_t i = 0; i < radix; i++)
+        {
+            x_out[2*i + 0] = x_in[0];
+            x_out[2*i + 1] = x_in[1];
+        }
+
+        // Calculate x_out[0]
+        for (size_t i = 0; i < 3; i++)
+        {
+            x_out[0] += sums[2*i + 0];
+            x_out[1] += sums[2*i + 1];
+        }
+
+        // use cos-coefficients
+        for (size_t i = 0; i < 3; i++)
+        {
+            double re = 0;
+            double im = 0;
+            for (size_t j = 0; j < 3; j++)
+            {
+                re += coeff_cos[3*i + j]*sums[2*j + 0];
+                im += coeff_cos[3*i + j]*sums[2*j + 1];
+            }
+            x_out[2*(i+1) + 0] += re;
+            x_out[2*(i+1) + 1] += im;
+            x_out[2*(radix - i - 1) + 0] += re;
+            x_out[2*(radix - i - 1) + 1] += im;
+        }
+
+        // use sin-coefficients
+        for (size_t i = 0; i < 3; i++)
+        {
+            double re = 0;
+            double im = 0;
+            for (size_t j = 0; j < 3; j++)
+            {
+                if (forward)
+                {
+                    re += coeff_sin[3*i + j]*diffs[2*j + 0];
+                    im += coeff_sin[3*i + j]*diffs[2*j + 1];
+                } else
+                {
+                    re -= coeff_sin[3*i + j]*diffs[2*j + 0];
+                    im += coeff_sin[3*i + j]*diffs[2*j + 1];
+                }
+            }
+            x_out[2*(i+1) + 0] += re;
+            x_out[2*(i+1) + 1] += im;
+            x_out[2*(radix - i - 1) + 0] -= re;
+            x_out[2*(radix - i - 1) + 1] -= im;
+        }
+
+        return;
     } else if (radix == 8)
     {
         coeff = coeff_radix_8;
