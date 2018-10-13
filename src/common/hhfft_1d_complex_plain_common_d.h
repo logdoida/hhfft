@@ -139,7 +139,7 @@ template<size_t radix, bool forward> inline void multiply_coeff(const double *x_
             sums[2*i + 0] = x_in[2*(i+1) + 0] + x_in[2*(radix - i - 1) + 0];
             sums[2*i + 1] = x_in[2*(i+1) + 1] + x_in[2*(radix - i - 1) + 1];
 
-            diffs[2*i + 0] = x_in[2*(radix - i - 1) + 1] - x_in[2*(i+1) + 1];
+            diffs[2*i + 0] = x_in[2*(i+1) + 1] - x_in[2*(radix - i - 1) + 1];
             diffs[2*i + 1] = x_in[2*(radix - i - 1) + 0] - x_in[2*(i+1) + 0];
         }
 
@@ -179,21 +179,23 @@ template<size_t radix, bool forward> inline void multiply_coeff(const double *x_
             double re = 0;
             double im = 0;
             for (size_t j = 0; j < 3; j++)
-            {
-                if (forward)
-                {
-                    re += coeff_sin[3*i + j]*diffs[2*j + 0];
-                    im += coeff_sin[3*i + j]*diffs[2*j + 1];
-                } else
-                {
-                    re -= coeff_sin[3*i + j]*diffs[2*j + 0];
-                    im += coeff_sin[3*i + j]*diffs[2*j + 1];
-                }
+            {                
+                re += coeff_sin[3*i + j]*diffs[2*j + 0];
+                im += coeff_sin[3*i + j]*diffs[2*j + 1];
             }
-            x_out[2*(i+1) + 0] += re;
-            x_out[2*(i+1) + 1] += im;
-            x_out[2*(radix - i - 1) + 0] -= re;
-            x_out[2*(radix - i - 1) + 1] -= im;
+            if (forward)
+            {
+                x_out[2*(i+1) + 0] -= re;
+                x_out[2*(i+1) + 1] -= im;
+                x_out[2*(radix - i - 1) + 0] += re;
+                x_out[2*(radix - i - 1) + 1] += im;
+            } else
+            {
+                x_out[2*(i+1) + 0] += re;
+                x_out[2*(i+1) + 1] += im;
+                x_out[2*(radix - i - 1) + 0] -= re;
+                x_out[2*(radix - i - 1) + 1] -= im;
+            }
         }
 
         return;

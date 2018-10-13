@@ -776,35 +776,67 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         return;
     }
 
-    // Other radices
-    const double *coeff = nullptr;
-
+    // Implementation for radix = 7
     if (radix == 7)
     {
-        coeff = coeff_radix_7;
-    }
+        const double *coeff_cos = coeff_radix_7_cos;
+        const double *coeff_sin = coeff_radix_7_sin;
 
-    // First row is (1,0)
-    x_out[0] = x_in[0];
-    for (size_t i = 1; i < radix; i++)
-    {
-        x_out[0] = x_out[0] + x_in[i];
-    }
-
-    for (size_t i = 1; i < radix; i++)
-    {
-        x_out[i] = x_in[0]; // First column is always (1,0)
-        for (size_t j = 1; j < radix; j++)
+        // Calculate sums and differences
+        ComplexD2S sums[3];
+        ComplexD2S diffs[3];
+        for (size_t i = 0; i < 3; i++)
         {
-            // TODO this should be a function
-            ComplexD2S w;
-            double re = coeff[2*radix*i + 2*j + 0];
-            double im = coeff[2*radix*i + 2*j + 1];
-            w.real = _mm_setr_pd(re,re);
-            w.imag = _mm_setr_pd(im,im);
-
-            x_out[i] = x_out[i] + mul_w_D2S<forward>(x_in[j], w);
+            sums[i] = x_in[i+1] + x_in[radix - i - 1];
+            diffs[i] = mul_i_D2S(x_in[radix - i - 1] - x_in[i+1]);
         }
+
+        // Initialize all outputs with x_in[0]
+        for (size_t i = 0; i < radix; i++)
+        {
+            x_out[i] = x_in[0];
+        }
+
+        // Calculate x_out[0]
+        for (size_t i = 0; i < 3; i++)
+        {
+            x_out[0] = x_out[0] + sums[i];
+        }
+
+        // use cos-coefficients
+        for (size_t i = 0; i < 3; i++)
+        {
+            ComplexD2S x = broadcast64_D2S(0);
+            for (size_t j = 0; j < 3; j++)
+            {
+                ComplexD2S coeff = broadcast64_D2S(coeff_cos[3*i + j]);
+                x = x + coeff*sums[j];
+            }
+            x_out[i+1] = x_out[i+1] + x;
+            x_out[radix - i - 1] = x_out[radix - i - 1] + x;
+        }
+
+        // use sin-coefficients
+        for (size_t i = 0; i < 3; i++)
+        {
+            ComplexD2S x = broadcast64_D2S(0);
+            for (size_t j = 0; j < 3; j++)
+            {
+                ComplexD2S coeff = broadcast64_D2S(coeff_sin[3*i + j]);
+                x = x + coeff*diffs[j];
+            }
+            if (forward)
+            {
+                x_out[i+1] = x_out[i+1] - x;
+                x_out[radix - i - 1] = x_out[radix - i - 1] + x;
+            } else
+            {
+                x_out[i+1] = x_out[i+1] + x;
+                x_out[radix - i - 1] = x_out[radix - i - 1] - x;
+            }
+        }
+
+        return;
     }
 }
 
