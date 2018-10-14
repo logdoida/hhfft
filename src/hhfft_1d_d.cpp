@@ -73,10 +73,17 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
 
     // For small problems, it is better to use a single level function
     StepInfoD step_info_fft, step_info_ifft;
-    HHFFT_1D_Complex_D_set_small_function(step_info_fft, n, true, instruction_set);
+    std::vector<size_t> N_small = HHFFT_1D_Complex_D_set_small_function(step_info_fft, n, true, instruction_set);
     HHFFT_1D_Complex_D_set_small_function(step_info_ifft, n, false, instruction_set);
     if (step_info_fft.step_function && step_info_ifft.step_function)
     {
+        // twiddle factors are needed if two level function is used
+        if (N_small.size() > 1)
+        {
+            twiddle_factors.push_back(calculate_twiddle_factors_DIT(1, N_small));
+            step_info_fft.twiddle_factors = twiddle_factors[0].data();
+            step_info_ifft.twiddle_factors = twiddle_factors[0].data();
+        }
         forward_steps.push_back(step_info_fft);
         inverse_steps.push_back(step_info_ifft);
         return;
@@ -119,7 +126,7 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
     for (size_t i = 1; i < N.size(); i++)
     {     
         AlignedVector<double> w = calculate_twiddle_factors_DIT(i, N);
-        twiddle_factors.push_back(w);
+        twiddle_factors.push_back(w);        
     }
 
     // DIT

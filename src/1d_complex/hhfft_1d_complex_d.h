@@ -23,6 +23,8 @@
 #include "step_info.h"
 #include "architecture.h"
 
+#include <vector>
+
 namespace hhfft
 {
 
@@ -36,7 +38,7 @@ void HHFFT_1D_Complex_D_set_reorder_function(StepInfoD &step_info, hhfft::Instru
 void (*HHFFT_1D_Complex_D_set_convolution_function(hhfft::InstructionSet instruction_set))(const double *, const double *, double *, size_t);
 
 // This sets pointer to a one level fft/ifft function if such exists
-void HHFFT_1D_Complex_D_set_small_function(StepInfoD &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set);
+std::vector<size_t> HHFFT_1D_Complex_D_set_small_function(StepInfoD &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set);
 
 // This sets pointer to a one level Raders fft/ifft function
 void HHFFT_1D_Complex_D_set_1level_raders_function(StepInfoD &step_info, bool forward, hhfft::InstructionSet instruction_set);
