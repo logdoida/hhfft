@@ -164,20 +164,22 @@ void RadersD::calculate_fft_b(const std::vector<uint32_t> &reorder_table_inverse
             hhfft::calculate_exp_neg_2_pi_i(val, n_org, re, im);
             fft_b[2*i1 + 0] = re;
             fft_b[2*i1 + 1] = im;
-        }
-        if ((i > n - n_org + 1) && (i < n - 1))
+        } else if ((i > n - n_org + 1) && (i < n - 1))
         {
             size_t i3 = i - (n - n_org + 1);
             double val = reorder_table_raders[n_org - 3 - i3];
             hhfft::calculate_exp_neg_2_pi_i(val, n_org, re, im);
             fft_b[2*i1 + 0] = re;
             fft_b[2*i1 + 1] = im;
-        }
-        if ((i == n_org - 2) || (i == n - 1))
+        } else if ((i == n_org - 2) || (i == n - 1))
         {
             hhfft::calculate_exp_neg_2_pi_i(1.0, n_org, re, im);
             fft_b[2*i1 + 0] = re;
             fft_b[2*i1 + 1] = im;
+        } else
+        {
+            fft_b[2*i1 + 0] = 0;
+            fft_b[2*i1 + 1] = 0;
         }
     }
 
