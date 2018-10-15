@@ -21,6 +21,7 @@
 #define HHFFT_ALIGNED_ARRAYS
 
 #include <stddef.h>
+#include <stdlib.h>
 
 namespace hhfft
 {
@@ -36,11 +37,33 @@ template<typename T> class AlignedVector
 {
 public:
     // Constructors
-    AlignedVector();
-    AlignedVector(size_t n);
+    AlignedVector()
+    {
+        this->n = 0;
+        this->array = nullptr;
+    }
+
+    AlignedVector(size_t n)
+    {
+        if (n == 0)
+        {
+            this->n = 0;
+            this->array = nullptr;
+        } else
+        {
+            this->n = n;
+            this->array = (T*) allocate_aligned_memory(n*sizeof(T), true);
+        }
+    }
 
     // Destructor
-    ~AlignedVector();
+    ~AlignedVector()
+    {
+        if (array != nullptr)
+        {
+            free(array);
+        }
+    }
 
     // Copy and move constructors
     AlignedVector(const AlignedVector<T>& other);

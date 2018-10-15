@@ -19,7 +19,6 @@
 
 #include "aligned_arrays.h"
 
-#include <stdlib.h>
 #include <algorithm>
 
 using namespace hhfft;
@@ -50,18 +49,6 @@ void* hhfft::allocate_aligned_memory(size_t num_bytes, bool allocate_extra)
     return aligned_alloc(alignment, num_bytes);
 }
 
-template<typename T> AlignedVector<T>::AlignedVector()
-{
-    this->n = 0;
-    this->array = nullptr;    
-}
-
-template<typename T> AlignedVector<T>::AlignedVector(size_t n)
-{
-    this->n = n;
-    this->array = (T*) allocate_aligned_memory(n*sizeof(T), true);
-}
-
 template<typename T> void AlignedVector<T>::resize(size_t new_n)
 {
     // Allocate new memory
@@ -76,11 +63,6 @@ template<typename T> void AlignedVector<T>::resize(size_t new_n)
     free(array);
     array = new_array;
     n = new_n;
-}
-
-template<typename T> AlignedVector<T>::~AlignedVector()
-{
-    free(array);
 }
 
 template<typename T> AlignedVector<T>::AlignedVector(const AlignedVector<T>& other)

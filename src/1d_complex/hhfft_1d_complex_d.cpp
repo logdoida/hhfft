@@ -441,7 +441,7 @@ std::vector<size_t> hhfft::HHFFT_1D_Complex_D_set_small_function(StepInfoD &step
         case 8:
             return set_small_function_instruction_set_d<8,1>(step_info, instruction_set, forward);
 
-        // Two fft levels needed
+        // Two fft levels needed            
         case 9:
             return set_small_function_instruction_set_d<3,3>(step_info, instruction_set, forward);
         case 10:
@@ -485,9 +485,7 @@ std::vector<size_t> hhfft::HHFFT_1D_Complex_D_set_small_function(StepInfoD &step
         case 56:
             return set_small_function_instruction_set_d<7,8>(step_info, instruction_set, forward);
         case 64:
-            return set_small_function_instruction_set_d<8,8>(step_info, instruction_set, forward);
-
-
+            return set_small_function_instruction_set_d<8,8>(step_info, instruction_set, forward);        
 
         default:
             break;

@@ -180,7 +180,7 @@ HHFFT_1D_D::HHFFT_1D_D(size_t n, InstructionSet instruction_set)
 }
 
 void HHFFT_1D_D::fft(const double *in, double *out) const
-{
+{    
     // If there is just one step, run it directly
     if (forward_steps.size() == 1)
     {
