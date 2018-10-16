@@ -26,7 +26,7 @@
 using namespace hhfft;
 
 // Actual implementations are in different .cpp-files
-template<RadixType radix_type>
+template<RadixType radix_type, SizeType size_type>
     void fft_2d_complex_column_twiddle_dit_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<RadixType radix_type, SizeType size_type>
@@ -87,7 +87,7 @@ template<RadixType radix_type, SizeType size_type, bool forward> void set_instru
     if (instruction_set == hhfft::InstructionSet::none)
     {
         if (step_info.reorder_table == nullptr && step_info.reorder_table2 == nullptr && step_info.twiddle_factors != nullptr)
-            step_info.step_function = fft_2d_complex_column_twiddle_dit_plain_d<radix_type>;
+            step_info.step_function = fft_2d_complex_column_twiddle_dit_plain_d<radix_type, size_type>;
         if (step_info.reorder_table != nullptr && step_info.reorder_table2 != nullptr && step_info.twiddle_factors == nullptr)
         {            
             step_info.step_function = fft_2d_complex_reorder2_plain_d<radix_type, forward>;

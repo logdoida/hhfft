@@ -27,7 +27,7 @@ using namespace hhfft;
 
 // Actual implementations are in different .cpp-files
 // No twiddle factors
-template<RadixType radix_type>
+template<RadixType radix_type, SizeType stride_type>
     void fft_1d_complex_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<RadixType radix_type, SizeType stride_type>
@@ -40,7 +40,7 @@ template<RadixType radix_type, SizeType stride_type>
 //    void fft_1d_complex_avx512_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 // DIT
-template<RadixType radix_type>
+template<RadixType radix_type, SizeType stride_type>
     void fft_1d_complex_twiddle_dit_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<RadixType radix_type, SizeType stride_type>
@@ -68,7 +68,7 @@ template<bool scale>
     void fft_1d_complex_reorder_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 // Reorder and do FFT
-template<RadixType radix_type, bool forward>
+template<RadixType radix_type, SizeType stride_type, bool forward>
 void fft_1d_complex_reorder2_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template<RadixType radix_type, SizeType stride_type, bool forward>
@@ -163,14 +163,14 @@ template<RadixType radix_type, SizeType stride_type, bool forward> void set_inst
         {
            // Check if reordering should be supported
            if(step_info.reorder_table == nullptr)
-               step_info.step_function = fft_1d_complex_plain_d<radix_type>;
+               step_info.step_function = fft_1d_complex_plain_d<radix_type, stride_type>;
            else if(step_info.stride == 1)
            {
-               step_info.step_function = fft_1d_complex_reorder2_plain_d<radix_type, forward>;
+               step_info.step_function = fft_1d_complex_reorder2_plain_d<radix_type, SizeType::Size1, forward>;
            }
         } else
         {
-            step_info.step_function = fft_1d_complex_twiddle_dit_plain_d<radix_type>;
+            step_info.step_function = fft_1d_complex_twiddle_dit_plain_d<radix_type, stride_type>;
         }
     }  
 }

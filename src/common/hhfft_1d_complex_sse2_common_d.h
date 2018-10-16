@@ -24,7 +24,7 @@
 #ifndef HHFFT_COMPLEX_SSE2_COMMON_D
 #define HHFFT_COMPLEX_SSE2_COMMON_D
 
-#include "hhfft_1d_complex_plain_common_d.h"
+#include "hhfft_common_d.h"
 #include <immintrin.h>
 
 // contains a single complex number: [r i]
