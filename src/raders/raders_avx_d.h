@@ -20,7 +20,7 @@
 // This header contains inline functions used in Rader's algorithm and wrappers that allow using it
 
 #include "raders_d.h"
-#include "../common/hhfft_1d_complex_avx_common_d.h"
+#include "../common/hhfft_common_avx_d.h"
 #include "../raders/raders_sse2_d.h"
 
 //////////////////////////////////// ComplexD2 /////////////////////////////////////////////

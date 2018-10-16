@@ -20,8 +20,8 @@
 // The Plain implementation mainly serves as a reference as sse2 is supported by all x64 cpus
 // This header contains some small functions that are used many times
 
-#ifndef HHFFT_COMPLEX_PLAIN_COMMON_D
-#define HHFFT_COMPLEX_PLAIN_COMMON_D
+#ifndef HHFFT_COMMON_PLAIN_D
+#define HHFFT_COMMON_PLAIN_D
 
 #include "hhfft_common_d.h"
 

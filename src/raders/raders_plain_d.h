@@ -20,7 +20,7 @@
 // This header contains inline functions used in Rader's algorithm and wrappers that allow using it
 
 #include "raders_d.h"
-#include "../common/hhfft_1d_complex_plain_common_d.h"
+#include "../common/hhfft_common_plain_d.h"
 
 template<hhfft::RadixType radix_type> inline size_t get_actual_radix(const hhfft::RadersD &raders)
 {

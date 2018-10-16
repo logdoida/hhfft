@@ -19,11 +19,11 @@
 
 // This header contains some small functions that are used many times
 
-#ifndef HHFFT_COMPLEX_AVX_COMMON_D
-#define HHFFT_COMPLEX_AVX_COMMON_D
+#ifndef HHFFT_COMMON_AVX_D
+#define HHFFT_COMMON_AVX_D
 
 #define ENABLE_AVX
-#include "hhfft_1d_complex_sse2_common_d.h"
+#include "hhfft_common_sse2_d.h"
 
 ////////////////////////////////////////// ComplexD2 ///////////////////////////////////////
 

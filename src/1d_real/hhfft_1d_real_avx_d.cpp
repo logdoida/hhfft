@@ -23,7 +23,7 @@
 #include <assert.h>
 #include <cmath>
 
-#include "../common/hhfft_1d_complex_avx_common_d.h"
+#include "../common/hhfft_common_avx_d.h"
 #include "../raders/raders_avx_d.h"
 
 using namespace hhfft;
