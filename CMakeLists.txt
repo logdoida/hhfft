@@ -78,4 +78,5 @@ install (FILES
 ./src/architecture.h
 ./src/step_info.h
 ./src/aligned_arrays.h
+./src/raders_d.h
 DESTINATION include)

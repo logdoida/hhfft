@@ -23,6 +23,7 @@
 #include "architecture.h"
 #include "step_info.h"
 #include "aligned_arrays.h"
+#include "raders_d.h"
 
 #include <vector>
 #include <array>
