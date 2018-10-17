@@ -27,7 +27,7 @@ namespace hhfft
 {
 
 // Forward declaration
-class RadersD;
+template<typename T> class RadersGeneric;
 
 enum StepDataType {data_in = 0, data_out = 1, temp_data = 2};
 
@@ -56,7 +56,7 @@ template<typename T> struct StepInfo
     T norm_factor = 1.0;
 
     // If Rader's is needed
-    const RadersD *raders;
+    const RadersGeneric<T> *raders = nullptr;
 
     // Twiddle factors or reorder table might be used in function
     T *twiddle_factors = nullptr;
@@ -78,6 +78,7 @@ template<typename T> struct StepInfo
 };
 
 typedef StepInfo<double> StepInfoD;
+typedef StepInfo<float> StepInfoF;
 
 }
 

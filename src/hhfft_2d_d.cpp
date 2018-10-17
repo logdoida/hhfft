@@ -120,7 +120,7 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
     twiddle_factors_columns.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level
     for (size_t i = 1; i < N_columns.size(); i++)
     {
-        AlignedVector<double> w = calculate_twiddle_factors_DIT(i, N_columns);
+        AlignedVector<double> w = calculate_twiddle_factors_DIT<double>(i, N_columns);
         twiddle_factors_columns.push_back(w);
         //print_complex_vector(w.data(), w.size()/2);
     }
@@ -128,7 +128,7 @@ HHFFT_2D_D::HHFFT_2D_D(size_t n, size_t m, InstructionSet instruction_set)
     for (size_t i = 1; i < N_rows.size(); i++)
     {
         AlignedVector<double> w;
-        w = calculate_twiddle_factors_DIT(i, N_rows);
+        w = calculate_twiddle_factors_DIT<double>(i, N_rows);
         twiddle_factors_rows.push_back(w);
         //print_complex_vector(w.data(), w.size()/2);
     }

@@ -175,7 +175,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
     for (size_t i = 1; i < N_rows.size(); i++)
     {
         AlignedVector<double> w;
-        w = calculate_twiddle_factors_DIT(i, N_rows);
+        w = calculate_twiddle_factors_DIT<double>(i, N_rows);
         twiddle_factors_rows.push_back(w);
         //print_complex_vector(w.data(), w.size()/2);
     }
@@ -183,7 +183,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
     for (size_t i = 1; i < N_columns.size(); i++)
     {
         AlignedVector<double> w;
-        w = calculate_twiddle_factors_DIT(i, N_columns);
+        w = calculate_twiddle_factors_DIT<double>(i, N_columns);
         twiddle_factors_columns.push_back(w);
         //print_complex_vector(w.data(), w.size()/2);
     }
@@ -448,7 +448,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
     for (size_t i = 1; i < N_rows.size(); i++)
     {
         AlignedVector<double> w;
-        w = calculate_twiddle_factors_DIT(i, N_rows);
+        w = calculate_twiddle_factors_DIT<double>(i, N_rows);
         twiddle_factors_rows.push_back(w);
         //print_complex_vector(w.data(), w.size()/2);
     }
@@ -456,7 +456,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
     for (size_t i = 1; i < N_columns.size(); i++)
     {
         AlignedVector<double> w;
-        w = calculate_twiddle_factors_DIT(i, N_columns);
+        w = calculate_twiddle_factors_DIT<double>(i, N_columns);
         twiddle_factors_columns.push_back(w);
         //print_complex_vector(w.data(), w.size()/2);
     }

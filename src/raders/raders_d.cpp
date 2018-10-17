@@ -27,9 +27,10 @@
 
 #include "raders_d.h"
 #include "1d_complex/hhfft_1d_complex_d.h"
+#include "1d_complex/hhfft_1d_complex_f.h"
 
 using namespace hhfft;
-using hhfft::RadersD;
+using hhfft::RadersGeneric;
 
 // find the prime factorization of a number
 // TODO there are more efficient methods too... Like having a table of all small prime numbers
@@ -150,24 +151,24 @@ size_t find_primitive_root(size_t n)
 }
 
 // Calculates the fft of other sequence "b"
-void RadersD::calculate_fft_b(const std::vector<uint32_t> &reorder_table_inverse, const std::vector<uint32_t> &reorder_table_raders)
+template<typename T> void RadersGeneric<T>::calculate_fft_b(const std::vector<uint32_t> &reorder_table_inverse, const std::vector<uint32_t> &reorder_table_raders)
 {    
     fft_b.resize(2*n);
 
-    double re, im;
+    T re, im;
     for (size_t i = 0; i < n; i++)
     {
         size_t i1 = reorder_table_inverse[i];
         if (i < n_org - 2)
         {
-            double val = reorder_table_raders[n_org - 3 - i];
+            T val = reorder_table_raders[n_org - 3 - i];
             hhfft::calculate_exp_neg_2_pi_i(val, n_org, re, im);
             fft_b[2*i1 + 0] = re;
             fft_b[2*i1 + 1] = im;
         } else if ((i > n - n_org + 1) && (i < n - 1))
         {
             size_t i3 = i - (n - n_org + 1);
-            double val = reorder_table_raders[n_org - 3 - i3];
+            T val = reorder_table_raders[n_org - 3 - i3];
             hhfft::calculate_exp_neg_2_pi_i(val, n_org, re, im);
             fft_b[2*i1 + 0] = re;
             fft_b[2*i1 + 1] = im;
@@ -187,19 +188,40 @@ void RadersD::calculate_fft_b(const std::vector<uint32_t> &reorder_table_inverse
     fft(fft_b.data());
 }
 
-
-double* RadersD::allocate_memory(size_t scale) const
+// Specialized template functions that call the proper setter function
+template<typename T> static void complex_set_function(StepInfo<T> &step_info, hhfft::InstructionSet instruction_set);
+template<> void complex_set_function<double>(StepInfo<double> &step_info, hhfft::InstructionSet instruction_set)
 {
-    return (double *) allocate_aligned_memory(n_bytes_aligned * scale);
+    HHFFT_1D_Complex_D_set_function(step_info, instruction_set);
+}
+template<> void complex_set_function<float>(StepInfo<float> &step_info, hhfft::InstructionSet instruction_set)
+{    
+    HHFFT_1D_Complex_F_set_function(step_info, instruction_set);
+}
+template<typename T> static void complex_set_reorder_function(StepInfo<T> &step_info, hhfft::InstructionSet instruction_set);
+template<> void complex_set_reorder_function<double>(StepInfo<double> &step_info, hhfft::InstructionSet instruction_set)
+{
+    HHFFT_1D_Complex_D_set_reorder_function(step_info, instruction_set);
+}
+template<> void complex_set_reorder_function<float>(StepInfo<float> &step_info, hhfft::InstructionSet instruction_set)
+{    
+    HHFFT_1D_Complex_F_set_reorder_function(step_info, instruction_set);
 }
 
-void RadersD::free_memory(double *data)
+
+
+template<typename T> T* RadersGeneric<T>::allocate_memory(size_t scale) const
+{
+    return (T *) allocate_aligned_memory(n_bytes_aligned * scale);
+}
+
+template<typename T> void RadersGeneric<T>::free_memory(T *data)
 {
     free(data);
 }
 
 // Does the planning step
-RadersD::RadersD(size_t n_org, InstructionSet instruction_set)
+template<typename T> RadersGeneric<T>::RadersGeneric(size_t n_org, InstructionSet instruction_set)
 {
     // Raders should not be used for smaller radices
     if (n_org < 11)
@@ -226,8 +248,8 @@ RadersD::RadersD(size_t n_org, InstructionSet instruction_set)
     scale = 1.0/n;
 
     // Extra space for two complex numbers is allocated
-    n_bytes_aligned = calculate_aligned_size(2*(n+2)*sizeof(double));
-    n_data_size = n_bytes_aligned/sizeof(double);
+    n_bytes_aligned = calculate_aligned_size(2*(n+2)*sizeof(T));
+    n_data_size = n_bytes_aligned/sizeof(T);
 
     // This limitation comes from using uint32 in reorder table
     if (n >= (1ul << 32ul))
@@ -302,35 +324,35 @@ RadersD::RadersD(size_t n_org, InstructionSet instruction_set)
 
     // Calculate twiddle factors
     // NOTE that a portion of these are always one and they could be removed to decrease memory requirements.
-    twiddle_factors.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level
+    twiddle_factors.push_back(AlignedVector<T>()); // No twiddle factors are needed before the first fft-level
     for (size_t i = 1; i < N.size(); i++)
     {     
-        AlignedVector<double> w = calculate_twiddle_factors_DIT(i, N);
+        AlignedVector<T> w = calculate_twiddle_factors_DIT<T>(i, N);
         twiddle_factors.push_back(w);
     }
 
     // Forward steps
     // Put first fft step
     {
-        hhfft::StepInfoD step;
+        hhfft::StepInfo<T> step;
         step.radix = N[0];
         step.stride = 1;
         step.repeats = n / step.radix;
         step.norm_factor = 1.0;
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        complex_set_function(step, instruction_set);
         forward_steps.push_back(step);
     }
 
     // then put rest fft steps combined with twiddle factor
     for (size_t i = 1; i < N.size(); i++)
     {
-        hhfft::StepInfoD step;
-        hhfft::StepInfoD &step_prev = forward_steps.back();
+        hhfft::StepInfo<T> step;
+        hhfft::StepInfo<T> &step_prev = forward_steps.back();
         step.radix = N[i];
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;        
         step.twiddle_factors = twiddle_factors[i].data();
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        complex_set_function(step, instruction_set);
         forward_steps.push_back(step);
     }
 
@@ -338,10 +360,10 @@ RadersD::RadersD(size_t n_org, InstructionSet instruction_set)
     // Inverse steps are identical to forward steps, except that reordering inplace is done first
     if (reorder_table_inverted.size() > 0)
     {
-        hhfft::StepInfoD step;
+        hhfft::StepInfo<T> step;
         step.reorder_table_inplace = reorder_table_inverted.data();
         step.reorder_table_inplace_size = reorder_table_inverted.size();
-        HHFFT_1D_Complex_D_set_reorder_function(step, instruction_set);
+        complex_set_reorder_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
 
@@ -355,7 +377,7 @@ RadersD::RadersD(size_t n_org, InstructionSet instruction_set)
 }
 
 //
-void RadersD::fft(double *data) const
+template<typename T> void RadersGeneric<T>::fft(T *data) const
 {    
     // Run all the steps
     for (auto &step: forward_steps)
@@ -368,7 +390,7 @@ void RadersD::fft(double *data) const
 }
 
 //
-void RadersD::ifft(double *data) const
+template<typename T> void RadersGeneric<T>::ifft(T *data) const
 {
     // Run all the steps
     for (auto &step: inverse_steps)
@@ -379,3 +401,7 @@ void RadersD::ifft(double *data) const
         //print_complex_vector(data_out[step.data_type_out], n);
     }
 }
+
+// Explicitly instantiate double and float versions
+template class RadersGeneric<double>;
+template class RadersGeneric<float>;

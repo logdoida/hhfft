@@ -23,7 +23,7 @@
 #include <assert.h>
 
 // calculates cos and -sin for a = 2*M_PI*a/b
-inline void calculate_cos_sin(size_t a, size_t b, double &c, double &s)
+template<typename T> inline void calculate_cos_sin(size_t a, size_t b, T &c, T &s)
 {
     a = a%b;
 
@@ -41,20 +41,20 @@ inline void calculate_cos_sin(size_t a, size_t b, double &c, double &s)
         c = 0.0; s = 1.0;
     } else
     {
-        double angle = 2.0*M_PI*a/b;
+        T angle = 2.0*M_PI*a/b;
         c = cos(angle);
         s = -sin(angle);
     }
 }
 
-void hhfft::calculate_exp_neg_2_pi_i(size_t a, size_t b, double &re, double &im)
+template<typename T> void hhfft::calculate_exp_neg_2_pi_i(size_t a, size_t b, T &re, T &im)
 {
-    calculate_cos_sin(a,b,re,im);
+    calculate_cos_sin<T>(a,b,re,im);
 }
 
 
 // Calculates twiddle factors for a given level for DIT
-hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, const std::vector<size_t> &N)
+template<typename T> hhfft::AlignedVector<T> hhfft::calculate_twiddle_factors_DIT(size_t level, const std::vector<size_t> &N)
 {
     size_t n_dim = N.size();
 
@@ -64,7 +64,7 @@ hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT(size_t level, 
     {
         num = num*N[i];
     }
-    hhfft::AlignedVector<double> w(num*2);
+    hhfft::AlignedVector<T> w(num*2);
 
     // calculate a vector that contains [1 N1 N1*N2 N1*N2*N3...]
     std::vector<uint32_t> temp1(n_dim+1);
@@ -320,3 +320,10 @@ hhfft::AlignedVector<double> hhfft::calculate_packing_factors(size_t n)
 
     return w;
 }
+
+// Instantiations of the functions defined in this class
+template hhfft::AlignedVector<float> hhfft::calculate_twiddle_factors_DIT<float>(size_t level, const std::vector<size_t> &N);
+template hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT<double>(size_t level, const std::vector<size_t> &N);
+
+template void hhfft::calculate_exp_neg_2_pi_i<float>(size_t a, size_t b, float &re, float &im);
+template void hhfft::calculate_exp_neg_2_pi_i<double>(size_t a, size_t b, double &re, double &im);

@@ -17,8 +17,8 @@
 *   along with HHFFT. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HHFFT_RADERS_D_H
-#define HHFFT_RADERS_D_H
+#ifndef HHFFT_RADERS_H
+#define HHFFT_RADERS_H
 
 #include "architecture.h"
 #include "step_info.h"
@@ -31,26 +31,27 @@ namespace hhfft
 {
 
 // This class is responsible of making a plan on how to calculate the the FFT and calls the proper functions
-class RadersD
+template<typename T>
+class RadersGeneric
 {    
 public:
-    RadersD(size_t n, InstructionSet instruction_set = InstructionSet::automatic);
+    RadersGeneric(size_t n, InstructionSet instruction_set = InstructionSet::automatic);
 
     // Copying not allowed
-    RadersD(const RadersD &other) = delete;
-    RadersD& operator=(const RadersD &other) = delete;
+    RadersGeneric(const RadersGeneric &other) = delete;
+    RadersGeneric& operator=(const RadersGeneric &other) = delete;
 
     // FFT with complex inputs and outputs
-    void fft(double *data) const;
+    void fft(T *data) const;
 
     // IFFT with complex inputs and outputs
-    void ifft(double *data) const;
+    void ifft(T *data) const;
 
     // Allocate aligned array that contains enough space for the complex input and output data
-    double* allocate_memory(size_t scale = 1) const;
+    T* allocate_memory(size_t scale = 1) const;
 
     // Free memory
-    static void free_memory(double *data);
+    static void free_memory(T *data);
 
     // Dimension of the vector (Number of complex numbers)
     size_t n_org, n, n_data_size;
@@ -59,7 +60,7 @@ public:
     std::vector<uint32_t> reorder_table_raders_inverse;
     std::vector<uint32_t> reorder_table_raders_inverse2;
 
-    AlignedVector<double> fft_b;
+    AlignedVector<T> fft_b;
 
     double scale;
 
@@ -71,17 +72,20 @@ private:
     size_t n_bytes_aligned;
 
     // Twiddle factors for each level
-    std::vector<AlignedVector<double>> twiddle_factors;
+    std::vector<AlignedVector<T>> twiddle_factors;
 
     std::vector<uint32_t> reorder_table_inverted;
     //std::vector<uint32_t> reorder_table_raders;   // TODO if this is needed only during initialization, it can be removed from here
     //std::vector<uint32_t> reorder_table_inverse;   // TODO if this is needed only during initialization, it can be removed from here
 
     // The actual fft plan is a sequence of individual steps
-    std::vector<StepInfoD> forward_steps;
-    std::vector<StepInfoD> inverse_steps;    
+    std::vector<StepInfo<T>> forward_steps;
+    std::vector<StepInfo<T>> inverse_steps;
 };
+
+typedef RadersGeneric<double> RadersD;
+typedef RadersGeneric<float> RadersF;
 
 }
 
-#endif // HHFFT_RADERS_D_H
+#endif // HHFFT_RADERS_H

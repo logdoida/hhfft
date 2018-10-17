@@ -150,7 +150,7 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
     twiddle_factors.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level
     for (size_t i = 1; i < N.size(); i++)
     {
-        AlignedVector<double> w = calculate_twiddle_factors_DIT(i, N);
+        AlignedVector<double> w = calculate_twiddle_factors_DIT<double>(i, N);
         twiddle_factors.push_back(w);
 
         //print_complex_vector(w.data(), w.size()/2);
@@ -260,7 +260,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
     // NOTE that a portion of these are always one and they could be removed to decrease memory requirements.
     for (size_t i = 1; i < N.size(); i++)
     {
-        AlignedVector<double> w = calculate_twiddle_factors_DIT(i, N);
+        AlignedVector<double> w = calculate_twiddle_factors_DIT<double>(i, N);
         twiddle_factors.push_back(w);
 
         //print_complex_vector(w.data(), w.size()/2);
