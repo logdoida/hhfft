@@ -19,8 +19,8 @@
 
 // This header contains some small functions that are used many times
 
-#ifndef HHFFT_COMMON_SSE2_F
-#define HHFFT_COMMON_SSE2_F
+#ifndef HHFFT_COMMON_AVX_F
+#define HHFFT_COMMON_AVX_F
 
 #include "hhfft_common_f.h"
 #include <immintrin.h>
@@ -76,38 +76,33 @@ inline ComplexF change_sign_F(ComplexF a, ComplexF s)
 
 const ComplexF const1_F = load_F(0.0f, -0.0f);
 //const ComplexF const2_F = load_F(-0.0f, 0.0f);
-const ComplexF const3_F = _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f);
-const ComplexF const4_F = _mm_setr_ps(0.0f, 0.0f, 0.0f, -0.0f);
+const ComplexF const3_F = _mm_setr_ps(0.0f, -0.0f, 0.0f, 0.0f);
+const ComplexF const4_F = _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f);
 
 // Multiplies complex numbers. If other of them changes more frequently, set it to b.
 inline ComplexF mul_F(ComplexF a, ComplexF b)
-{
-    ComplexF a1 = _mm_shuffle_ps(a, a, 0*1 + 1*4 + 1*16 + 0*64);
-    ComplexF b1 = _mm_shuffle_ps(b, b, 16 + 64);
+{ 
+    ComplexF a1 = _mm_permute_ps(a, 0*1 + 1*4 + 0*16 + 1*64);
+    ComplexF b1 = _mm_permute_ps(b, 0*1 + 1*4 + 1*16 + 0*64);
 
     ComplexF t1 = change_sign_F(a1, const3_F);
     ComplexF t2 = _mm_mul_ps(t1, b1);
 
-    ComplexF t3 = _mm_shuffle_ps(t2, t2, 2 + 3*4);
-
-    ComplexF y = _mm_add_ps(t2, t3);
-
+    ComplexF y = _mm_hadd_ps(t2, t2);
     return y;
 }
+
 
 // Calculates a*conj(b)
 inline ComplexF mul_conj_F(ComplexF a, ComplexF b)
 {
-    ComplexF a1 = _mm_shuffle_ps(a, a, 0*1 + 1*4 + 1*16 + 0*64);
-    ComplexF b1 = _mm_shuffle_ps(b, b, 16 + 64);
+    ComplexF a1 = _mm_permute_ps(a, 0*1 + 1*4 + 0*16 + 1*64);
+    ComplexF b1 = _mm_permute_ps(b, 0*1 + 1*4 + 1*16 + 0*64);
 
     ComplexF t1 = change_sign_F(a1, const4_F);
     ComplexF t2 = _mm_mul_ps(t1, b1);
 
-    ComplexF t3 = _mm_shuffle_ps(t2, t2, 2 + 3*4);
-
-    ComplexF y = _mm_add_ps(t2, t3);
-
+    ComplexF y = _mm_hadd_ps(t2, t2);
     return y;
 }
 
@@ -133,7 +128,7 @@ inline ComplexF conj_F(ComplexF x)
 inline ComplexF mul_i_F(ComplexF a)
 {
     ComplexF a1 = change_sign_F(a, const1_F);
-    ComplexF y = _mm_shuffle_ps(a1, a1, 1);
+    ComplexF y = _mm_permute_ps(a1, 1);
     return y;
 }
 
@@ -507,7 +502,7 @@ inline void divide_two_64_F2(ComplexF2 val, ComplexF &a, ComplexF &b)
 inline void store_real_F2(ComplexF2 val, float *v)
 {
     _mm_store_ss(v, val);    
-    ComplexF2 a = _mm_shuffle_ps(val, val, 2);
+    ComplexF2 a = _mm_permute_ps(val, 2);
     _mm_store_ss(v + 1, a);
 }
 
@@ -518,28 +513,27 @@ inline ComplexF2 change_sign_F2(ComplexF2 a, ComplexF2 s)
 }
 
 const ComplexF2 const1_F2 = load_F2(0.0f, -0.0f, 0.0f, -0.0f);
-const ComplexF2 const2_F2 = load_F2(-0.0f, 0.0f, -0.0f, 0.0f);
+//const ComplexF2 const2_F2 = load_F2(-0.0f, 0.0f, -0.0f, 0.0f);
 
 // Multiplies complex numbers. If other of them changes more frequently, set it to b.
 inline ComplexF2 mul_F2(ComplexF2 a, ComplexF2 b)
 {    
-    ComplexF2 a1 = _mm_shuffle_ps(a, a, 0*1 + 0*4 + 2*16 + 2*64);
-    ComplexF2 a2 = _mm_shuffle_ps(a, a, 1*1 + 1*4 + 3*16 + 3*64);
-    ComplexF2 b1 = _mm_shuffle_ps(b, b, 1*1 + 0*4 + 3*16 + 2*64);
+    ComplexF2 a1 = _mm_permute_ps(a, 0*1 + 0*4 + 2*16 + 2*64);
+    ComplexF2 a2 = _mm_permute_ps(a, 1*1 + 1*4 + 3*16 + 3*64);
+    ComplexF2 b1 = _mm_permute_ps(b, 1*1 + 0*4 + 3*16 + 2*64);
 
     ComplexF2 t1 = _mm_mul_ps(a1, b);
     ComplexF2 t2 = _mm_mul_ps(a2, b1);
-    ComplexF2 t3 = change_sign_F2(t2, const2_F2);
 
-    return _mm_add_ps(t1,t3);
+    return _mm_addsub_ps(t1,t2);
 }
 
 // Calculates a*conj(b)
 inline ComplexF2 mul_conj_F2(ComplexF2 a, ComplexF2 b)
 {
-    ComplexF2 a1 = _mm_shuffle_ps(a, a, 0*1 + 0*4 + 2*16 + 2*64);
-    ComplexF2 a2 = _mm_shuffle_ps(a, a, 1*1 + 1*4 + 3*16 + 3*64);
-    ComplexF2 b1 = _mm_shuffle_ps(b, b, 1*1 + 0*4 + 3*16 + 2*64);
+    ComplexF2 a1 = _mm_permute_ps(a, 0*1 + 0*4 + 2*16 + 2*64);
+    ComplexF2 a2 = _mm_permute_ps(a, 1*1 + 1*4 + 3*16 + 3*64);
+    ComplexF2 b1 = _mm_permute_ps(b, 1*1 + 0*4 + 3*16 + 2*64);
 
     ComplexF2 t1 = _mm_mul_ps(a1, b);
     ComplexF2 t2 = _mm_mul_ps(a2, b1);
@@ -570,7 +564,7 @@ inline ComplexF2 conj_F2(ComplexF2 x)
 inline ComplexF2 mul_i_F2(ComplexF2 a)
 {
     ComplexF2 a1 = change_sign_F2(a, const1_F2);
-    ComplexF2 y = _mm_shuffle_ps(a1, a1, 1*1 + 0*4 + 3*16 + 2*64);
+    ComplexF2 y = _mm_permute_ps(a1, 1*1 + 0*4 + 3*16 + 2*64);
     return y;
 }
 

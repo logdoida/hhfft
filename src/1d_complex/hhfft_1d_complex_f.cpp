@@ -120,6 +120,7 @@ template<RadixType radix_type, SizeType stride_type, bool forward> void set_inst
         }
     }
 #endif
+*/
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
@@ -139,7 +140,6 @@ template<RadixType radix_type, SizeType stride_type, bool forward> void set_inst
         }        
     }
 #endif
-*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {        
@@ -273,6 +273,7 @@ template<bool forward> void set_reorder_instruction_set_f(StepInfoF &step_info, 
         // TODO in-place
     }
 #endif
+*/
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
@@ -283,7 +284,7 @@ template<bool forward> void set_reorder_instruction_set_f(StepInfoF &step_info, 
             step_info.step_function = fft_1d_complex_reorder_in_place_avx_f;
     }
 #endif
-*/
+
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
         if (step_info.reorder_table != nullptr)
@@ -343,6 +344,7 @@ void (*hhfft::HHFFT_1D_Complex_F_set_convolution_function(hhfft::InstructionSet 
         return fft_1d_complex_convolution_avx512_f;
     }
 #endif
+*/
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
@@ -350,7 +352,6 @@ void (*hhfft::HHFFT_1D_Complex_F_set_convolution_function(hhfft::InstructionSet 
         return fft_1d_complex_convolution_avx_f;
     }
 #endif
-*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
@@ -363,7 +364,6 @@ void (*hhfft::HHFFT_1D_Complex_F_set_convolution_function(hhfft::InstructionSet 
 
 template<size_t n1, size_t n2> std::vector<size_t> set_small_function_instruction_set_f(StepInfoF &step_info, hhfft::InstructionSet instruction_set, bool forward)
 {
-    /*
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {
@@ -383,7 +383,6 @@ template<size_t n1, size_t n2> std::vector<size_t> set_small_function_instructio
         }
     }
 #endif
-*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
@@ -503,7 +502,6 @@ std::vector<size_t> hhfft::HHFFT_1D_Complex_F_set_small_function(StepInfoF &step
 
 void hhfft::HHFFT_1D_Complex_F_set_1level_raders_function(StepInfoF &step_info, bool forward, hhfft::InstructionSet instruction_set)
 {
-/*
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {
@@ -514,7 +512,6 @@ void hhfft::HHFFT_1D_Complex_F_set_1level_raders_function(StepInfoF &step_info, 
         return;
     }
 #endif
-*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
