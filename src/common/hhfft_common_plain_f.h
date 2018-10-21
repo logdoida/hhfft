@@ -73,7 +73,7 @@ inline ComplexF load_F(const float *v)
 {
     return load_F(v[0], v[1]);
 }
-inline ComplexF broadcast64_F(float x)
+inline ComplexF broadcast32_F(float x)
 {
     return load_F(x,x);
 }
@@ -173,8 +173,8 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     // Implementation for radix = 3
     if (radix == 3)
     {
-        const ComplexF k0 = broadcast64_F(0.5);
-        const ComplexF k1 = broadcast64_F(0.5*sqrt(3.0));
+        const ComplexF k0 = broadcast32_F(0.5);
+        const ComplexF k1 = broadcast32_F(0.5*sqrt(3.0));
         ComplexF t0 = x_in[1] + x_in[2];
         ComplexF t1 = x_in[0] - k0*t0;
         ComplexF t2 = mul_i_F(k1*(x_in[1] - x_in[2]));
@@ -214,10 +214,10 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     // Implementation for radix = 5
     if (radix == 5)
     {
-        const ComplexF k1 = broadcast64_F(cos(2.0*M_PI*1.0/5.0));
-        const ComplexF k2 = broadcast64_F(sin(2.0*M_PI*1.0/5.0));
-        const ComplexF k3 = broadcast64_F(-cos(2.0*M_PI*2.0/5.0));
-        const ComplexF k4 = broadcast64_F(sin(2.0*M_PI*2.0/5.0));
+        const ComplexF k1 = broadcast32_F(cos(2.0*M_PI*1.0/5.0));
+        const ComplexF k2 = broadcast32_F(sin(2.0*M_PI*1.0/5.0));
+        const ComplexF k3 = broadcast32_F(-cos(2.0*M_PI*2.0/5.0));
+        const ComplexF k4 = broadcast32_F(sin(2.0*M_PI*2.0/5.0));
 
         ComplexF t0 = x_in[1] + x_in[4];
         ComplexF t1 = x_in[2] + x_in[3];
@@ -249,12 +249,12 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     // Implementation for radix = 6
     if (radix == 6)
     {
-        const ComplexF k0 = broadcast64_F(0.5);
+        const ComplexF k0 = broadcast32_F(0.5);
         ComplexF k1;
         if (forward)
-            k1 = broadcast64_F(0.5*sqrt(3.0));
+            k1 = broadcast32_F(0.5*sqrt(3.0));
         else
-            k1 = broadcast64_F(-0.5*sqrt(3.0));
+            k1 = broadcast32_F(-0.5*sqrt(3.0));
 
         ComplexF t6 = x_in[2] + x_in[4];
         ComplexF t7 = x_in[1] + x_in[5];
@@ -281,7 +281,7 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     // Implementation for radix = 8
     if (radix == 8)
     {
-        const ComplexF k = broadcast64_F(sqrt(0.5));
+        const ComplexF k = broadcast32_F(sqrt(0.5));
 
         ComplexF t12 = x_in[1] + x_in[5];
         ComplexF t13 = x_in[3] + x_in[7];
@@ -361,7 +361,7 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
             ComplexF x = load_F(0,0);
             for (size_t j = 0; j < 3; j++)
             {
-                ComplexF coeff = broadcast64_F(coeff_cos[3*i + j]);
+                ComplexF coeff = broadcast32_F(coeff_cos[3*i + j]);
                 x += coeff*sums[j];
             }
             x_out[i+1] += x;
@@ -374,7 +374,7 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
             ComplexF x = load_F(0,0);
             for (size_t j = 0; j < 3; j++)
             {
-                ComplexF coeff = broadcast64_F(coeff_sin[3*i + j]);
+                ComplexF coeff = broadcast32_F(coeff_sin[3*i + j]);
                 x += coeff*diffs[j];
             }
             if (forward)

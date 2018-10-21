@@ -54,14 +54,14 @@ template<bool scale> void fft_1d_complex_reorder_plain_f(const float *data_in, f
 
     // Needed only in ifft. Equal to 1/N
     float k = step_info.norm_factor;
-    ComplexF k128 = broadcast64_F(k);
+    ComplexF k32 = broadcast32_F(k);
 
     for (size_t i = 0; i < n; i++)
     {
         size_t i2 = reorder_table[i];
         if (scale)
         {
-            ComplexF x_in = k128*load_F(data_in + 2*i2);
+            ComplexF x_in = k32*load_F(data_in + 2*i2);
             store_F(x_in, data_out + 2*i);
         } else
         {
@@ -109,7 +109,7 @@ template<RadixType radix_type, bool forward>
     const hhfft::RadersF &raders = *step_info.raders;
     size_t radix = get_actual_radix<radix_type>(raders);
     uint32_t *reorder_table = step_info.reorder_table;
-    ComplexF k = broadcast64_F(step_info.norm_factor);
+    ComplexF k = broadcast32_F(step_info.norm_factor);
     size_t reorder_table_size = step_info.reorder_table_size;
 
     ComplexF x_temp_in[radix_type];
@@ -263,7 +263,7 @@ void fft_1d_complex_convolution_plain_f(const float *data_in1, const float *data
 // fft for small sizes (1,2,3,4,5,7,8) where only one level is needed
 template<size_t n, bool forward> void fft_1d_complex_1level_plain_f(const float *data_in, float *data_out, const hhfft::StepInfo<float> &)
 {
-    ComplexF k = broadcast64_F(1.0/n);
+    ComplexF k = broadcast32_F(1.0/n);
 
     if (n == 1)
     {
@@ -298,7 +298,7 @@ template<size_t n, bool forward> void fft_1d_complex_1level_plain_f(const float 
 // fft for small sizes where two levels are needed n = n1*n2;
 template<size_t n1, size_t n2, bool forward> void fft_1d_complex_2level_plain_f(const float *data_in, float *data_out, const hhfft::StepInfo<float> &step_info)
 {
-    ComplexF k = broadcast64_F(1.0/(n1*n2));
+    ComplexF k = broadcast32_F(1.0/(n1*n2));
 
     ComplexF x_temp[n1*n2];
 
@@ -355,7 +355,7 @@ template<size_t n1, size_t n2, bool forward> void fft_1d_complex_2level_plain_f(
 template<bool forward> void fft_1d_complex_1level_raders_plain_f(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info)
 {
     size_t n = step_info.radix;
-    ComplexF k = broadcast64_F(1.0/n);
+    ComplexF k = broadcast32_F(1.0/n);
 
     // Allocate memory for Rader's algorithm
     const hhfft::RadersF &raders = *step_info.raders;

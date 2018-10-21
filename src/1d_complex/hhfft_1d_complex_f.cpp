@@ -135,10 +135,11 @@ template<RadixType radix_type, SizeType stride_type, bool forward> void set_inst
             }
         } else
         {
-            step_info.step_function = fft_1d_complex_twiddle_fit_avx_f<radix_type, stride_type>;
+            step_info.step_function = fft_1d_complex_twiddle_dit_avx_f<radix_type, stride_type>;
         }        
     }
 #endif
+*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {        
@@ -153,10 +154,9 @@ template<RadixType radix_type, SizeType stride_type, bool forward> void set_inst
             }
         } else
         {
-            step_info.step_function = fft_1d_complex_twiddle_fit_sse2_f<radix_type, stride_type>;
+            step_info.step_function = fft_1d_complex_twiddle_dit_sse2_f<radix_type, stride_type>;
         }        
-    }  
-    */
+    }    
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
@@ -283,7 +283,7 @@ template<bool forward> void set_reorder_instruction_set_f(StepInfoF &step_info, 
             step_info.step_function = fft_1d_complex_reorder_in_place_avx_f;
     }
 #endif
-
+*/
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
         if (step_info.reorder_table != nullptr)
@@ -291,7 +291,6 @@ template<bool forward> void set_reorder_instruction_set_f(StepInfoF &step_info, 
         if (step_info.reorder_table_inplace != nullptr)
             step_info.step_function = fft_1d_complex_reorder_in_place_sse2_f;
     }
-*/
 
     if (instruction_set == hhfft::InstructionSet::none)
     {        
@@ -351,12 +350,12 @@ void (*hhfft::HHFFT_1D_Complex_F_set_convolution_function(hhfft::InstructionSet 
         return fft_1d_complex_convolution_avx_f;
     }
 #endif
+*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
         return fft_1d_complex_convolution_sse2_f;
     }
-*/
 
     return fft_1d_complex_convolution_plain_f;
 }
@@ -384,6 +383,7 @@ template<size_t n1, size_t n2> std::vector<size_t> set_small_function_instructio
         }
     }
 #endif
+*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
@@ -401,8 +401,7 @@ template<size_t n1, size_t n2> std::vector<size_t> set_small_function_instructio
                 step_info.step_function = fft_1d_complex_2level_sse2_f<n1,n2,false>;
             return {n1,n2};
         }
-    }
-    */
+    }    
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
@@ -515,6 +514,7 @@ void hhfft::HHFFT_1D_Complex_F_set_1level_raders_function(StepInfoF &step_info, 
         return;
     }
 #endif
+*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
@@ -524,7 +524,6 @@ void hhfft::HHFFT_1D_Complex_F_set_1level_raders_function(StepInfoF &step_info, 
             step_info.step_function = fft_1d_complex_1level_raders_sse2_f<false>;
         return;
     }    
-*/
 
     if (instruction_set == hhfft::InstructionSet::none)
     {

@@ -32,9 +32,8 @@ typedef __m256d ComplexD2;
 
 // Read two complex number
 inline ComplexD2 load_D2(double r1, double i1, double r2, double i2)
-{
-    //return _mm256_set_pd(i2,r2,i1,r1); // Why this order?
-    return _mm256_setr_pd(r1,i1,r2,i2); // Reversed. Why this order?
+{    
+    return _mm256_setr_pd(r1,i1,r2,i2);
 }
 inline ComplexD2 load_D2(const double *v)
 {
