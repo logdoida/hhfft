@@ -446,9 +446,6 @@ inline ComplexF2 load_F2(const float *v)
 // Loads same complex number twice: [r i] -> [r i r i]
 inline ComplexF2 broadcast64_F2(const float *v)
 {
-    // TODO when using avs use something like this?
-    //return _mm_broadcastss_ps((const __m128d*) v);
-
     ComplexF x = _mm_setzero_ps();
     x = _mm_loadl_pi(x, (const __m64*) v);
     return _mm_loadh_pi(x, (const __m64*) v);

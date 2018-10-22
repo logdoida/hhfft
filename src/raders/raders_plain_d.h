@@ -178,7 +178,7 @@ template<hhfft::RadixType radix_type> inline void multiply_coeff_forward_D(const
         size_t n = raders.n;
         size_t n_org = raders.n_org;
 
-        // First input is stored two the extra space in the end
+        // First input is stored to the extra space in the end
         ComplexD x0 = load_D(data_raders + 2*n + 2);
 
         // FFT

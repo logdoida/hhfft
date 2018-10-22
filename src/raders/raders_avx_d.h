@@ -213,7 +213,7 @@ template<hhfft::RadixType radix_type> inline void multiply_coeff_forward_D2(cons
         // Two separate vectors are processed
         for (size_t j = 0; j < 2; j++)
         {
-            // First input is stored two the extra space in the end
+            // First input is stored to the extra space in the end
             ComplexD x0 = load_D(data_raders + j*n_data + 2*n + 2);
 
             // FFT
@@ -422,7 +422,7 @@ template<hhfft::RadixType radix_type> inline void multiply_coeff_forward_D4S(con
         // Four separate vectors are processed
         for (size_t j = 0; j < 4; j++)
         {
-            // First input is stored two the extra space in the end
+            // First input is stored to the extra space in the end
             ComplexD x0 = load_D(data_raders + j*n_data + 2*n + 2);
 
             // FFT

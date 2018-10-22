@@ -178,7 +178,7 @@ template<hhfft::RadixType radix_type> inline void multiply_coeff_forward_F(const
         size_t n = raders.n;
         size_t n_org = raders.n_org;
 
-        // First input is stored two the extra space in the end
+        // First input is stored to the extra space in the end
         ComplexF x0 = load_F(data_raders + 2*n + 2);
 
         // FFT
@@ -401,7 +401,7 @@ template<hhfft::RadixType radix_type> inline void multiply_coeff_forward_F2(cons
         // Two separate vectors are processed
         for (size_t j = 0; j < 2; j++)
         {
-            // First input is stored two the extra space in the end
+            // First input is stored to the extra space in the end
             ComplexF x0 = load_F(data_raders + j*n_data + 2*n + 2);
 
             // FFT
@@ -433,5 +433,220 @@ template<hhfft::RadixType radix_type> inline void multiply_coeff_forward_F2(cons
     } else
     {
         multiply_coeff_F2<radix_type,true>(x_in, x_out);
+    }
+}
+
+//////////////////////////////////// ComplexF4 /////////////////////////////////////////////
+
+template<hhfft::RadixType radix_type> inline float *allocate_raders_F4(const hhfft::RadersF &raders)
+{
+    if (radix_type == hhfft::RadixType::Raders)
+    {
+        // Four separate vectors are allocated
+        return raders.allocate_memory(4);
+    } else
+    {
+        return nullptr;
+    }
+}
+
+template<hhfft::RadixType radix_type> inline void free_raders_F4(const hhfft::RadersF &raders, float *data)
+{
+    if (radix_type == hhfft::RadixType::Raders)
+    {
+        raders.free_memory(data);
+    }
+}
+
+// Fill input vector with zeros
+template<hhfft::RadixType radix_type> inline void init_coeff_F4(float *x, const hhfft::RadersF &raders)
+{
+    if (radix_type == hhfft::RadixType::Raders)
+    {
+        size_t n = raders.n;
+        size_t n_data = raders.n_data_size;
+
+        // Four separate vectors are initialized
+        for (size_t j = 0; j < 4; j++)
+        {
+            for (size_t i = 0; i < 2*(n+2); i++)
+            {
+                x[j*n_data + i] = 0.0;
+            }
+        }
+    }
+}
+
+// Write one complex number to input when performing fft
+template<hhfft::RadixType radix_type> inline void set_value_F4(ComplexF4 *data_in, float *data_raders, size_t index, const hhfft::RadersF &raders, ComplexF4 x)
+{
+    if (radix_type == hhfft::RadixType::Raders)
+    {
+        size_t n  = raders.n;
+        size_t n_data = raders.n_data_size;
+
+        // Sum up the values and store it to extra space in the end
+        ComplexF4 sum = load_four_64_F4(data_raders + 2*n,            data_raders + 1*n_data + 2*n,
+                                        data_raders + 2*n_data + 2*n, data_raders + 3*n_data + 2*n) + x;
+        store_four_64_F4(sum, data_raders + 2*n,            data_raders + 1*n_data + 2*n,
+                              data_raders + 2*n_data + 2*n, data_raders + 3*n_data + 2*n);
+
+        // Store values separately
+        const uint32_t *reorder_table_raders_inverse = raders.reorder_table_raders_inverse.data();
+        size_t i2 = reorder_table_raders_inverse[index];
+        store_four_64_F4(x, data_raders + 2*i2,            data_raders + 1*n_data + 2*i2,
+                            data_raders + 2*n_data + 2*i2, data_raders + 3*n_data + 2*i2);
+    } else
+    {
+        data_in[index] = x;
+    }
+}
+
+// Multiply one complex number and write it to input when performing fft
+template<hhfft::RadixType radix_type, bool copy_twiddle = true> inline void set_value_twiddle_F4(ComplexF4 *data_in, float *data_raders, ComplexF4 *data_twiddle, size_t index, const hhfft::RadersF &raders, ComplexF4 x, ComplexF4 w)
+{
+    if (radix_type == hhfft::RadixType::Raders)
+    {
+        size_t n  = raders.n;
+        size_t n_data = raders.n_data_size;
+
+        // Multiply with twiddle factors
+        ComplexF4 xw = mul_F4(w,x);
+
+        // Sum up the values and store it to extra space in the end
+        ComplexF4 sum = load_four_64_F4(data_raders            + 2*n, data_raders + 1*n_data + 2*n,
+                                        data_raders + 2*n_data + 2*n, data_raders + 3*n_data + 2*n) + xw;
+        store_four_64_F4(sum, data_raders + 2*n,            data_raders + 1*n_data + 2*n,
+                              data_raders + 2*n_data + 2*n, data_raders + 3*n_data + 2*n);
+
+        // Store values separately
+        const uint32_t *reorder_table_raders_inverse = raders.reorder_table_raders_inverse.data();
+        size_t i2 = reorder_table_raders_inverse[index];
+        store_four_64_F4(xw, data_raders +            2*i2, data_raders + 1*n_data + 2*i2,
+                             data_raders + 2*n_data + 2*i2, data_raders + 3*n_data + 2*i2);
+    } else
+    {
+        // For optimization reasons, twiddle factors might not be copied here
+        if(copy_twiddle)
+        {
+            data_twiddle[index] = w;
+        }
+        data_in[index] = x;
+    }
+}
+
+// Write one complex number to input when performing ifft
+template<hhfft::RadixType radix_type> inline void set_value_inverse_F4(ComplexF4 *data_in, float *data_raders, size_t index, const hhfft::RadersF &raders, ComplexF4 x)
+{
+    if (radix_type == hhfft::RadixType::Raders)
+    {
+        // Sum up the values and store it to extra space in the end
+        size_t n  = raders.n;
+        size_t n_org  = raders.n_org;
+        size_t n_data = raders.n_data_size;
+
+        // Sum up the values and store it to extra space in the end
+        ComplexF4 sum = load_four_64_F4(data_raders + 2*n,            data_raders + 1*n_data + 2*n,
+                                        data_raders + 2*n_data + 2*n, data_raders + 3*n_data + 2*n) + x;
+        store_four_64_F4(sum, data_raders + 2*n,            data_raders + 1*n_data + 2*n,
+                              data_raders + 2*n_data + 2*n, data_raders + 3*n_data + 2*n);
+
+        const uint32_t *reorder_table_raders_inverse = raders.reorder_table_raders_inverse.data();
+        size_t i2 = n + 1;
+
+        if (index == 0)
+        {
+            i2 = reorder_table_raders_inverse[index];
+        } else
+        {
+            i2 = reorder_table_raders_inverse[n_org - index];
+        }
+
+        store_four_64_F4(x, data_raders +            2*i2, data_raders + 1*n_data + 2*i2,
+                            data_raders + 2*n_data + 2*i2, data_raders + 3*n_data + 2*i2);
+    } else
+    {
+        data_in[index] = x;
+    }
+}
+
+// Read one complex number to input
+template<hhfft::RadixType radix_type> inline ComplexF4 get_value_F4(ComplexF4 *data_out, float *data_raders, size_t index, const hhfft::RadersF &raders)
+{
+    if (radix_type == hhfft::RadixType::Raders)
+    {
+        size_t n_data = raders.n_data_size;
+        const uint32_t *reorder_table_raders_inverse = raders.reorder_table_raders_inverse2.data();
+        size_t i2 = reorder_table_raders_inverse[index];
+
+        // Load values separately and combine them
+        return load_four_64_F4(data_raders + 2*i2,            data_raders + 1*n_data + 2*i2,
+                               data_raders + 2*n_data + 2*i2, data_raders + 3*n_data + 2*i2);
+    } else
+    {
+        return data_out[index];
+    }
+}
+
+// Read one complex number to input. Used for real odd
+template<hhfft::RadixType radix_type> inline ComplexF4 get_value_real_odd_forward_F4(ComplexF4 *data_out, float *data_raders, size_t index, const hhfft::RadersF &raders)
+{
+    size_t radix = get_actual_radix<radix_type>(raders);
+
+    if ((index & 1) == 0)
+    {
+        ComplexF4 x = get_value_F4<radix_type>(data_out, data_raders, index/2, raders);
+        return x;
+    } else
+    {
+        ComplexF4 x = get_value_F4<radix_type>(data_out, data_raders, radix - index/2 - 1, raders);
+        return conj_F4(x); // conjugate
+    }
+}
+
+// Do the actual Raders algorithm
+template<hhfft::RadixType radix_type> inline void multiply_coeff_forward_F4(const ComplexF4 *x_in, ComplexF4 *x_out, float *data_raders, const hhfft::RadersF &raders)
+{
+    if (radix_type == hhfft::RadixType::Raders)
+    {
+        size_t n = raders.n;
+        size_t n_org = raders.n_org;
+        size_t n_data = raders.n_data_size;
+
+        // Four separate vectors are processed
+        for (size_t j = 0; j < 4; j++)
+        {
+            // First input is stored to the extra space in the end
+            ComplexF x0 = load_F(data_raders + j*n_data + 2*n + 2);
+
+            // FFT
+            raders.fft(data_raders + j*n_data);
+
+            // Convolution
+            // NOTE it might be possible to do this using avx-commands, but would it actually be any faster?
+            const float *fft_b = raders.fft_b.data();
+            for(size_t i = 0; i < n; i++)
+            {
+                ComplexF x1 = load_F(data_raders + j*n_data + 2*i);
+                ComplexF x2 = load_F(fft_b + 2*i);
+                ComplexF x3 = mul_F(x1,x2);
+                store_F(x3, data_raders + j*n_data + 2*i);
+            }
+
+            // IFFT
+            raders.ifft(data_raders + j*n_data);
+
+            // Add first value to others
+            float k = raders.scale;
+            for (size_t i = 0; i < n_org - 1; i++)
+            {
+                ComplexF res = x0 + k*load_F(data_raders + j*n_data + 2*i);
+                store_F(res, data_raders + j*n_data + 2*i);
+            }
+        }
+
+    } else
+    {
+        multiply_coeff_F4<radix_type,true>(x_in, x_out);
     }
 }
