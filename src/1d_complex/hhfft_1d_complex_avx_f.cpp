@@ -188,84 +188,33 @@ template<RadixType radix_type, bool forward>
     size_t reorder_table_size = step_info.reorder_table_size;
 
     // Amount of Raders memory needed depends on repeats
-    float *data_raders = nullptr;
-    if (repeats > 3)
-        data_raders = allocate_raders_F4<radix_type>(raders);
-    else if (repeats > 1)
+    float *data_raders = nullptr;    
+    if (repeats > 1)
         data_raders = allocate_raders_F2<radix_type>(raders);
     else
         data_raders = allocate_raders_F<radix_type>(raders);
 
-    // First use 256-bit variables
-    for (i = 0; i+3 < repeats; i+=4)
+    // NOTE 256-bit variables are not used here, as they are typically slower due to packing and unpacking
+    // First use 128-bit variables
+    ComplexF2 x_temp_in[radix_type];
+    ComplexF2 x_temp_out[radix_type];
+    for (i = 0; i+1 < repeats; i+=2)
     {
-        ComplexF4 x_temp_in[radix_type];
-        ComplexF4 x_temp_out[radix_type];
-
-        // Initialize raders data with zeros
-        init_coeff_F4<radix_type>(data_raders, raders);
-
-        for (size_t j = 0; j < radix; j++)
-        {
-            size_t i2 = i*radix + j;
-            size_t ind0, ind1, ind2, ind3;
-            if (forward)
-            {
-                ind0 = reorder_table[i2];
-                ind1 = reorder_table[i2 + 1*radix];
-                ind2 = reorder_table[i2 + 2*radix];
-                ind3 = reorder_table[i2 + 3*radix];
-            } else
-            {
-                ind0 = reorder_table[reorder_table_size - i2 - 1];
-                ind1 = reorder_table[reorder_table_size - i2 - 1*radix - 1];
-                ind2 = reorder_table[reorder_table_size - i2 - 2*radix - 1];
-                ind3 = reorder_table[reorder_table_size - i2 - 3*radix - 1];
-            }
-            ComplexF4 x = load_four_64_F4(data_in + 2*ind0, data_in + 2*ind1, data_in + 2*ind2, data_in + 2*ind3);
-            set_value_F4<radix_type>(x_temp_in, data_raders, j, raders, x);
-        }
-
-        // Multiply with coefficients
-        multiply_coeff_forward_F4<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-        // Save output to two memory locations.
-        for (size_t j = 0; j < radix; j++)
-        {
-            size_t ind0 = i*radix + j;
-            size_t ind1 = i*radix + 1*radix + j;
-            size_t ind2 = i*radix + 2*radix + j;
-            size_t ind3 = i*radix + 3*radix + j;
-            ComplexF4 x = get_value_F4<radix_type>(x_temp_out, data_raders, j, raders);
-            if (!forward)
-            {
-                x = k*x;
-            }
-            store_four_64_F4(x, data_out + 2*ind0, data_out + 2*ind1, data_out + 2*ind2, data_out + 2*ind3);
-        }
-    }
-
-    // Then, if necessary, use 128-bit variables
-    if (i+1 < repeats)
-    {
-        ComplexF2 x_temp_in[radix_type];
-        ComplexF2 x_temp_out[radix_type];
-
         // Initialize raders data with zeros
         init_coeff_F2<radix_type>(data_raders, raders);
 
         for (size_t j = 0; j < radix; j++)
         {
             size_t i2 = i*radix + j;
-            size_t ind0, ind1;
+            size_t ind0, ind1;            
             if (forward)
             {
                 ind0 = reorder_table[i2];
-                ind1 = reorder_table[i2 + radix];
+                ind1 = reorder_table[i2 + radix];                
             } else
             {
                 ind0 = reorder_table[reorder_table_size - i2 - 1];
-                ind1 = reorder_table[reorder_table_size - i2 - radix - 1];
+                ind1 = reorder_table[reorder_table_size - i2 - radix - 1];                
             }
             ComplexF2 x = load_two_64_F2(data_in + 2*ind0, data_in + 2*ind1);
             set_value_F2<radix_type>(x_temp_in, data_raders, j, raders, x);
@@ -286,7 +235,6 @@ template<RadixType radix_type, bool forward>
             }
             store_two_64_F2(x, data_out + 2*ind0, data_out + 2*ind1);
         }
-        i += 2;
     }
 
     // Then, if necessary, use 64-bit variables
@@ -437,7 +385,7 @@ template<RadixType radix_type, SizeType stride_type>
     // First use 256-bit variables
     {
         for (k = 0; k+3 < stride; k+=4)
-        {
+        {            
             // Initialize raders data with zeros
             init_coeff_F4<radix_type>(data_raders, raders);
 
@@ -466,7 +414,7 @@ template<RadixType radix_type, SizeType stride_type>
                 store_F4(x, data_out + j2);
             }
         }
-    }
+    }    
 
     // Then, if necassery, use 128-bit variables
     if (k+1 < stride)
@@ -605,7 +553,7 @@ template<RadixType radix_type, SizeType stride_type>
 
     // Amount of Raders memory needed depends on stride
     float *data_raders = nullptr;
-    if (stride > 4)
+    if (stride > 3)
         data_raders = allocate_raders_F4<radix_type>(raders);
     else if (stride > 1)
         data_raders = allocate_raders_F2<radix_type>(raders);

@@ -249,7 +249,7 @@ template<typename T> void HHFFT_1D<T>::fft(const T *in, T *out) const
 
     // Run all the steps
     for (auto &step: forward_steps)
-    {
+    {        
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
         // TESTING print

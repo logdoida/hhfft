@@ -721,13 +721,13 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         ComplexF2 t10 = x_in[0] - x_in[4];
         ComplexF2 t11;
         if (forward)
-            t11 = mul_i_F2(x_in[2] - x_in[6]);
-        else
             t11 = mul_i_F2(x_in[6] - x_in[2]);
+        else
+            t11 = mul_i_F2(x_in[2] - x_in[6]);
         ComplexF2 t0  = t8 + t9;
         ComplexF2 t4  = t8 - t9;
-        ComplexF2 t2  = t10 - t11;
-        ComplexF2 t6  = t10 + t11;
+        ComplexF2 t2  = t10 + t11;
+        ComplexF2 t6  = t10 - t11;
 
         x_out[0] = t0 + t1;
         x_out[1] = t2 + t3;
@@ -917,9 +917,8 @@ inline ComplexF4 load_two_128_F4(const float *a, const float *b)
 // Combines complex number from four separate memory locations: [a1 a2], [b1 b2], [c1 c2], [d1 d2] -> [a1 a2 b1 b2 c1 c2 c3 c4]
 inline ComplexF4 load_four_64_F4(const float *a, const float *b, const float *c, const float *d)
 {
-    ComplexF2 ab = load_two_64_F2(a,b);
+    ComplexF2 ab = load_two_64_F2(a,b);        
     ComplexF2 cd = load_two_64_F2(c,d);
-
     const ComplexF4 xx = _mm256_castps128_ps256(ab);
     return _mm256_insertf128_ps (xx, cd, 1);
 }
@@ -949,8 +948,8 @@ inline void store_two_128_F4(ComplexF4 val, float *a, float *b)
 inline void store_four_64_F4(ComplexF4 val, float *a, float *b, float *c, float *d)
 {
     ComplexF2 ab = _mm256_castps256_ps128(val);
-    ComplexF2 cd = _mm256_extractf128_ps(val, 1);
     store_two_64_F2(ab, a, b);
+    ComplexF2 cd = _mm256_extractf128_ps(val, 1);
     store_two_64_F2(cd, c, d);
 }
 
