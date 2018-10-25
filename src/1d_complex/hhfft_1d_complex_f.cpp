@@ -130,10 +130,8 @@ template<RadixType radix_type, SizeType stride_type, bool forward> void set_inst
             // Check if reordering should be supported
             if(step_info.reorder_table == nullptr)
                 step_info.step_function = fft_1d_complex_avx_f<radix_type, stride_type>;
-            else if(step_info.stride == 1)
-            {
-                step_info.step_function = fft_1d_complex_reorder2_avx_f<radix_type, SizeType::Size1, forward>;
-            }
+            else
+                step_info.step_function = fft_1d_complex_reorder2_avx_f<radix_type, stride_type, forward>;
         } else
         {
             step_info.step_function = fft_1d_complex_twiddle_dit_avx_f<radix_type, stride_type>;
@@ -148,10 +146,8 @@ template<RadixType radix_type, SizeType stride_type, bool forward> void set_inst
             // Check if reordering should be supported
             if(step_info.reorder_table == nullptr)
                 step_info.step_function = fft_1d_complex_sse2_f<radix_type, stride_type>;
-            else if(step_info.stride == 1)
-            {                
-                step_info.step_function = fft_1d_complex_reorder2_sse2_f<radix_type, SizeType::Size1, forward>;
-            }
+            else
+                step_info.step_function = fft_1d_complex_reorder2_sse2_f<radix_type, stride_type, forward>;
         } else
         {
             step_info.step_function = fft_1d_complex_twiddle_dit_sse2_f<radix_type, stride_type>;
@@ -166,10 +162,8 @@ template<RadixType radix_type, SizeType stride_type, bool forward> void set_inst
            // Check if reordering should be supported
            if(step_info.reorder_table == nullptr)
                step_info.step_function = fft_1d_complex_plain_f<radix_type, stride_type>;
-           else if(step_info.stride == 1)
-           {
-               step_info.step_function = fft_1d_complex_reorder2_plain_f<radix_type, SizeType::Size1, forward>;
-           }
+           else
+               step_info.step_function = fft_1d_complex_reorder2_plain_f<radix_type, stride_type, forward>;
         } else
         {
             step_info.step_function = fft_1d_complex_twiddle_dit_plain_f<radix_type, stride_type>;

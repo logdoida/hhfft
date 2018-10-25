@@ -211,41 +211,7 @@ std::vector<uint32_t> hhfft::calculate_reorder_table_in_place(const std::vector<
 
     reorder_in_place.resize(n-n_remove);
 
-    return reorder_in_place;
-
-    // Reordering in a "cycle"
-    /*
-    size_t N_tot = reorder.size();
-    std::vector<uint32_t> reorder_in_place;
-    std::vector<bool> covered(N_tot, false); // True for all indices that have been reordered
-
-    size_t ind = 0;
-    while (ind < N_tot)
-    {
-       // Skip indices that have already been covered and that do not need any reordering
-       if (!covered[ind] && reorder[ind] != ind)
-       {
-           size_t ind1 = ind;
-           reorder_in_place.push_back(0);  // First place is used as a temporary variable to store the one that is overwritten
-           do {
-               reorder_in_place.push_back(ind);
-               covered[ind] = true;
-               ind = reorder[ind];
-           } while (ind != ind1);
-       } else
-       {
-           ind++;
-       }
-    }
-
-    // Also the last one is temporary variable
-    if (reorder_in_place.size() > 0)
-    {
-        reorder_in_place.push_back(0);
-    }
-
-    return reorder_in_place;
-    */
+    return reorder_in_place;   
 }
 
 void hhfft::append_reorder_table(std::vector<uint32_t> &reorder_table, size_t n_extra)
@@ -266,6 +232,7 @@ std::vector<size_t> hhfft::calculate_factorization(size_t n)
     // This list is the supported factorizations in order of preference
     std::array<size_t, 7> radices = {6,8,4,2,3,5,7};
     //std::array<size_t, 4> radices = {2,3,5,7}; // for TESTING use 2 and 3 instead of 4 or 8 or 6
+    //std::array<size_t, 6> radices = {6,4,2,3,5,7}; // for TESTING use 4 instead of 8
 
     bool radix_found = true;
     while(radix_found)

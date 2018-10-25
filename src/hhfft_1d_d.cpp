@@ -150,13 +150,14 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
     }
 
     // TESTING print factorization    
-    //for (size_t i = 0; i < N.size(); i++)  { std::cout << N[i] << " ";} std::cout << std::endl;
+    // for (size_t i = 0; i < N.size(); i++)  { std::cout << N[i] << " ";} std::cout << std::endl;
 
     // First calculate the reorder table
-    reorder_table = calculate_reorder_table(N);
+    auto reorder_table_forward = calculate_reorder_table(N);
+    reorder_table = calculate_inverse_reorder_table(reorder_table_forward);
 
-    // Add extra values to the end for ifft reordering
-    append_reorder_table(reorder_table, n/N.back());
+    // Add extra value to the end for ifft reordering
+    reorder_table.push_back(0);
 
     // TESTING print reorder tables
     //std::cout << "reorder = " << std::endl;
@@ -171,6 +172,7 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
         twiddle_factors.push_back(w);        
     }
 
+    /*
     // DIT
     // Put first fft step combined with reordering
     {
@@ -197,6 +199,47 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
         step.radix = N[i];
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;
+        step.data_type_in = hhfft::StepDataType::data_out;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        step.twiddle_factors = twiddle_factors[i].data();
+        complex_set_function(step, instruction_set);
+        forward_steps.push_back(step);
+    }
+    */
+
+    // Put first fft step combined with reordering
+    // First step is a DIF with reordering done in the end
+    {
+        hhfft::StepInfo<T> step;
+        set_radix_raders(N[0], step, instruction_set);
+        step.radix = N[0];
+        step.stride = n / step.radix;
+        step.repeats = 1;
+        step.data_type_in = hhfft::StepDataType::data_in;
+        step.data_type_out = hhfft::StepDataType::data_out;
+        step.reorder_table = reorder_table.data();
+        step.reorder_table_size = reorder_table.size();
+        step.norm_factor = 1.0;
+        complex_set_function(step, instruction_set);
+        forward_steps.push_back(step);
+    }
+
+    // then put rest fft steps combined with twiddle factor
+    for (size_t i = 1; i < N.size(); i++)
+    {
+        hhfft::StepInfo<T> step;
+        hhfft::StepInfo<T> &step_prev = forward_steps.back();
+        set_radix_raders(N[i], step, instruction_set);
+        step.radix = N[i];
+        if (i == 1)
+        {
+            step.stride = step_prev.repeats * step_prev.radix;
+            step.repeats = step_prev.stride / step.radix;
+        } else
+        {
+            step.stride = step_prev.stride * step_prev.radix;
+            step.repeats = step_prev.repeats / step.radix;
+        }
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors[i].data();
