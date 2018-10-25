@@ -360,5 +360,5 @@ template<typename T> void HHFFT_1D<T>::print_complex_vector(const T *data, size_
 }
 
 // Explicitly instantiate double and float versions
-template class HHFFT_1D<double>;
-template class HHFFT_1D<float>;
+template class hhfft::HHFFT_1D<double>;
+template class hhfft::HHFFT_1D<float>;

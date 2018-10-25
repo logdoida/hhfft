@@ -41,8 +41,8 @@ static const float coeff_radix_7_sin[9] = {
 
 
 // Packing tables to be used on small problems
-#define packing_a(i,n) (0.5*cos(2.0*M_PI*(2*i+n)/(4*n))-0.5)
-#define packing_b(i,n) (-0.5*sin(2.0*M_PI*(2*i+n)/(4*n)))
+#define packing_a(i,n) float(0.5*cos(2.0*M_PI*(2*i+n)/(4*n))-0.5)
+#define packing_b(i,n) float(-0.5*sin(2.0*M_PI*(2*i+n)/(4*n)))
 const float packing_table_2_f[2] = {-0.5, -0.5};
 const float packing_table_4_f[2] = {-0.5, -0.5};
 const float packing_table_6_f[4] = {-0.5, -0.5, packing_a(2,6), packing_b(2,6)};

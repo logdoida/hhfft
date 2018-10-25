@@ -318,15 +318,35 @@ template<RadixType radix_type>
         multiply_coeff_forward_F4<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
         // Save output taking reordering into account
-        for (size_t j = 0; j < radix; j++)
+        if (radix_type == Radix8)
         {
-            ComplexF4 x = get_value_F4<radix_type>(x_temp_out, data_raders, j, raders);
-            size_t i2 = j*stride + i;
-            size_t ind0 = reorder_table[i2];
-            size_t ind1 = reorder_table[i2 + 1];
-            size_t ind2 = reorder_table[i2 + 2];
-            size_t ind3 = reorder_table[i2 + 3];
-            store_four_64_F4(x, data_out + 2*ind0, data_out + 2*ind1, data_out + 2*ind2, data_out + 2*ind3);
+            // Special optimized version for radix = 8, which is quite common
+            ComplexF4 x_temp_out2[radix_type];
+            transpose_F4<8>(x_temp_out, x_temp_out2);
+            size_t ind0 = reorder_table[i];
+            size_t ind1 = reorder_table[i + 1];
+            size_t ind2 = reorder_table[i + 2];
+            size_t ind3 = reorder_table[i + 3];
+            store_F4(x_temp_out2[0], data_out + 2*ind0);
+            store_F4(x_temp_out2[1], data_out + 2*ind0 + 8);
+            store_F4(x_temp_out2[2], data_out + 2*ind1);
+            store_F4(x_temp_out2[3], data_out + 2*ind1 + 8);
+            store_F4(x_temp_out2[4], data_out + 2*ind2);
+            store_F4(x_temp_out2[5], data_out + 2*ind2 + 8);
+            store_F4(x_temp_out2[6], data_out + 2*ind3);
+            store_F4(x_temp_out2[7], data_out + 2*ind3 + 8);
+        } else
+        {
+            for (size_t j = 0; j < radix; j++)
+            {
+                ComplexF4 x = get_value_F4<radix_type>(x_temp_out, data_raders, j, raders);
+                size_t i2 = j*stride + i;
+                size_t ind0 = reorder_table[i2];
+                size_t ind1 = reorder_table[i2 + 1];
+                size_t ind2 = reorder_table[i2 + 2];
+                size_t ind3 = reorder_table[i2 + 3];
+                store_four_64_F4(x, data_out + 2*ind0, data_out + 2*ind1, data_out + 2*ind2, data_out + 2*ind3);
+            }
         }
     }
 

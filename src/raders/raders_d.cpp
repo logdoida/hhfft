@@ -403,5 +403,5 @@ template<typename T> void RadersGeneric<T>::ifft(T *data) const
 }
 
 // Explicitly instantiate double and float versions
-template class RadersGeneric<double>;
-template class RadersGeneric<float>;
+template class hhfft::RadersGeneric<double>;
+template class hhfft::RadersGeneric<float>;

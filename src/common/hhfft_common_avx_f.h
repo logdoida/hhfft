@@ -1324,4 +1324,46 @@ template<size_t radix> inline __attribute__((always_inline)) void multiply_conj_
     }
 }
 
+// Transposes 4x4 or 8x4 complex numbers
+template<size_t radix> inline __attribute__((always_inline)) void transpose_F4(const ComplexF4 *x_in, ComplexF4 *x_out)
+{
+    if (radix == 4)
+    {
+        ComplexF4 temp[4];
+        temp[0] = _mm256_permute2f128_ps(x_in[0], x_in[2], 0*1 + 2*16);
+        temp[1] = _mm256_permute2f128_ps(x_in[0], x_in[2], 1*1 + 3*16);
+        temp[2] = _mm256_permute2f128_ps(x_in[1], x_in[3], 0*1 + 2*16);
+        temp[3] = _mm256_permute2f128_ps(x_in[1], x_in[3], 1*1 + 3*16);
+
+        x_out[0] = _mm256_shuffle_ps(temp[0], temp[2], 0*1 + 1*4 + 0*16 + 1*64);
+        x_out[1] = _mm256_shuffle_ps(temp[0], temp[2], 2*1 + 3*4 + 2*16 + 3*64);
+        x_out[2] = _mm256_shuffle_ps(temp[1], temp[3], 0*1 + 1*4 + 0*16 + 1*64);
+        x_out[3] = _mm256_shuffle_ps(temp[1], temp[3], 2*1 + 3*4 + 2*16 + 3*64);
+    }
+
+    if (radix == 8)
+    {
+        ComplexF4 temp[4];
+        temp[0] = _mm256_permute2f128_ps(x_in[0], x_in[2], 0*1 + 2*16);
+        temp[1] = _mm256_permute2f128_ps(x_in[0], x_in[2], 1*1 + 3*16);
+        temp[2] = _mm256_permute2f128_ps(x_in[1], x_in[3], 0*1 + 2*16);
+        temp[3] = _mm256_permute2f128_ps(x_in[1], x_in[3], 1*1 + 3*16);
+
+        x_out[0] = _mm256_shuffle_ps(temp[0], temp[2], 0*1 + 1*4 + 0*16 + 1*64);
+        x_out[2] = _mm256_shuffle_ps(temp[0], temp[2], 2*1 + 3*4 + 2*16 + 3*64);
+        x_out[4] = _mm256_shuffle_ps(temp[1], temp[3], 0*1 + 1*4 + 0*16 + 1*64);
+        x_out[6] = _mm256_shuffle_ps(temp[1], temp[3], 2*1 + 3*4 + 2*16 + 3*64);
+
+        temp[0] = _mm256_permute2f128_ps(x_in[4], x_in[6], 0*1 + 2*16);
+        temp[1] = _mm256_permute2f128_ps(x_in[4], x_in[6], 1*1 + 3*16);
+        temp[2] = _mm256_permute2f128_ps(x_in[5], x_in[7], 0*1 + 2*16);
+        temp[3] = _mm256_permute2f128_ps(x_in[5], x_in[7], 1*1 + 3*16);
+
+        x_out[1] = _mm256_shuffle_ps(temp[0], temp[2], 0*1 + 1*4 + 0*16 + 1*64);
+        x_out[3] = _mm256_shuffle_ps(temp[0], temp[2], 2*1 + 3*4 + 2*16 + 3*64);
+        x_out[5] = _mm256_shuffle_ps(temp[1], temp[3], 0*1 + 1*4 + 0*16 + 1*64);
+        x_out[7] = _mm256_shuffle_ps(temp[1], temp[3], 2*1 + 3*4 + 2*16 + 3*64);
+    }
+}
+
 #endif
