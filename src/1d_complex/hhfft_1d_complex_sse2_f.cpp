@@ -325,23 +325,57 @@ template<RadixType radix_type>
 // To be used when stride is more than 1 and reordering is done after ifft
 template<RadixType radix_type>
     inline __attribute__((always_inline)) void fft_1d_complex_sse2_f_internal_striden_reorder_inverse(const float *data_in, float *data_out, size_t stride, const hhfft::StepInfo<float> &step_info)
-{
-    // TODO use ComplexF2
-
+{    
     const hhfft::RadersF &raders = *step_info.raders;
     size_t radix = get_actual_radix<radix_type>(raders);
     uint32_t *reorder_table = step_info.reorder_table;
-    ComplexF k = broadcast32_F(step_info.norm_factor);
+    ComplexF2 k = broadcast32_F2(step_info.norm_factor);
     size_t reorder_table_size = step_info.reorder_table_size;
 
     ComplexF x_temp_in[radix_type];
     ComplexF x_temp_out[radix_type];
 
-    // Allocate memory for Rader's algorithm if needed
-    float *data_raders = allocate_raders_F<radix_type>(raders);
+    // Amount of Raders memory needed depends on stride
+    float *data_raders = nullptr;
+    if (stride > 2)
+        data_raders = allocate_raders_F2<radix_type>(raders);
+    else
+        data_raders = allocate_raders_F<radix_type>(raders);
 
-    size_t i = 0;
-    for (i = 0; i < stride - 1; i++)
+    // First use 128-bit variables
+    size_t i = 0;    
+    for (i = 0; i + 1 < stride - 1; i+=2)
+    {
+        ComplexF2 x_temp_in[radix_type];
+        ComplexF2 x_temp_out[radix_type];
+
+        // Initialize raders data with zeros
+        init_coeff_F2<radix_type>(data_raders, raders);
+
+        // Copy input data
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t i2 = j*stride + stride - i - 2;
+            ComplexF2 x = load_F2(data_in + 2*i2);
+            set_value_F2<radix_type>(x_temp_in, data_raders, radix - j - 1, raders, x);
+        }
+
+        // Multiply with coefficients
+        multiply_coeff_forward_F2<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
+
+        // Save output taking reordering into account
+        for (size_t j = 0; j < radix; j++)
+        {
+            ComplexF2 x = k*get_value_F2<radix_type>(x_temp_out, data_raders, radix - j - 1, raders);
+            size_t i2 = j*stride + stride - i - 2;
+            size_t ind0 = reorder_table[reorder_table_size - i2 - 1];
+            size_t ind1 = reorder_table[reorder_table_size - i2 - 2];
+            store_two_64_F2(x, data_out + 2*ind0, data_out + 2*ind1);
+        }
+    }
+
+    // Then, if necessary, use 64-bit variables
+    if (i < stride - 1)
     {
         // Initialize raders data with zeros
         init_coeff_F<radix_type>(data_raders, raders);
@@ -349,7 +383,7 @@ template<RadixType radix_type>
         // Copy input data
         for (size_t j = 0; j < radix; j++)
         {
-            size_t i2 = j*stride + i + 1;
+            size_t i2 = j*stride + stride - i - 1;
             ComplexF x = load_F(data_in + 2*i2);
             set_value_F<radix_type>(x_temp_in, data_raders, radix - j - 1, raders, x);
         }
@@ -361,14 +395,17 @@ template<RadixType radix_type>
         for (size_t j = 0; j < radix; j++)
         {
             ComplexF x = k*get_value_F<radix_type>(x_temp_out, data_raders, radix - j - 1, raders);
-            size_t i2 = j*stride + i + 1;
+            size_t i2 = j*stride + stride - i - 1;
             size_t ind = reorder_table[reorder_table_size - i2 - 1];
             store_F(x, data_out + 2*ind);
         }
+        i++;
     }
 
     // Last value in stride is special case
     {
+        i = stride - 1;
+
         // Initialize raders data with zeros
         init_coeff_F<radix_type>(data_raders, raders);
 
