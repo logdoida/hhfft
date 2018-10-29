@@ -331,8 +331,8 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     // Implementation for radix = 7
     if (radix == 7)
     {
-        const double *coeff_cos = coeff_radix_7_cos;
-        const double *coeff_sin = coeff_radix_7_sin;
+        const double *coeff_cos = coeff_radix_7_cos_d;
+        const double *coeff_sin = coeff_radix_7_sin_d;
 
         // Calculate sums and differences
         ComplexD sums[3];

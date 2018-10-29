@@ -22,6 +22,8 @@
 #ifndef HHFFT_COMMON_F
 #define HHFFT_COMMON_F
 
+#include "hhfft_common.h"
+
 static const float k5 = cos(2.0*M_PI*1.0/7.0);
 static const float k6 = sin(2.0*M_PI*1.0/7.0);
 static const float k7 = -cos(2.0*M_PI*2.0/7.0);
@@ -77,25 +79,6 @@ template<size_t n> static const float *get_packing_table_f()
     }
 
     return nullptr;
-}
-
-// This function can help compiler to optimze the code
-// TODO this function has already been defined in hhfft_common_d!
-template<hhfft::SizeType size_type> inline size_t get_size(size_t size)
-{
-    if (size_type == hhfft::SizeType::Size1)
-    {
-        return 1;
-    } else if (size_type == hhfft::SizeType::Size2)
-    {
-        return 2;
-    } else if (size_type == hhfft::SizeType::Size4)
-    {
-        return 4;
-    } else
-    {
-        return size;
-    }    
 }
 
 #endif

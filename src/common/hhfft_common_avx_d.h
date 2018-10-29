@@ -363,8 +363,8 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     // Implementation for radix = 7
     if (radix == 7)
     {
-        const double *coeff_cos = coeff_radix_7_cos;
-        const double *coeff_sin = coeff_radix_7_sin;
+        const double *coeff_cos = coeff_radix_7_cos_d;
+        const double *coeff_sin = coeff_radix_7_sin_d;
 
         // Calculate sums and differences
         ComplexD2 sums[3];
@@ -479,6 +479,31 @@ template<size_t radix> inline __attribute__((always_inline)) void multiply_conj_
 
         x_out[j] = x_temp;
         x_out[radix-j] = conj_D2(x_temp);
+    }
+}
+
+// Transposes 4x2 or 8x2 complex numbers
+template<size_t radix> inline __attribute__((always_inline)) void transpose_D2(const ComplexD2 *x_in, ComplexD2 *x_out)
+{
+    if (radix == 4)
+    {
+        x_out[0] = _mm256_permute2f128_pd(x_in[0], x_in[1], 0*1 + 2*16);
+        x_out[1] = _mm256_permute2f128_pd(x_in[2], x_in[3], 0*1 + 2*16);
+        x_out[2] = _mm256_permute2f128_pd(x_in[0], x_in[1], 1*1 + 3*16);
+        x_out[3] = _mm256_permute2f128_pd(x_in[2], x_in[3], 1*1 + 3*16);
+    }
+
+    if (radix == 8)
+    {
+        x_out[0] = _mm256_permute2f128_pd(x_in[0], x_in[1], 0*1 + 2*16);
+        x_out[1] = _mm256_permute2f128_pd(x_in[2], x_in[3], 0*1 + 2*16);
+        x_out[2] = _mm256_permute2f128_pd(x_in[4], x_in[5], 0*1 + 2*16);
+        x_out[3] = _mm256_permute2f128_pd(x_in[6], x_in[7], 0*1 + 2*16);
+
+        x_out[4] = _mm256_permute2f128_pd(x_in[0], x_in[1], 1*1 + 3*16);
+        x_out[5] = _mm256_permute2f128_pd(x_in[2], x_in[3], 1*1 + 3*16);
+        x_out[6] = _mm256_permute2f128_pd(x_in[4], x_in[5], 1*1 + 3*16);
+        x_out[7] = _mm256_permute2f128_pd(x_in[6], x_in[7], 1*1 + 3*16);
     }
 }
 
@@ -816,8 +841,8 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
     // Implementation for radix = 7
     if (radix == 7)
     {
-        const double *coeff_cos = coeff_radix_7_cos;
-        const double *coeff_sin = coeff_radix_7_sin;
+        const double *coeff_cos = coeff_radix_7_cos_d;
+        const double *coeff_sin = coeff_radix_7_sin_d;
 
         // Calculate sums and differences
         ComplexD4S sums[3];

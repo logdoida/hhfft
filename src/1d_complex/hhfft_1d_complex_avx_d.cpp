@@ -241,6 +241,257 @@ template<RadixType radix_type, bool forward>
     free_raders_D<radix_type>(raders, data_raders);
 }
 
+// To be used when stride is more than 1 and reordering is done after fft
+template<RadixType radix_type>
+    inline __attribute__((always_inline)) void fft_1d_complex_avx_d_internal_striden_reorder_forward(const double *data_in, double *data_out, size_t stride, const hhfft::StepInfo<double> &step_info)
+{
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
+    uint32_t *reorder_table = step_info.reorder_table;
+
+    // Amount of Raders memory needed depends on stride
+    double *data_raders = nullptr;
+    if (stride > 1)
+        data_raders = allocate_raders_D2<radix_type>(raders);
+    else
+        data_raders = allocate_raders_D<radix_type>(raders);
+
+    // First use 256-bit variables
+    size_t i = 0;
+    for (i = 0; i+1 < stride; i+=2)
+    {
+        ComplexD2 x_temp_in[radix_type];
+        ComplexD2 x_temp_out[radix_type];
+
+        // Initialize raders data with zeros
+        init_coeff_D2<radix_type>(data_raders, raders);
+
+        // Copy input data
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t i2 = j*stride + i;
+            ComplexD2 x = load_D2(data_in + 2*i2);
+            set_value_D2<radix_type>(x_temp_in, data_raders, j, raders, x);
+        }
+
+        // Multiply with coefficients
+        multiply_coeff_forward_D2<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
+
+        // Save output taking reordering into account
+        if (radix_type == Radix8)
+        {
+            // Special optimized version for radix = 8, which is quite common
+            ComplexD2 x_temp_out2[radix_type];
+            transpose_D2<8>(x_temp_out, x_temp_out2);
+            size_t ind0 = reorder_table[i];
+            size_t ind1 = reorder_table[i + 1];
+            store_D2(x_temp_out2[0], data_out + 2*ind0);
+            store_D2(x_temp_out2[1], data_out + 2*ind0 + 4);
+            store_D2(x_temp_out2[2], data_out + 2*ind0 + 8);
+            store_D2(x_temp_out2[3], data_out + 2*ind0 + 12);
+            store_D2(x_temp_out2[4], data_out + 2*ind1);
+            store_D2(x_temp_out2[5], data_out + 2*ind1 + 4);
+            store_D2(x_temp_out2[6], data_out + 2*ind1 + 8);
+            store_D2(x_temp_out2[7], data_out + 2*ind1 + 12);
+
+            /*
+            ComplexD2 x_temp_out2[radix_type];
+            transpose_D2<8>(x_temp_out, x_temp_out2);
+            size_t i2 = 8*stride - i - 2;
+            size_t ind0 = reorder_table[reorder_table_size - i2 - 1];
+            size_t ind1 = reorder_table[reorder_table_size - i2 - 2];
+            store_D2(x_temp_out2[4], data_out + 2*ind1);
+            store_D2(x_temp_out2[5], data_out + 2*ind1 + 4);
+            store_D2(x_temp_out2[6], data_out + 2*ind1 + 8);
+            store_D2(x_temp_out2[7], data_out + 2*ind1 + 12);
+            store_D2(x_temp_out2[0], data_out + 2*ind0);
+            store_D2(x_temp_out2[1], data_out + 2*ind0 + 4);
+            store_D2(x_temp_out2[2], data_out + 2*ind0 + 8);
+            store_D2(x_temp_out2[3], data_out + 2*ind0 + 12);
+            */
+        } else
+        {
+            for (size_t j = 0; j < radix; j++)
+            {
+                ComplexD2 x = get_value_D2<radix_type>(x_temp_out, data_raders, j, raders);
+                size_t i2 = j*stride + i;
+                size_t ind0 = reorder_table[i2];
+                size_t ind1 = reorder_table[i2 + 1];
+                store_two_128_D2(x, data_out + 2*ind0, data_out + 2*ind1);
+            }
+        }
+    }
+
+    // Then, if necessary, use 128-bit variables
+    if (i < stride)
+    {
+        ComplexD x_temp_in[radix_type];
+        ComplexD x_temp_out[radix_type];
+
+        // Initialize raders data with zeros
+        init_coeff_D<radix_type>(data_raders, raders);
+
+        // Copy input data
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t i2 = j*stride + i;
+            ComplexD x = load_D(data_in + 2*i2);
+            set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
+        }
+
+        // Multiply with coefficients
+        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
+
+        // Save output taking reordering into account
+        for (size_t j = 0; j < radix; j++)
+        {
+            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
+            size_t i2 = j*stride + i;
+            size_t ind = reorder_table[i2];
+            store_D(x, data_out + 2*ind);
+        }
+    }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
+}
+
+    // To be used when stride is more than 1 and reordering is done after ifft
+template<RadixType radix_type>
+    inline __attribute__((always_inline)) void fft_1d_complex_avx_d_internal_striden_reorder_inverse(const double *data_in, double *data_out, size_t stride, const hhfft::StepInfo<double> &step_info)
+{
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
+    uint32_t *reorder_table = step_info.reorder_table;
+    ComplexD k = broadcast64_D(step_info.norm_factor);
+    ComplexD2 kk = broadcast64_D2(step_info.norm_factor);
+    size_t reorder_table_size = step_info.reorder_table_size;
+
+    ComplexD x_temp_in[radix_type];
+    ComplexD x_temp_out[radix_type];
+
+    // Amount of Raders memory needed depends on stride
+    double *data_raders = nullptr;
+    if (stride > 1)
+        data_raders = allocate_raders_D2<radix_type>(raders);
+    else
+        data_raders = allocate_raders_D<radix_type>(raders);
+
+    // First use 256-bit variables
+    size_t i = 0;
+    for (i = 0; i + 1 < stride - 1; i+=2)
+    {
+        ComplexD2 x_temp_in[radix_type];
+        ComplexD2 x_temp_out[radix_type];
+
+        // Initialize raders data with zeros
+        init_coeff_D2<radix_type>(data_raders, raders);
+
+        // Copy input data
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t i2 = j*stride + stride - i - 2;
+            ComplexD2 x = kk*load_D2(data_in + 2*i2);
+            set_value_D2<radix_type>(x_temp_in, data_raders, radix - j - 1, raders, x);
+        }
+
+        // Multiply with coefficients
+        multiply_coeff_forward_D2<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
+
+        // Save output taking reordering into account
+        // Save output taking reordering into account
+        if (radix_type == Radix8)
+        {
+            // Special optimized version for radix = 8, which is quite common
+            ComplexD2 x_temp_out2[radix_type];
+            transpose_D2<8>(x_temp_out, x_temp_out2);
+            size_t i2 = 8*stride - i - 2;
+            size_t ind0 = reorder_table[reorder_table_size - i2 - 1];
+            size_t ind1 = reorder_table[reorder_table_size - i2 - 2];
+            store_D2(x_temp_out2[4], data_out + 2*ind1);
+            store_D2(x_temp_out2[5], data_out + 2*ind1 + 4);
+            store_D2(x_temp_out2[6], data_out + 2*ind1 + 8);
+            store_D2(x_temp_out2[7], data_out + 2*ind1 + 12);
+            store_D2(x_temp_out2[0], data_out + 2*ind0);
+            store_D2(x_temp_out2[1], data_out + 2*ind0 + 4);
+            store_D2(x_temp_out2[2], data_out + 2*ind0 + 8);
+            store_D2(x_temp_out2[3], data_out + 2*ind0 + 12);
+        } else
+        {
+            for (size_t j = 0; j < radix; j++)
+            {
+                ComplexD2 x = get_value_D2<radix_type>(x_temp_out, data_raders, radix - j - 1, raders);
+                size_t i2 = j*stride + stride - i - 2;
+                size_t ind0 = reorder_table[reorder_table_size - i2 - 1];
+                size_t ind1 = reorder_table[reorder_table_size - i2 - 2];
+                store_two_128_D2(x, data_out + 2*ind0, data_out + 2*ind1);
+            }
+        }
+    }
+
+    // Then use 128-bit variables, if necassery
+    if (i < stride - 1)
+    {
+        ComplexD x_temp_in[radix_type];
+        ComplexD x_temp_out[radix_type];
+
+        // Initialize raders data with zeros
+        init_coeff_D<radix_type>(data_raders, raders);
+
+        // Copy input data
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t i2 = j*stride + stride - i - 1;
+            ComplexD x = load_D(data_in + 2*i2);
+            set_value_D<radix_type>(x_temp_in, data_raders, radix - j - 1, raders, x);
+        }
+
+        // Multiply with coefficients
+        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
+
+        // Save output taking reordering into account
+        for (size_t j = 0; j < radix; j++)
+        {
+            ComplexD x = k*get_value_D<radix_type>(x_temp_out, data_raders, radix - j - 1, raders);
+            size_t i2 = j*stride + stride - i - 1;
+            size_t ind = reorder_table[reorder_table_size - i2 - 1];
+            store_D(x, data_out + 2*ind);
+        }
+        i++;
+    }
+
+    // Last value in stride is special case
+    {
+        // Initialize raders data with zeros
+        init_coeff_D<radix_type>(data_raders, raders);
+
+        // Copy input data, taking the special case into account
+        ComplexD x = load_D(data_in + 0);
+        set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x);
+        for (size_t j = 0; j < radix - 1; j++)
+        {
+            size_t i2 = j*stride + i + 1;
+            ComplexD x = load_D(data_in + 2*i2);
+            set_value_D<radix_type>(x_temp_in, data_raders, radix - j - 1, raders, x);
+        }
+
+        // Multiply with coefficients
+        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
+
+        // Save output taking reordering into account
+        for (size_t j = 0; j < radix; j++)
+        {
+            ComplexD x = k*get_value_D<radix_type>(x_temp_out, data_raders, radix - j - 1, raders);
+            size_t i2 = j*stride + i + 1;
+            size_t ind = reorder_table[reorder_table_size - i2 - 1];
+            store_D(x, data_out + 2*ind);
+        }
+    }
+
+    // Free temporary memory
+    free_raders_D<radix_type>(raders, data_raders);
+}
+
 template<RadixType radix_type, SizeType stride_type>
     inline __attribute__((always_inline)) void fft_1d_complex_avx_d_internal(const double *data_in, double *data_out, double *data_raders, const hhfft::RadersD &raders, size_t stride)
 {
@@ -431,11 +682,19 @@ template<RadixType radix_type, SizeType stride_type, bool forward>
     void fft_1d_complex_reorder2_avx_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info)
 {
     size_t repeats = step_info.repeats;
+    size_t stride = get_size<stride_type>(step_info.stride);
 
-    // Only for stride 1!
-    assert(stride_type == SizeType::Size1);
-
-    fft_1d_complex_avx_d_internal_stride1_reorder<radix_type, forward>(data_in, data_out, repeats, step_info);
+    // If stride == 1, first reorder, then fft
+    if (stride_type == SizeType::Size1)
+        fft_1d_complex_avx_d_internal_stride1_reorder<radix_type, forward>(data_in, data_out, repeats, step_info);
+    else
+    {
+        // If stride > 1, first fft, then reorder. This is more efficient way.
+        if (forward)
+            fft_1d_complex_avx_d_internal_striden_reorder_forward<radix_type>(data_in, data_out, stride, step_info);
+        else
+            fft_1d_complex_avx_d_internal_striden_reorder_inverse<radix_type>(data_in, data_out, stride, step_info);
+    }
 }
 
 template<RadixType radix_type, SizeType stride_type>
@@ -712,6 +971,23 @@ template void fft_1d_complex_reorder2_avx_d<Radix7, SizeType::Size1, false>(cons
 template void fft_1d_complex_reorder2_avx_d<Radix7, SizeType::Size1, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_reorder2_avx_d<Radix8, SizeType::Size1, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_reorder2_avx_d<Radix8, SizeType::Size1, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+
+template void fft_1d_complex_reorder2_avx_d<Raders, SizeType::SizeN, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Raders, SizeType::SizeN, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix2, SizeType::SizeN, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix2, SizeType::SizeN, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix3, SizeType::SizeN, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix3, SizeType::SizeN, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix4, SizeType::SizeN, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix4, SizeType::SizeN, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix5, SizeType::SizeN, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix5, SizeType::SizeN, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix6, SizeType::SizeN, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix6, SizeType::SizeN, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix7, SizeType::SizeN, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix7, SizeType::SizeN, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix8, SizeType::SizeN, false>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_1d_complex_reorder2_avx_d<Radix8, SizeType::SizeN, true>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template void fft_1d_complex_avx_d<Raders, SizeType::Size1>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_1d_complex_avx_d<Radix2, SizeType::Size1>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
