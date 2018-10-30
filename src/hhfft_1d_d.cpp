@@ -83,7 +83,7 @@ template<> void complex_set_1level_raders_function<float>(StepInfo<float> &step_
     HHFFT_1D_Complex_F_set_1level_raders_function(step_info, forward, instruction_set);
 }
 
-template<typename T> void (*set_convolution_function(hhfft::InstructionSet instruction_set))(const T *, const T *, T *, size_t);
+template<typename T> static void (*set_convolution_function(hhfft::InstructionSet instruction_set))(const T *, const T *, T *, size_t);
 template<> void (*set_convolution_function<double>(hhfft::InstructionSet instruction_set))(const double *, const double *, double *, size_t)
 {
     return HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
@@ -171,41 +171,6 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
         AlignedVector<T> w = calculate_twiddle_factors_DIT<T>(i, N);
         twiddle_factors.push_back(w);        
     }
-
-    /*
-    // DIT
-    // Put first fft step combined with reordering
-    {
-        hhfft::StepInfo<T> step;
-        set_radix_raders(N[0], step, instruction_set);
-        step.stride = 1;
-        step.radix = N[0];
-        step.repeats = n / step.radix;
-        step.data_type_in = hhfft::StepDataType::data_in;
-        step.data_type_out = hhfft::StepDataType::data_out;
-        step.reorder_table = reorder_table.data();
-        step.reorder_table_size = reorder_table.size();
-        step.norm_factor = 1.0;
-        complex_set_function(step, instruction_set);
-        forward_steps.push_back(step);
-    }
-
-    // then put rest fft steps combined with twiddle factor
-    for (size_t i = 1; i < N.size(); i++)
-    {
-        hhfft::StepInfo<T> step;
-        hhfft::StepInfo<T> &step_prev = forward_steps.back();
-        set_radix_raders(N[i], step, instruction_set);
-        step.radix = N[i];
-        step.stride = step_prev.stride * step_prev.radix;
-        step.repeats = step_prev.repeats / step.radix;
-        step.data_type_in = hhfft::StepDataType::data_out;
-        step.data_type_out = hhfft::StepDataType::data_out;
-        step.twiddle_factors = twiddle_factors[i].data();
-        complex_set_function(step, instruction_set);
-        forward_steps.push_back(step);
-    }
-    */
 
     // Put first fft step combined with reordering
     // First step is a DIF with reordering done in the end

@@ -441,7 +441,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
     //for (auto r: reorder_table_in_place_rows)  { std::cout << r << " ";} std::cout << std::endl;
 
     // Add packing factors
-    AlignedVector<double> packing_factors = hhfft::calculate_packing_factors(m);
+    AlignedVector<double> packing_factors = hhfft::calculate_packing_factors<double>(m);
     twiddle_factors_rows.push_back(packing_factors);
 
     // Calculate twiddle factors

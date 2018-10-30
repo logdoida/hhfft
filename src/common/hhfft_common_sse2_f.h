@@ -75,7 +75,7 @@ inline ComplexF change_sign_F(ComplexF a, ComplexF s)
 }
 
 const ComplexF const1_F = load_F(0.0f, -0.0f);
-//const ComplexF const2_F = load_F(-0.0f, 0.0f);
+const ComplexF const2_F = load_F(-0.0f, 0.0f);
 const ComplexF const3_F = _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f);
 const ComplexF const4_F = _mm_setr_ps(0.0f, 0.0f, 0.0f, -0.0f);
 

@@ -28,30 +28,94 @@
 #include "hhfft_1d_real_d.h"
 #include "1d_complex/hhfft_1d_complex_d.h"
 #include "1d_real/hhfft_1d_real_setter_d.h"
+#include "1d_complex/hhfft_1d_complex_f.h"
+#include "1d_real/hhfft_1d_real_setter_f.h"
 
 using namespace hhfft;
-using hhfft::HHFFT_1D_REAL_D;
+using hhfft::HHFFT_1D_REAL;
 
-double* HHFFT_1D_REAL_D::allocate_memory() const
+template<typename T> T* HHFFT_1D_REAL<T>::allocate_memory() const
 {
-    // For real data only n doubles are needed
-    // For complex data 2*((n/2)+1) doubles are needed
-    size_t size = 2*((n/2)+1)*sizeof(double);
+    // For real data only n Ts are needed
+    // For complex data 2*((n/2)+1) Ts are needed
+    size_t size = 2*((n/2)+1)*sizeof(T);
 
     // Allow the allocation of some extra space for larger arrays
     bool allocate_extra = size >= 64;
 
-    return (double *) allocate_aligned_memory(size, allocate_extra);
+    return (T *) allocate_aligned_memory(size, allocate_extra);
 }
 
-void HHFFT_1D_REAL_D::free_memory(double *data)
+template<typename T> void HHFFT_1D_REAL<T>::free_memory(T *data)
 {
     free(data);
 }
 
+// Specialized template functions that call the proper setter function
+template<typename T> static void complex_set_function(StepInfo<T> &step_info, hhfft::InstructionSet instruction_set);
+template<> void complex_set_function<double>(StepInfo<double> &step_info, hhfft::InstructionSet instruction_set)
+{
+    HHFFT_1D_Complex_D_set_function(step_info, instruction_set);
+}
+template<> void complex_set_function<float>(StepInfo<float> &step_info, hhfft::InstructionSet instruction_set)
+{
+    HHFFT_1D_Complex_F_set_function(step_info, instruction_set);
+}
+
+
+// Specialized template functions that call the proper setter function
+template<typename T> static void real_set_small_function(StepInfo<T> &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set);
+template<> void real_set_small_function<double>(StepInfo<double> &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set)
+{
+    HHFFT_1D_Real_D_set_small_function(step_info, n, forward, instruction_set);
+}
+template<> void real_set_small_function<float>(StepInfo<float> &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set)
+{
+    HHFFT_1D_Real_F_set_small_function(step_info, n, forward, instruction_set);
+}
+
+template<typename T> static void real_set_1level_function(StepInfo<T> &step_info, bool forward, hhfft::InstructionSet instruction_set);
+template<> void real_set_1level_function<double>(StepInfo<double> &step_info, bool forward, hhfft::InstructionSet instruction_set)
+{
+    HHFFT_1D_Real_D_set_1level_raders_function(step_info, forward, instruction_set);
+}
+template<> void real_set_1level_function<float>(StepInfo<float> &step_info, bool forward, hhfft::InstructionSet instruction_set)
+{
+    HHFFT_1D_Real_F_set_1level_raders_function(step_info, forward, instruction_set);
+}
+
+template<typename T> static void real_odd_set_function(StepInfo<T> &step_info, hhfft::InstructionSet instruction_set);
+template<> void real_odd_set_function<double>(StepInfo<double> &step_info, hhfft::InstructionSet instruction_set)
+{
+    HHFFT_1D_Real_D_odd_set_function(step_info, instruction_set);
+}
+template<> void real_odd_set_function<float>(StepInfo<float> &step_info, hhfft::InstructionSet instruction_set)
+{
+    HHFFT_1D_Real_F_odd_set_function(step_info, instruction_set);
+}
+
+template<typename T> static void real_set_complex_to_complex_packed_function(StepInfo<T> &step_info, hhfft::InstructionSet instruction_set);
+template<> void real_set_complex_to_complex_packed_function<double>(StepInfo<double> &step_info, hhfft::InstructionSet instruction_set)
+{
+    HHFFT_1D_Real_D_set_complex_to_complex_packed_function(step_info, instruction_set);
+}
+template<> void real_set_complex_to_complex_packed_function<float>(StepInfo<float> &step_info, hhfft::InstructionSet instruction_set)
+{
+    HHFFT_1D_Real_F_set_complex_to_complex_packed_function(step_info, instruction_set);
+}
+
+template<typename T> static void (*set_convolution_function(hhfft::InstructionSet instruction_set))(const T *, const T *, T *, size_t);
+template<> void (*set_convolution_function<double>(hhfft::InstructionSet instruction_set))(const double *, const double *, double *, size_t)
+{
+    return HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
+}
+template<> void (*set_convolution_function<float>(hhfft::InstructionSet instruction_set))(const float *, const float *, float *, size_t)
+{
+    return HHFFT_1D_Complex_F_set_convolution_function(instruction_set);
+}
 
 // Does the planning step
-HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n, InstructionSet instruction_set)
+template<typename T> HHFFT_1D_REAL<T>::HHFFT_1D_REAL(size_t n, InstructionSet instruction_set)
 {
     this->n = n;
 
@@ -68,12 +132,12 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n, InstructionSet instruction_set)
     }
 
     // Set the convolution function
-    convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
+    convolution_function = set_convolution_function<T>(instruction_set);
 
     // For small problems, it is better to use a single level function
-    StepInfoD step_info_fft, step_info_ifft;
-    HHFFT_1D_Real_D_set_small_function(step_info_fft, n, true, instruction_set);
-    HHFFT_1D_Real_D_set_small_function(step_info_ifft, n, false, instruction_set);
+    StepInfo<T> step_info_fft, step_info_ifft;
+    real_set_small_function(step_info_fft, n, true, instruction_set);
+    real_set_small_function(step_info_ifft, n, false, instruction_set);
     if (step_info_fft.step_function && step_info_ifft.step_function)
     {
         // Data type in/out are set as they might be used in 2d real!
@@ -95,17 +159,17 @@ HHFFT_1D_REAL_D::HHFFT_1D_REAL_D(size_t n, InstructionSet instruction_set)
     }    
 }
 
-void HHFFT_1D_REAL_D::set_radix_raders(size_t radix, StepInfoD &step, InstructionSet instruction_set)
+template<typename T> void HHFFT_1D_REAL<T>::set_radix_raders(size_t radix, StepInfo<T> &step, InstructionSet instruction_set)
 {
     if (radix > 8)
     {
         // Use Rader's algorithm instead
-        raders.push_back(std::unique_ptr<RadersD>(new RadersD(radix, instruction_set)));
+        raders.push_back(std::unique_ptr<RadersGeneric<T>>(new RadersGeneric<T>(radix, instruction_set)));
         step.raders = raders.back().get();
     }
 }
 
-void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
+template<typename T> void HHFFT_1D_REAL<T>::plan_odd(InstructionSet instruction_set)
 {
     //throw(std::runtime_error("HHFFT error: odd n fft size not supported!"));
 
@@ -121,9 +185,9 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
     // If Raders one level function is possible, do it here
     if (N.size() == 1)
     {
-        StepInfoD step_info_fft, step_info_ifft;
-        HHFFT_1D_Real_D_set_1level_raders_function(step_info_fft, true, instruction_set);
-        HHFFT_1D_Real_D_set_1level_raders_function(step_info_ifft, false, instruction_set);
+        StepInfo<T> step_info_fft, step_info_ifft;
+        real_set_1level_function(step_info_fft, true, instruction_set);
+        real_set_1level_function(step_info_ifft, false, instruction_set);
         step_info_fft.radix = n;
         step_info_ifft.radix = n;
         step_info_fft.data_type_in = hhfft::StepDataType::data_in;
@@ -147,10 +211,10 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
     //for (auto r: reorder_table_ifft_odd)  { std::cout << r << " ";} std::cout << std::endl;
 
     // Calculate twiddle factors
-    twiddle_factors.push_back(AlignedVector<double>()); // No twiddle factors are needed before the first fft-level
+    twiddle_factors.push_back(AlignedVector<T>()); // No twiddle factors are needed before the first fft-level
     for (size_t i = 1; i < N.size(); i++)
     {
-        AlignedVector<double> w = calculate_twiddle_factors_DIT<double>(i, N);
+        AlignedVector<T> w = calculate_twiddle_factors_DIT<T>(i, N);
         twiddle_factors.push_back(w);
 
         //print_complex_vector(w.data(), w.size()/2);
@@ -159,7 +223,7 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
     ///////// FFT /////////////
     // Put first fft step combined with reordering
     {
-        hhfft::StepInfoD step;
+        hhfft::StepInfo<T> step;
         set_radix_raders(N[0], step, instruction_set);
         step.radix = N[0];
         step.stride = 1;
@@ -168,15 +232,15 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table.data();        
         step.start_index_out = 1; // This way there is no need to move data when it is ready
-        HHFFT_1D_Real_D_odd_set_function(step, instruction_set);
+        real_odd_set_function(step, instruction_set);
         forward_steps.push_back(step);
     }
 
     // then put rest fft steps combined with twiddle factor
     for (size_t i = 1; i < N.size(); i++)
     {
-        hhfft::StepInfoD step;
-        hhfft::StepInfoD &step_prev = forward_steps.back();
+        hhfft::StepInfo<T> step;
+        hhfft::StepInfo<T> &step_prev = forward_steps.back();
         set_radix_raders(N[i], step, instruction_set);
         step.radix = N[i];
         step.stride = step_prev.stride * step_prev.radix;
@@ -186,7 +250,7 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.twiddle_factors = twiddle_factors[i].data();
         step.start_index_in = 1;
         step.start_index_out = 1;
-        HHFFT_1D_Real_D_odd_set_function(step, instruction_set);
+        real_odd_set_function(step, instruction_set);
         forward_steps.push_back(step);
     }
 
@@ -194,7 +258,7 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
     ///////// IFFT /////////////
     // Put first fft step combined with reordering
     {
-        hhfft::StepInfoD step;
+        hhfft::StepInfo<T> step;
         set_radix_raders(N[0], step, instruction_set);
         step.radix = N[0];
         step.stride = 1;
@@ -202,17 +266,17 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table_ifft_odd.data();
-        step.norm_factor = 1.0/(double(n));
+        step.norm_factor = 1.0/(T(n));
         step.forward = false;
-        HHFFT_1D_Real_D_odd_set_function(step, instruction_set);
+        real_odd_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
 
     // then put rest fft steps combined with twiddle factor
     for (size_t i = 1; i < N.size(); i++)
     {
-        hhfft::StepInfoD step;
-        hhfft::StepInfoD &step_prev = inverse_steps.back();
+        hhfft::StepInfo<T> step;
+        hhfft::StepInfo<T> &step_prev = inverse_steps.back();
         set_radix_raders(N[i], step, instruction_set);
         step.radix = N[i];
         step.stride = step_prev.stride * step_prev.radix;
@@ -221,13 +285,13 @@ void HHFFT_1D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors[i].data();
         step.forward = false;
-        HHFFT_1D_Real_D_odd_set_function(step, instruction_set);
+        real_odd_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
 
 }
 
-void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
+template<typename T> void HHFFT_1D_REAL<T>::plan_even(InstructionSet instruction_set)
 {
     // FFT is done using complex fft of size n/2
     size_t n_complex = n/2;
@@ -253,14 +317,14 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
     //for (auto r: reorder_table_in_place)  { std::cout << r << " ";} std::cout << std::endl;
 
     // Add packing factors
-    AlignedVector<double> packing_factors = hhfft::calculate_packing_factors(n);
+    AlignedVector<T> packing_factors = hhfft::calculate_packing_factors<T>(n);
     twiddle_factors.push_back(packing_factors);
 
     // Calculate twiddle factors
     // NOTE that a portion of these are always one and they could be removed to decrease memory requirements.
     for (size_t i = 1; i < N.size(); i++)
     {
-        AlignedVector<double> w = calculate_twiddle_factors_DIT<double>(i, N);
+        AlignedVector<T> w = calculate_twiddle_factors_DIT<T>(i, N);
         twiddle_factors.push_back(w);
 
         //print_complex_vector(w.data(), w.size()/2);
@@ -270,7 +334,7 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
 
     // Put first fft step combined with reordering
     {
-        hhfft::StepInfoD step;
+        hhfft::StepInfo<T> step;
         set_radix_raders(N[0], step, instruction_set);
         step.radix = N[0];
         step.stride = 1;
@@ -279,15 +343,15 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table.data();        
         step.norm_factor = 1.0;
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        complex_set_function(step, instruction_set);
         forward_steps.push_back(step);
     }
 
     // then put rest fft steps combined with twiddle factor
     for (size_t i = 1; i < N.size(); i++)
     {
-        hhfft::StepInfoD step;
-        hhfft::StepInfoD &step_prev = forward_steps.back();
+        hhfft::StepInfo<T> step;
+        hhfft::StepInfo<T> &step_prev = forward_steps.back();
         set_radix_raders(N[i], step, instruction_set);
         step.radix = N[i];
         step.stride = step_prev.stride * step_prev.radix;
@@ -295,20 +359,20 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors[i].data();
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        complex_set_function(step, instruction_set);
         forward_steps.push_back(step);
     }
 
     // Add complex-to-complex-packed step to fft as the last step
     {
-        hhfft::StepInfo<double> step;
+        hhfft::StepInfo<T> step;
         step.repeats = n_complex;
         step.twiddle_factors = twiddle_factors[0].data();
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.norm_factor = 1.0;
         step.forward = true;
-        HHFFT_1D_Real_D_set_complex_to_complex_packed_function(step, instruction_set);
+        real_set_complex_to_complex_packed_function(step, instruction_set);
         forward_steps.push_back(step);
     }
 
@@ -316,21 +380,21 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
 
     // Combined complex-packed-to-complex, reordering    
     {
-        hhfft::StepInfoD step;
+        hhfft::StepInfo<T> step;
         step.repeats = n_complex;
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors[0].data();
         step.reorder_table = reorder_table_inverse.data();
         step.forward = false;
-        step.norm_factor = 1.0/(double(n_complex));
-        HHFFT_1D_Real_D_set_complex_to_complex_packed_function(step, instruction_set);
+        step.norm_factor = 1.0/(T(n_complex));
+        real_set_complex_to_complex_packed_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
 
     // Put first ifft step
     {
-        hhfft::StepInfoD step;
+        hhfft::StepInfo<T> step;
         set_radix_raders(N[0], step, instruction_set);
         step.radix = N[0];        
         step.stride = 1;
@@ -338,15 +402,15 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = nullptr;        
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        complex_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
 
     // then put rest ifft steps combined with twiddle factor
     for (size_t i = 1; i < N.size(); i++)
     {
-        hhfft::StepInfoD step;
-        hhfft::StepInfoD &step_prev = inverse_steps.back();
+        hhfft::StepInfo<T> step;
+        hhfft::StepInfo<T> &step_prev = inverse_steps.back();
         set_radix_raders(N[i], step, instruction_set);
         step.radix = N[i];
         step.stride = step_prev.stride * step_prev.radix;
@@ -354,14 +418,14 @@ void HHFFT_1D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors[i].data();        
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        complex_set_function(step, instruction_set);
         inverse_steps.push_back(step);
     }
 }
 
 
 
-void HHFFT_1D_REAL_D::fft(const double *in, double *out) const
+template<typename T> void HHFFT_1D_REAL<T>::fft(const T *in, T *out) const
 {    
     // If there is just one step, run it directly
     if (forward_steps.size() == 1)
@@ -371,7 +435,7 @@ void HHFFT_1D_REAL_D::fft(const double *in, double *out) const
     }    
 
     // If transform is made in-place, copy input to a temporary variable
-    hhfft::AlignedVector<double> temp_data_in;
+    hhfft::AlignedVector<T> temp_data_in;
     if (in == out)
     {
         size_t nn = n;
@@ -381,11 +445,11 @@ void HHFFT_1D_REAL_D::fft(const double *in, double *out) const
     }
 
     // Allocate some extra space if needed    
-    hhfft::AlignedVector<double> temp_data(temp_data_size);
+    hhfft::AlignedVector<T> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
-    const double *data_in[3] = {in, out, temp_data.data()};
-    double *data_out[3] = {nullptr, out, temp_data.data()};
+    const T *data_in[3] = {in, out, temp_data.data()};
+    T *data_out[3] = {nullptr, out, temp_data.data()};
 
     // Run all the steps
     for (auto &step: forward_steps)
@@ -404,7 +468,7 @@ void HHFFT_1D_REAL_D::fft(const double *in, double *out) const
     }
 }
 
-void HHFFT_1D_REAL_D::ifft(const double *in, double *out) const
+template<typename T> void HHFFT_1D_REAL<T>::ifft(const T *in, T *out) const
 {
     // If there is just one step, run it directly
     if (inverse_steps.size() == 1)
@@ -414,7 +478,7 @@ void HHFFT_1D_REAL_D::ifft(const double *in, double *out) const
     }
 
     // If transform is made in-place, copy input to a temporary variable
-    hhfft::AlignedVector<double> temp_data_in;
+    hhfft::AlignedVector<T> temp_data_in;
     if (in == out)
     {
         size_t nn = 2*((n/2)+1);
@@ -424,11 +488,11 @@ void HHFFT_1D_REAL_D::ifft(const double *in, double *out) const
     }
 
     // Allocate some extra space if needed    
-    hhfft::AlignedVector<double> temp_data(temp_data_size);
+    hhfft::AlignedVector<T> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
-    const double *data_in[3] = {in, out, temp_data.data()};
-    double *data_out[3] = {nullptr, out, temp_data.data()};
+    const T *data_in[3] = {in, out, temp_data.data()};
+    T *data_out[3] = {nullptr, out, temp_data.data()};
 
     // Run all the steps
     for (auto &step: inverse_steps)
@@ -441,13 +505,13 @@ void HHFFT_1D_REAL_D::ifft(const double *in, double *out) const
 }
 
 // Calculates convolution in Fourier space
-void HHFFT_1D_REAL_D::convolution(const double *in1, const double *in2, double *out) const
+template<typename T> void HHFFT_1D_REAL<T>::convolution(const T *in1, const T *in2, T *out) const
 {
     convolution_function(in1, in2, out, n/2 + 1);
 }
 
-// Prints contents of a 1d-vector that has n numbers (n doubles)
-void HHFFT_1D_REAL_D::print_real_vector(const double *data, size_t n)
+// Prints contents of a 1d-vector that has n numbers (n Ts)
+template<typename T> void HHFFT_1D_REAL<T>::print_real_vector(const T *data, size_t n)
 {
     for (size_t i = 0; i < n; i++)
     {
@@ -457,8 +521,8 @@ void HHFFT_1D_REAL_D::print_real_vector(const double *data, size_t n)
     std::cout << std::endl;
 }
 
-// Prints contents of a 1d-vector that contains packed complex numbers (n doubles)
-void HHFFT_1D_REAL_D::print_complex_packed_vector(const double *data, size_t n)
+// Prints contents of a 1d-vector that contains packed complex numbers (n Ts)
+template<typename T> void HHFFT_1D_REAL<T>::print_complex_packed_vector(const T *data, size_t n)
 {
     size_t i1 = 1;
     if (n%2 == 0)
@@ -468,8 +532,8 @@ void HHFFT_1D_REAL_D::print_complex_packed_vector(const double *data, size_t n)
     std::cout << data[0];
     for (size_t i = i1; i < n; i+=2)
     {
-        double real = data[i];
-        double imag = data[i+1];
+        T real = data[i];
+        T imag = data[i+1];
         if (imag < 0.0)
             std::cout << " " << real << imag << "i";
         else
@@ -482,13 +546,13 @@ void HHFFT_1D_REAL_D::print_complex_packed_vector(const double *data, size_t n)
 
 }
 
-// Prints contents of a 1d-vector that has n complex numbers (2*n doubles)
-void HHFFT_1D_REAL_D::print_complex_vector(const double *data, size_t n)
+// Prints contents of a 1d-vector that has n complex numbers (2*n Ts)
+template<typename T> void HHFFT_1D_REAL<T>::print_complex_vector(const T *data, size_t n)
 {
     for (size_t i = 0; i < n; i++)
     {
-        double real = data[2*i];
-        double imag = data[2*i+1];
+        T real = data[2*i];
+        T imag = data[2*i+1];
         if (imag < 0.0)
             std::cout << real << imag << "i  ";
         else
@@ -497,3 +561,8 @@ void HHFFT_1D_REAL_D::print_complex_vector(const double *data, size_t n)
 
     std::cout << std::endl;
 }
+
+
+// Explicitly instantiate double and float versions
+template class hhfft::HHFFT_1D_REAL<double>;
+template class hhfft::HHFFT_1D_REAL<float>;

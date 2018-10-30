@@ -267,22 +267,17 @@ std::vector<size_t> hhfft::calculate_factorization(size_t n)
 }
 
 // Calculates packing factors used for converting complex packed to real
-hhfft::AlignedVector<double> hhfft::calculate_packing_factors(size_t n)
+template <typename T> hhfft::AlignedVector<T> hhfft::calculate_packing_factors(size_t n)
 {
-    hhfft::AlignedVector<double> w(n/2 + 1);
+    hhfft::AlignedVector<T> w(n/2 + 1);
 
     for (size_t i = 0; i < n/2; i+=2)
     {
-        //double c = cos(0.25*M_PI*(2.0/n*i + 1.0));
-        //double s = sin(0.25*M_PI*(2.0/n*i + 1.0));
-        //w[i+0] = -s*s;
-        //w[i+1] = -s*c;
-
         double c,s;
         calculate_cos_sin(2*i + n, 8*n, c, s);
 
-        w[i+0] = -s*s;
-        w[i+1] = s*c;
+        w[i+0] = T(-s*s);
+        w[i+1] = T(s*c);
     }
 
     return w;
@@ -294,3 +289,7 @@ template hhfft::AlignedVector<double> hhfft::calculate_twiddle_factors_DIT<doubl
 
 template void hhfft::calculate_exp_neg_2_pi_i<float>(size_t a, size_t b, float &re, float &im);
 template void hhfft::calculate_exp_neg_2_pi_i<double>(size_t a, size_t b, double &re, double &im);
+
+template hhfft::AlignedVector<float> hhfft::calculate_packing_factors<float>(size_t n);
+template hhfft::AlignedVector<double> hhfft::calculate_packing_factors<double>(size_t n);
+

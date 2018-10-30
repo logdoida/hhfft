@@ -107,8 +107,8 @@ inline ComplexF change_sign_F(ComplexF x, ComplexF s)
     return load_F(x.real*s.real, x.imag*s.imag);
 }
 
-const ComplexF const1_128 = load_F(1.0, -1.0);
-const ComplexF const2_128 = load_F(-1.0, 1.0);
+const ComplexF const1_F = load_F(1.0, -1.0);
+const ComplexF const2_F = load_F(-1.0, 1.0);
 
 // Multiplies complex numbers. If other of them changes more frequently, set it to b.
 inline ComplexF mul_F(ComplexF a, ComplexF b)

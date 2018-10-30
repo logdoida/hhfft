@@ -35,45 +35,46 @@ namespace hhfft
 
 // Real to complex FFT and IFFT transformations
 // This class is responsible of making a plan on how to calculate the the FFT and calls the proper functions
-class HHFFT_1D_REAL_D
+template<typename T>
+class HHFFT_1D_REAL
 {
 public:
-    HHFFT_1D_REAL_D(size_t n, InstructionSet instruction_set = InstructionSet::automatic);
+    HHFFT_1D_REAL(size_t n, InstructionSet instruction_set = InstructionSet::automatic);
 
     // Copying currently not allowed. Data and pointers must be copied properly when implemented!
-    HHFFT_1D_REAL_D(const HHFFT_1D_REAL_D &other) = delete;
-    HHFFT_1D_REAL_D& operator=(const HHFFT_1D_REAL_D &other) = delete;
+    HHFFT_1D_REAL(const HHFFT_1D_REAL &other) = delete;
+    HHFFT_1D_REAL& operator=(const HHFFT_1D_REAL &other) = delete;
 
     // FFT with complex inputs and outputs
-    void fft(const double *in, double *out) const;
+    void fft(const T *in, T *out) const;
 
     // IFFT with complex inputs and outputs
-    void ifft(const double *in, double *out) const;
+    void ifft(const T *in, T *out) const;
 
     // Calculates convolution of fourier transformed inputs
-    void convolution(const double *in1, const double *in2, double *out) const;
+    void convolution(const T *in1, const T *in2, T *out) const;
 
     // Allocate aligned array that contains enough space for the complex input and output data
-    double* allocate_memory() const;
+    T* allocate_memory() const;
 
     // Free memory
-    static void free_memory(double *data);
+    static void free_memory(T *data);
 
-    static void print_real_vector(const double *data, size_t n);
-    static void print_complex_vector(const double *data, size_t n);
-    static void print_complex_packed_vector(const double *data, size_t n);
+    static void print_real_vector(const T *data, size_t n);
+    static void print_complex_vector(const T *data, size_t n);
+    static void print_complex_packed_vector(const T *data, size_t n);
 
 private:
 
     void plan_even(InstructionSet instruction_set);
     void plan_odd(InstructionSet instruction_set);    
-    void set_radix_raders(size_t radix, StepInfoD &step, InstructionSet instruction_set);
+    void set_radix_raders(size_t radix, StepInfo<T> &step, InstructionSet instruction_set);
 
     // Dimension of the vector (Number of complex numbers)
     size_t n;
 
     // Twiddle factors for each level
-    std::vector<AlignedVector<double>> twiddle_factors;
+    std::vector<AlignedVector<T>> twiddle_factors;
 
     // Table that is used in the beginning to reorder the data.
     std::vector<uint32_t> reorder_table;
@@ -88,18 +89,21 @@ private:
     size_t temp_data_size = 0;
 
     // The actual fft plan is a sequence of individual steps
-    std::vector<StepInfoD> forward_steps;
-    std::vector<StepInfoD> inverse_steps;
+    std::vector<StepInfo<T>> forward_steps;
+    std::vector<StepInfo<T>> inverse_steps;
 
     // On some levels Rader's algorithm might be needed
-    std::vector<std::unique_ptr<RadersD>> raders;
+    std::vector<std::unique_ptr<RadersGeneric<T>>> raders;
 
     // This is a pointer to a function that performs the convolution
-    void (*convolution_function)(const double *, const double *, double *, size_t n);
+    void (*convolution_function)(const T *, const T *, T *, size_t n);
 
     // 2D fft real can copy the planning made in this class
     friend class HHFFT_2D_REAL_D;
 };
+
+typedef HHFFT_1D_REAL<double> HHFFT_1D_REAL_D;
+typedef HHFFT_1D_REAL<float> HHFFT_1D_REAL_F;
 
 }
 
