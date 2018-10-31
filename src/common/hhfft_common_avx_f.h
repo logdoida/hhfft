@@ -958,6 +958,20 @@ inline void store_two_128_F4(ComplexF4 val, float *a, float *b)
     store_F2(bb, b);
 }
 
+// Combines complex number from two separate real and imaginary memory locations: [r1 r2 r3 r4], [i1 i2 i3 i4] -> [r1 i1 r2 i2 r3 i3 r4 i4]
+inline ComplexF4 load_real_imag_F4(const float *re, const float *im)
+{
+    ComplexF2 x0 = load_F2(re);
+    ComplexF2 x1 = load_F2(im);
+    ComplexF2 t0 = _mm_shuffle_ps(x0, x1, 0*1 + 1*4 + 0*16 + 1*64);
+    ComplexF2 t1 = _mm_shuffle_ps(x0, x1, 2*1 + 3*4 + 2*16 + 3*64);
+
+    ComplexF4 t3 = _mm256_castps128_ps256(t0);
+    t3 = _mm256_insertf128_ps (t3, t1, 1);
+
+    return  _mm256_permute_ps(t3, 0*1 + 2*4 + 1*16 + 3*64);
+}
+
 // Divides the complex numbers to four separate memory locations: [a1 a2 b1 b2 c1 c2 c3 c4] -> [a1 a2], [b1 b2], [c1 c2], [d1 d2]
 inline void store_four_64_F4(ComplexF4 val, float *a, float *b, float *c, float *d)
 {
@@ -967,8 +981,20 @@ inline void store_four_64_F4(ComplexF4 val, float *a, float *b, float *c, float 
     store_two_64_F2(cd, c, d);
 }
 
+// Stores complex number to two separate real and imaginary memory locations: [r1 i1 r2 i2 r3 i3 r4 i4] -> [r1 r2 r3 r4], [i1 i2 i3 i4]
+inline void store_real_imag_F4(ComplexF4 val, float *re, float *im)
+{
+    ComplexF4 t3 = _mm256_permute_ps(val, 0*1 + 2*4 + 1*16 + 3*64);
+    ComplexF2 t0 = _mm256_castps256_ps128(t3);
+    ComplexF2 t1 = _mm256_extractf128_ps(t3, 1);
+    ComplexF2 x0 = _mm_shuffle_ps(t0, t1, 0*1 + 1*4 + 0*16 + 1*64);
+    ComplexF2 x1 = _mm_shuffle_ps(t0, t1, 2*1 + 3*4 + 2*16 + 3*64);
+    store_F2(x0, re);
+    store_F2(x1, im);
+}
+
 // Divides the complex numbers to two separate numbers: [a1 a2 a3 a4 b1 b2 b3 b4] -> [a1 a2 a3 a4], [b1 b2 b3 b4]
-inline void divide_two_128_F4(ComplexF4 val, ComplexF &a, ComplexF &b)
+inline void divide_two_128_F4(ComplexF4 val, ComplexF2 &a, ComplexF2 &b)
 {
     a = _mm256_castps256_ps128(val);
     b = _mm256_extractf128_ps(val, 1);

@@ -178,12 +178,11 @@ template<bool forward, size_t n> void fft_1d_complex_to_complex_packed_1level_ss
 
     // Input/output way
     if (forward)
-    {
-        ComplexF zeros = load_F(0,0);
-        ComplexF t0 = _mm_unpacklo_ps(x[0], zeros);
-        ComplexF t1 = _mm_unpackhi_ps(x[0], zeros);
-        x[0] = t0 + t1;
-        x[n/2] = t0 - t1;
+    {        
+        float t0, t1;
+        store_F(x[0], t0, t1);
+        x[0] = _mm_set_ss(t0 + t1);
+        x[n/2] = _mm_set_ss(t0 - t1);
     } else
     {
         ComplexF half = load_F(0.5,0.5);

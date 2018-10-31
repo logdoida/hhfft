@@ -180,11 +180,10 @@ template<bool forward, size_t n> void fft_1d_complex_to_complex_packed_1level_av
     // Input/output way
     if (forward)
     {
-        ComplexF zeros = load_F(0,0);
-        ComplexF t0 = _mm_unpacklo_ps(x[0], zeros);
-        ComplexF t1 = _mm_unpackhi_ps(x[0], zeros);
-        x[0] = t0 + t1;
-        x[n/2] = t0 - t1;
+        float t0, t1;
+        store_F(x[0], t0, t1);
+        x[0] = _mm_set_ss(t0 + t1);
+        x[n/2] = _mm_set_ss(t0 - t1);
     } else
     {
         ComplexF half = load_F(0.5,0.5);
@@ -222,7 +221,7 @@ template<bool forward, size_t n> void fft_1d_complex_to_complex_packed_1level_av
 ////////////////////////////////////// Odd real FFT ////////////////////////////////////////////////////
 
 // This function is used on the first level of odd real fft
-// Note 128-bit type is not used
+// Note 128-bit or 256-bit type is not used
 template<RadixType radix_type> void fft_1d_real_first_level_forward_avx_f(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info)
 {
     size_t repeats = step_info.repeats;
@@ -343,9 +342,70 @@ template<RadixType radix_type> void fft_1d_real_one_level_forward_avx_d_internal
         }
     }
 
-    size_t k = 1;
-    // First use 128-bit variables
-    for (; k + 1 < (stride+1)/2; k+=2)
+    size_t k = 1;    
+    // First use 256-bit variables
+    for (; k + 3 < (stride+1)/2; k+=4)
+    {
+        // Initialize raders data with zeros
+        init_coeff_F4<radix_type>(data_raders, raders);
+
+        ComplexF4 x_temp_in[radix_type];
+        ComplexF4 x_temp_out[radix_type];
+        ComplexF4 twiddle_temp[radix_type];
+        size_t dir_in = dir_out;
+
+        // Copy the values and twiddle factors
+        for (size_t j = 0; j < radix; j++)
+        {
+            ComplexF4 x0;
+            if (dir_in)
+            {
+                x0 = load_F4(data_in + j*stride + 2*k - 1);
+            } else
+            {
+                x0 = load_F4(data_in + j*stride + stride - 2*k - 7);
+                x0 = _mm256_permute2f128_ps(x0, x0, 1*1 + 0*16);
+                x0 = _mm256_permute_ps(x0, 2*1 + 3*4 + 0*16 + 1*64);
+            }
+            ComplexF4 w = load_F4(twiddle_factors + 2*k + 2*j*stride);
+            set_value_twiddle_F4<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x0, w);
+            dir_in = !dir_in;
+        }
+
+        // Multiply with coefficients
+        multiply_twiddle_F4<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+        multiply_coeff_forward_F4<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
+
+        // save output taking the directions into account
+        dir_in = dir_out;
+        for (size_t j = 0; j < radix; j++)
+        {
+            // reverse the output order if required
+            ComplexF4 x;
+            if (dir_out)
+            {
+                x = get_value_real_odd_forward_F4<radix_type>(x_temp_out, data_raders, j, raders);
+            } else
+            {
+                x = get_value_real_odd_forward_F4<radix_type>(x_temp_out, data_raders, radix - j - 1, raders);
+            }
+
+            if (dir_in)
+            {
+                store_F4(x, data_out + j*stride + 2*k - 1);
+            } else
+            {
+                x = _mm256_permute_ps(x, 2*1 + 3*4 + 0*16 + 1*64);
+                x = _mm256_permute2f128_ps(x, x, 1*1 + 0*16);
+                store_F4(x, data_out + j*stride + stride - 2*k - 7);
+            }
+
+            dir_in = !dir_in;
+        }
+    }    
+
+    // Then, if necessary, use 128-bit variables
+    if (k + 1 < (stride+1)/2)
     {
         // Initialize raders data with zeros
         init_coeff_F2<radix_type>(data_raders, raders);
@@ -399,6 +459,7 @@ template<RadixType radix_type> void fft_1d_real_one_level_forward_avx_d_internal
 
             dir_in = !dir_in;
         }
+        k+=2;
     }
 
     // Then, if necessary, use 64-bit variables
@@ -460,10 +521,10 @@ template<RadixType radix_type> void fft_1d_real_one_level_forward_avx_f(const fl
 
     // Allocate memory for Rader's algorithm if needed
     float *data_raders;
-    if (stride < 3)
-        data_raders = allocate_raders_F<radix_type>(raders);
+    if (stride > 8)
+        data_raders = allocate_raders_F4<radix_type>(raders);
     else
-        data_raders = allocate_raders_F2<radix_type>(raders);
+        data_raders = allocate_raders_F<radix_type>(raders);
 
     bool dir_out = true;
     for (size_t i = 0; i < repeats; i++)
@@ -490,10 +551,10 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_forward_avx_f(const flo
 
     // Allocate memory for Rader's algorithm if needed
     float *data_raders;
-    if (stride < 3)
-        data_raders = allocate_raders_F<radix_type>(raders);
+    if (stride > 8)
+        data_raders = allocate_raders_F4<radix_type>(raders);
     else
-        data_raders = allocate_raders_F2<radix_type>(raders);
+        data_raders = allocate_raders_F<radix_type>(raders);
 
     for (size_t j = 0; j < n; j++)
     {
@@ -512,8 +573,8 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_forward_avx_f(const flo
 }
 
 ////////////////////////////////////// Odd real IFFT ////////////////////////////////////////////////////
-// Note this does not use 128-bit variables
 // This function is used on the first level of odd real ifft
+// Note 128-bit or 256-bit type is not used
 template<RadixType radix_type> void fft_1d_real_first_level_inverse_avx_f(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info)
 {
     size_t repeats = step_info.repeats;
@@ -597,7 +658,7 @@ template<RadixType radix_type> void fft_1d_real_first_level_inverse_avx_f(const 
 }
 
 // This function is used on first level of the odd real 2d ifft
-// Note this does not use 128-bit variables
+// Note 128-bit or 256-bit type is not used
 template<RadixType radix_type> void fft_2d_real_odd_rows_first_level_inverse_avx_f(const float *data_in, float *data_out, const hhfft::StepInfo<float> &step_info)
 {
     const hhfft::RadersF &raders = *step_info.raders;
@@ -759,9 +820,41 @@ template<RadixType radix_type> inline void fft_1d_real_one_level_inverse_avx_int
     // Other repeats are more usual, however both inputs and outputs have real and imag parts separated
     for (size_t i = 1; i < repeats; i++)
     {
-        size_t k;
-        // First use 128 bit variables        
-        for (k = 0; k + 1 < stride; k+=2)
+        size_t k = 0;
+        // First use 256 bit variables
+        for (; k + 3 < stride; k+=4)
+        {
+            // Initialize raders data with zeros
+            init_coeff_F4<radix_type>(data_raders, raders);
+
+            ComplexF4 x_temp_in[radix_type];
+            ComplexF4 x_temp_out[radix_type];
+            ComplexF4 twiddle_temp[radix_type];
+
+            // Read real and imag parts separately
+            for (size_t j = 0; j < radix; j++)
+            {
+                size_t index = 2*i*stride*radix + 2*j*stride - stride*radix;
+                ComplexF4 x = load_real_imag_F4(data_in + index + k, data_in + index + stride + k);
+                ComplexF4 w = load_F4(twiddle_factors + 2*j*stride + 2*k);
+                set_value_twiddle_F4<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
+            }
+
+            // Multiply with twiddle factors and coefficients
+            multiply_twiddle_F4<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+            multiply_coeff_forward_F4<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
+
+            // Store real and imag parts separately
+            for (size_t j = 0; j < radix; j++)
+            {
+                size_t index = 2*i*stride*radix + j*stride;
+                ComplexF4 x = get_value_F4<radix_type>(x_temp_out, data_raders, j, raders);
+                store_real_imag_F4(x, data_out + index - stride*radix + k , data_out + index + k);
+            }
+        }
+
+        // Then 128 bit variables
+        if (k + 1 < stride)
         {
             // Initialize raders data with zeros
             init_coeff_F2<radix_type>(data_raders, raders);
@@ -790,6 +883,7 @@ template<RadixType radix_type> inline void fft_1d_real_one_level_inverse_avx_int
                 ComplexF2 x = get_value_F2<radix_type>(x_temp_out, data_raders, j, raders);
                 store_real_imag_F2(x, data_out + index - stride*radix + k , data_out + index + k);
             }
+            k += 2;
         }
 
         // Then 64 bit variables
@@ -830,9 +924,14 @@ template<RadixType radix_type> inline void fft_1d_real_one_level_inverse_avx_int
 template<RadixType radix_type> void fft_1d_real_one_level_inverse_avx_f(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info)
 {
     const hhfft::RadersF &raders = *step_info.raders;
+    size_t stride = step_info.stride;
 
     // Allocate memory for Rader's algorithm if needed
-    float *data_raders = allocate_raders_F2<radix_type>(raders);
+    float *data_raders = nullptr;
+    if (stride > 3)
+        data_raders = allocate_raders_F4<radix_type>(raders);
+    else
+        data_raders = allocate_raders_F2<radix_type>(raders);
 
     // Call the actual function
     fft_1d_real_one_level_inverse_avx_internal_f<radix_type>(data_in, data_out, data_raders, raders, step_info);
@@ -851,7 +950,11 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_inverse_avx_f(const flo
     size_t m = stride*radix*(2*step_info.repeats - 1);
 
     // Allocate memory for Rader's algorithm if needed
-    float *data_raders = allocate_raders_F2<radix_type>(raders);
+    float *data_raders = nullptr;
+    if (stride > 3)
+        data_raders = allocate_raders_F4<radix_type>(raders);
+    else
+        data_raders = allocate_raders_F2<radix_type>(raders);
 
     // Process all rows separately
     for (size_t j = 0; j < n; j++)
