@@ -85,8 +85,8 @@ void fft_1d_complex_to_complex_packed_ifft_plain_f(const float *data_in, float *
     const float *packing_table = step_info.twiddle_factors;
     size_t n = step_info.repeats; // 2*n = number of original real numbers
     uint32_t *reorder_table_inverse = step_info.reorder_table;
-    float k = step_info.norm_factor;
-    ComplexF k128 = broadcast32_F(k);
+    float k = step_info.norm_factor;    
+    ComplexF k64 = broadcast32_F(k);
 
     float x_r = data_in[0];
     float x_i = data_in[2*n];
@@ -98,7 +98,7 @@ void fft_1d_complex_to_complex_packed_ifft_plain_f(const float *data_in, float *
         size_t i = reorder_table_inverse[n/2];
 
         ComplexF x_in = load_F(data_in + n);
-        ComplexF x_out = k128*change_sign_F(x_in, const1_F);
+        ComplexF x_out = k64*change_sign_F(x_in, const1_F);
         store_F(x_out, data_out + 2*i);
     }
 
@@ -106,8 +106,8 @@ void fft_1d_complex_to_complex_packed_ifft_plain_f(const float *data_in, float *
     {
         ComplexF sssc = load_F(packing_table + 2*i);
         sssc = change_sign_F(sssc, const1_F);
-        ComplexF x0_in = k128*load_F(data_in + 2*i);
-        ComplexF x1_in = k128*load_F(data_in + 2*(n - i));
+        ComplexF x0_in = k64*load_F(data_in + 2*i);
+        ComplexF x1_in = k64*load_F(data_in + 2*(n - i));
 
         ComplexF temp0 = x0_in + change_sign_F(x1_in, const2_F);
         ComplexF temp1 = mul_F(sssc, temp0);

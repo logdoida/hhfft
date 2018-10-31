@@ -46,6 +46,7 @@ template<bool forward> void set_instruction_set_f(StepInfoF &step_info, hhfft::I
         
     }
 #endif
+*/
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
@@ -53,7 +54,7 @@ template<bool forward> void set_instruction_set_f(StepInfoF &step_info, hhfft::I
         step_info.step_function = fft_1d_complex_to_complex_packed_avx_f<forward>;
     }
 #endif
-*/
+
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
         step_info.step_function = fft_1d_complex_to_complex_packed_sse2_f<forward>;
@@ -74,6 +75,7 @@ void set_instruction2_f(StepInfoF &step_info, hhfft::InstructionSet instruction_
 
     }
 #endif
+*/
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
@@ -81,7 +83,6 @@ void set_instruction2_f(StepInfoF &step_info, hhfft::InstructionSet instruction_
         step_info.step_function = fft_1d_complex_to_complex_packed_ifft_avx_f;
     }
 #endif
-*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
@@ -143,6 +144,7 @@ template<RadixType radix_type> void set_instruction_odd_first_level_f(StepInfoF 
 
     }
 #endif
+*/
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
@@ -153,7 +155,6 @@ template<RadixType radix_type> void set_instruction_odd_first_level_f(StepInfoF 
             step_info.step_function = fft_1d_real_first_level_inverse_avx_f<radix_type>;
     }
 #endif
-*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {        
@@ -193,6 +194,7 @@ template<RadixType radix_type> void set_instruction_odd_other_level_f(StepInfoF 
 
     }
 #endif
+*/
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
@@ -203,7 +205,6 @@ template<RadixType radix_type> void set_instruction_odd_other_level_f(StepInfoF 
             step_info.step_function = fft_1d_real_one_level_inverse_avx_f<radix_type>;
     }
 #endif
-*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
@@ -268,7 +269,6 @@ template<bool forward> void fft_1d_real_1level_raders_avx_f(const float *data_in
 
 template<size_t n> void set_small_function_instruction_set_real_f(StepInfoF &step_info, hhfft::InstructionSet instruction_set, bool forward)
 {
-/*
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {
@@ -279,7 +279,6 @@ template<size_t n> void set_small_function_instruction_set_real_f(StepInfoF &ste
         return;        
     }
 #endif
-*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
@@ -349,7 +348,6 @@ void hhfft::HHFFT_1D_Real_F_set_small_function(StepInfoF &step_info, size_t n, b
 
 void hhfft::HHFFT_1D_Real_F_set_1level_raders_function(StepInfoF &step_info, bool forward, hhfft::InstructionSet instruction_set)
 {
-/*
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
     {
@@ -360,7 +358,6 @@ void hhfft::HHFFT_1D_Real_F_set_1level_raders_function(StepInfoF &step_info, boo
         return;
     }
 #endif
-*/
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
         if(forward)

@@ -75,7 +75,7 @@ inline ComplexF change_sign_F(ComplexF a, ComplexF s)
 }
 
 const ComplexF const1_F = load_F(0.0f, -0.0f);
-const ComplexF const2_F = load_F(-0.0f, 0.0f);
+//const ComplexF const2_F = load_F(-0.0f, 0.0f);
 const ComplexF const3_F = _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f);
 const ComplexF const4_F = _mm_setr_ps(0.0f, 0.0f, 0.0f, -0.0f);
 
@@ -466,12 +466,19 @@ inline ComplexF2 load_real_F2(const float *v)
     return _mm_shuffle_ps(a, b, 1*0 + 4*1 + 16*0 + 64*1);
 }
 
-// Combines complex number from two separate memory locations: [a1 a2 x x], [b1 b2 x x] -> [a1 a2 b1 b2]
+// Combines complex number from two separate memory locations: [a1 a2], [b1 b2] -> [a1 a2 b1 b2]
 inline ComplexF2 load_two_64_F2(const float *a, const float *b)
 {
     ComplexF x = _mm_setzero_ps();
     x = _mm_loadl_pi(x, (const __m64*) a);
     return _mm_loadh_pi(x, (const __m64*) b);
+}
+
+// Combines complex number from two separate real and imaginary memory locations: [r1 r2], [i1 i2] -> [r1 i1 r2 i2]
+inline ComplexF2 load_real_imag_F2(const float *re, const float *im)
+{
+    ComplexF2 x = load_two_64_F2(re, im);
+    return  _mm_shuffle_ps(x, x, 0*1 + 2*4 + 1*16 + 3*64);
 }
 
 // Store
@@ -491,6 +498,13 @@ inline void store_two_64_F2(ComplexF2 val, float *a, float *b)
 {
     _mm_storel_pi((__m64*) a, val);
     _mm_storeh_pi((__m64*) b, val);
+}
+
+// Stores complex number to two separate real and imaginary memory locations: [r1 i1 r2 i2] -> [r1 r2], [i1 i2]
+inline void store_real_imag_F2(ComplexF2 val, float *re, float *im)
+{
+    ComplexF2 x = _mm_shuffle_ps(val, val, 0*1 + 2*4 + 1*16 + 3*64);
+    store_two_64_F2(x, re, im);
 }
 
 // Divides the complex numbers to two separate numbers: [a1 a2 b1 b2] -> [a1 a2 x x], [b1 b2 x x]
