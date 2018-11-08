@@ -32,6 +32,9 @@
 namespace hhfft
 {
 
+// Forward declaration
+template <typename T> class HHFFT_2D;
+
 // This class is responsible of making a plan on how to calculate the the FFT and calls the proper functions
 template<typename T>
 class HHFFT_1D
@@ -87,7 +90,7 @@ private:
     void (*convolution_function)(const T *, const T *, T *, size_t n) = nullptr;
 
     // 2D fft can copy the planning made in this class
-    friend class HHFFT_2D_D;
+    friend class HHFFT_2D<T>;
 };
 
 typedef HHFFT_1D<double> HHFFT_1D_D;
