@@ -26,8 +26,7 @@
 #include "utilities.h"
 
 #include "hhfft_1d_d.h"
-#include "1d_complex/hhfft_1d_complex_d.h"
-#include "1d_complex/hhfft_1d_complex_f.h"
+#include "1d_complex/hhfft_1d_complex_setter.h"
 
 using namespace hhfft;
 using hhfft::HHFFT_1D;
@@ -52,47 +51,6 @@ template<typename T> void HHFFT_1D<T>::set_radix_raders(size_t radix, StepInfo<T
     }
 }
 
-// Specialized template functions that call the proper setter function
-template<typename T> static void complex_set_function(StepInfo<T> &step_info, hhfft::InstructionSet instruction_set);
-template<> void complex_set_function<double>(StepInfo<double> &step_info, hhfft::InstructionSet instruction_set)
-{
-    HHFFT_1D_Complex_D_set_function(step_info, instruction_set);
-}
-template<> void complex_set_function<float>(StepInfo<float> &step_info, hhfft::InstructionSet instruction_set)
-{    
-    HHFFT_1D_Complex_F_set_function(step_info, instruction_set);
-}
-
-template<typename T> static std::vector<size_t> complex_set_small_function(StepInfo<T> &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set);
-template<> std::vector<size_t> complex_set_small_function<double>(StepInfo<double> &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set)
-{
-    return HHFFT_1D_Complex_D_set_small_function(step_info, n, forward, instruction_set);
-}
-template<> std::vector<size_t> complex_set_small_function<float>(StepInfo<float> &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set)
-{    
-    return  HHFFT_1D_Complex_F_set_small_function(step_info, n, forward, instruction_set);
-}
-
-template<typename T> static void complex_set_1level_raders_function(StepInfo<T> &step_info, bool forward, hhfft::InstructionSet instruction_set);
-template<> void complex_set_1level_raders_function<double>(StepInfo<double> &step_info, bool forward, hhfft::InstructionSet instruction_set)
-{
-    HHFFT_1D_Complex_D_set_1level_raders_function(step_info, forward, instruction_set);
-}
-template<> void complex_set_1level_raders_function<float>(StepInfo<float> &step_info, bool forward, hhfft::InstructionSet instruction_set)
-{    
-    HHFFT_1D_Complex_F_set_1level_raders_function(step_info, forward, instruction_set);
-}
-
-template<typename T> static void (*set_convolution_function(hhfft::InstructionSet instruction_set))(const T *, const T *, T *, size_t);
-template<> void (*set_convolution_function<double>(hhfft::InstructionSet instruction_set))(const double *, const double *, double *, size_t)
-{
-    return HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
-}
-template<> void (*set_convolution_function<float>(hhfft::InstructionSet instruction_set))(const float *, const float *, float *, size_t)
-{    
-    return HHFFT_1D_Complex_F_set_convolution_function(instruction_set);
-}
-
 // Does the planning step
 template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_set)
 {
@@ -111,12 +69,12 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
     }
 
     // Set the convolution function
-    convolution_function = set_convolution_function<T>(instruction_set);
+    convolution_function = HHFFT_1D_Complex_set_convolution_function<T>(instruction_set);
 
     // For small problems, it is better to use a single level function
     StepInfo<T> step_info_fft, step_info_ifft;
-    std::vector<size_t> N_small = complex_set_small_function(step_info_fft, n, true, instruction_set);
-    complex_set_small_function(step_info_ifft, n, false, instruction_set);
+    std::vector<size_t> N_small = HHFFT_1D_Complex_set_small_function<T>(step_info_fft, n, true, instruction_set);
+    HHFFT_1D_Complex_set_small_function<T>(step_info_ifft, n, false, instruction_set);
     if (step_info_fft.step_function && step_info_ifft.step_function)
     {
         // twiddle factors are needed if two level function is used
@@ -138,8 +96,8 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
     if (N.size() == 1)
     {
         StepInfo<T> step_info_fft, step_info_ifft;
-        complex_set_1level_raders_function(step_info_fft, true, instruction_set);
-        complex_set_1level_raders_function(step_info_ifft, false, instruction_set);
+        HHFFT_1D_Complex_set_1level_raders_function<T>(step_info_fft, true, instruction_set);
+        HHFFT_1D_Complex_set_1level_raders_function<T>(step_info_ifft, false, instruction_set);
         step_info_fft.radix = n;
         step_info_ifft.radix = n;
         set_radix_raders(n, step_info_fft, instruction_set);
@@ -185,7 +143,7 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
         step.reorder_table = reorder_table.data();
         step.reorder_table_size = reorder_table.size();
         step.norm_factor = 1.0;
-        complex_set_function(step, instruction_set);
+        HHFFT_1D_Complex_set_function<T>(step, instruction_set);
         forward_steps.push_back(step);
     }
 
@@ -208,7 +166,7 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors[i].data();
-        complex_set_function(step, instruction_set);
+        HHFFT_1D_Complex_set_function<T>(step, instruction_set);
         forward_steps.push_back(step);
     }
 
@@ -224,7 +182,7 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
              step.forward = false;
         }
 
-        complex_set_function(step, instruction_set);
+        HHFFT_1D_Complex_set_function<T>(step, instruction_set);
         inverse_steps.push_back(step);
     }    
 }

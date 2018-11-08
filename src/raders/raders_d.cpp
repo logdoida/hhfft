@@ -26,8 +26,7 @@
 #include "utilities.h"
 
 #include "raders_d.h"
-#include "1d_complex/hhfft_1d_complex_d.h"
-#include "1d_complex/hhfft_1d_complex_f.h"
+#include "1d_complex/hhfft_1d_complex_setter.h"
 
 using namespace hhfft;
 using hhfft::RadersGeneric;
@@ -188,28 +187,6 @@ template<typename T> void RadersGeneric<T>::calculate_fft_b(const std::vector<ui
     fft(fft_b.data());
 }
 
-// Specialized template functions that call the proper setter function
-template<typename T> static void complex_set_function(StepInfo<T> &step_info, hhfft::InstructionSet instruction_set);
-template<> void complex_set_function<double>(StepInfo<double> &step_info, hhfft::InstructionSet instruction_set)
-{
-    HHFFT_1D_Complex_D_set_function(step_info, instruction_set);
-}
-template<> void complex_set_function<float>(StepInfo<float> &step_info, hhfft::InstructionSet instruction_set)
-{    
-    HHFFT_1D_Complex_F_set_function(step_info, instruction_set);
-}
-template<typename T> static void complex_set_reorder_function(StepInfo<T> &step_info, hhfft::InstructionSet instruction_set);
-template<> void complex_set_reorder_function<double>(StepInfo<double> &step_info, hhfft::InstructionSet instruction_set)
-{
-    HHFFT_1D_Complex_D_set_reorder_function(step_info, instruction_set);
-}
-template<> void complex_set_reorder_function<float>(StepInfo<float> &step_info, hhfft::InstructionSet instruction_set)
-{    
-    HHFFT_1D_Complex_F_set_reorder_function(step_info, instruction_set);
-}
-
-
-
 template<typename T> T* RadersGeneric<T>::allocate_memory(size_t scale) const
 {
     return (T *) allocate_aligned_memory(n_bytes_aligned * scale);
@@ -339,7 +316,7 @@ template<typename T> RadersGeneric<T>::RadersGeneric(size_t n_org, InstructionSe
         step.stride = 1;
         step.repeats = n / step.radix;
         step.norm_factor = 1.0;
-        complex_set_function(step, instruction_set);
+        HHFFT_1D_Complex_set_function<T>(step, instruction_set);
         forward_steps.push_back(step);
     }
 
@@ -352,7 +329,7 @@ template<typename T> RadersGeneric<T>::RadersGeneric(size_t n_org, InstructionSe
         step.stride = step_prev.stride * step_prev.radix;
         step.repeats = step_prev.repeats / step.radix;        
         step.twiddle_factors = twiddle_factors[i].data();
-        complex_set_function(step, instruction_set);
+        HHFFT_1D_Complex_set_function<T>(step, instruction_set);
         forward_steps.push_back(step);
     }
 
@@ -363,7 +340,7 @@ template<typename T> RadersGeneric<T>::RadersGeneric(size_t n_org, InstructionSe
         hhfft::StepInfo<T> step;
         step.reorder_table_inplace = reorder_table_inverted.data();
         step.reorder_table_inplace_size = reorder_table_inverted.size();
-        complex_set_reorder_function(step, instruction_set);
+        HHFFT_1D_Complex_set_reorder_function<T>(step, instruction_set);
         inverse_steps.push_back(step);
     }
 

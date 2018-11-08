@@ -17,7 +17,7 @@
 *   along with HHFFT. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "hhfft_1d_complex_d.h"
+#include "hhfft_1d_complex_setter.h"
 #include <stdexcept>
 #include <assert.h>
 #include <cmath>
@@ -290,63 +290,66 @@ template<bool forward> void set_reorder_instruction_set_d(StepInfoD &step_info, 
     }
 }
 
-void hhfft::HHFFT_1D_Complex_D_set_reorder_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+namespace hhfft
 {
-    step_info.step_function = nullptr;
-
-    if (step_info.radix == 1 && (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr))
+    template<> void HHFFT_1D_Complex_set_reorder_function<double>(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
     {
-        // Add reordering step
-        if (step_info.forward)
-            set_reorder_instruction_set_d<true>(step_info, instruction_set);
-        else
-            set_reorder_instruction_set_d<false>(step_info, instruction_set);
+        step_info.step_function = nullptr;
+
+        if (step_info.radix == 1 && (step_info.reorder_table != nullptr || step_info.reorder_table_inplace != nullptr))
+        {
+            // Add reordering step
+            if (step_info.forward)
+                set_reorder_instruction_set_d<true>(step_info, instruction_set);
+            else
+                set_reorder_instruction_set_d<false>(step_info, instruction_set);
+        }
+
+        if (step_info.step_function == nullptr)
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
     }
 
-    if (step_info.step_function == nullptr)
+    template<> void HHFFT_1D_Complex_set_function<double>(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
     {
-        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        step_info.step_function = nullptr;
+
+        // Add a fft step
+        set_radix_d(step_info, instruction_set);
+
+        if (step_info.step_function == nullptr)
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
     }
+
+    // This returns a pointer to correct convolution function based on instruction set
+    template<> void (*HHFFT_1D_Complex_set_convolution_function<double>(hhfft::InstructionSet instruction_set))(const double *, const double *, double *, size_t)
+    {
+    #ifdef HHFFT_COMPILED_WITH_AVX512F
+        if (instruction_set == hhfft::InstructionSet::avx512f)
+        {
+            return fft_1d_complex_convolution_avx512_d;
+        }
+    #endif
+
+    #ifdef HHFFT_COMPILED_WITH_AVX
+        if (instruction_set == hhfft::InstructionSet::avx)
+        {
+            return fft_1d_complex_convolution_avx_d;
+        }
+    #endif
+
+        if (instruction_set == hhfft::InstructionSet::sse2)
+        {
+            return fft_1d_complex_convolution_sse2_d;
+        }
+
+        return fft_1d_complex_convolution_plain_d;
+    }
+
 }
-
-void hhfft::HHFFT_1D_Complex_D_set_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
-{
-    step_info.step_function = nullptr;    
-
-    // Add a fft step
-    set_radix_d(step_info, instruction_set);
-
-    if (step_info.step_function == nullptr)
-    {
-        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
-    }
-}
-
-// This returns a pointer to correct convolution function based on instruction set
-void (*hhfft::HHFFT_1D_Complex_D_set_convolution_function(hhfft::InstructionSet instruction_set))(const double *, const double *, double *, size_t)
-{
-#ifdef HHFFT_COMPILED_WITH_AVX512F
-    if (instruction_set == hhfft::InstructionSet::avx512f)
-    {
-        return fft_1d_complex_convolution_avx512_d;
-    }
-#endif
-
-#ifdef HHFFT_COMPILED_WITH_AVX
-    if (instruction_set == hhfft::InstructionSet::avx)
-    {
-        return fft_1d_complex_convolution_avx_d;
-    }
-#endif
-
-    if (instruction_set == hhfft::InstructionSet::sse2)
-    {
-        return fft_1d_complex_convolution_sse2_d;
-    }
-
-    return fft_1d_complex_convolution_plain_d;
-}
-
 
 template<size_t n1, size_t n2> std::vector<size_t> set_small_function_instruction_set_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set, bool forward)
 {
@@ -409,111 +412,115 @@ template<size_t n1, size_t n2> std::vector<size_t> set_small_function_instructio
     return std::vector<size_t>();
 }
 
-std::vector<size_t> hhfft::HHFFT_1D_Complex_D_set_small_function(StepInfoD &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set)
+namespace hhfft
 {
-    step_info.step_function = nullptr;
 
-    switch (n)
+    template<> std::vector<size_t> HHFFT_1D_Complex_set_small_function<double>(StepInfoD &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set)
     {
-        // One fft level needed
-        case 1:
-            return set_small_function_instruction_set_d<1,1>(step_info, instruction_set, forward);
-        case 2:
-            return set_small_function_instruction_set_d<2,1>(step_info, instruction_set, forward);
-        case 3:
-            return set_small_function_instruction_set_d<3,1>(step_info, instruction_set, forward);
-        case 4:
-            return set_small_function_instruction_set_d<4,1>(step_info, instruction_set, forward);
-        case 5:
-            return set_small_function_instruction_set_d<5,1>(step_info, instruction_set, forward);
-        case 6:
-            return set_small_function_instruction_set_d<6,1>(step_info, instruction_set, forward);
-        case 7:
-            return set_small_function_instruction_set_d<7,1>(step_info, instruction_set, forward);
-        case 8:
-            return set_small_function_instruction_set_d<8,1>(step_info, instruction_set, forward);
+        step_info.step_function = nullptr;
 
-        // Two fft levels needed            
-        case 9:
-            return set_small_function_instruction_set_d<3,3>(step_info, instruction_set, forward);
-        case 10:
-            return set_small_function_instruction_set_d<2,5>(step_info, instruction_set, forward);
-        case 12:
-            return set_small_function_instruction_set_d<2,6>(step_info, instruction_set, forward);
-        case 14:
-            return set_small_function_instruction_set_d<2,7>(step_info, instruction_set, forward);
-        case 15:
-            return set_small_function_instruction_set_d<3,5>(step_info, instruction_set, forward);
-        case 16:
-            return set_small_function_instruction_set_d<4,4>(step_info, instruction_set, forward);
-        case 18:
-            return set_small_function_instruction_set_d<3,6>(step_info, instruction_set, forward);
-        case 20:
-            return set_small_function_instruction_set_d<4,5>(step_info, instruction_set, forward);
-        case 21:
-            return set_small_function_instruction_set_d<3,7>(step_info, instruction_set, forward);
-        case 24:
-            return set_small_function_instruction_set_d<4,6>(step_info, instruction_set, forward);
-        case 25:
-            return set_small_function_instruction_set_d<5,5>(step_info, instruction_set, forward);
-        case 28:
-            return set_small_function_instruction_set_d<4,7>(step_info, instruction_set, forward);
-        case 30:
-            return set_small_function_instruction_set_d<5,6>(step_info, instruction_set, forward);
-        case 32:
-            return set_small_function_instruction_set_d<4,8>(step_info, instruction_set, forward);
-        case 35:
-            return set_small_function_instruction_set_d<5,7>(step_info, instruction_set, forward);
-        case 36:
-            return set_small_function_instruction_set_d<6,6>(step_info, instruction_set, forward);
-        case 40:
-            return set_small_function_instruction_set_d<5,8>(step_info, instruction_set, forward);
-        case 42:
-            return set_small_function_instruction_set_d<6,7>(step_info, instruction_set, forward);
-        case 48:
-            return set_small_function_instruction_set_d<6,8>(step_info, instruction_set, forward);
-        case 49:
-            return set_small_function_instruction_set_d<7,7>(step_info, instruction_set, forward);
-        case 56:
-            return set_small_function_instruction_set_d<7,8>(step_info, instruction_set, forward);
-        case 64:
-            return set_small_function_instruction_set_d<8,8>(step_info, instruction_set, forward);        
+        switch (n)
+        {
+            // One fft level needed
+            case 1:
+                return set_small_function_instruction_set_d<1,1>(step_info, instruction_set, forward);
+            case 2:
+                return set_small_function_instruction_set_d<2,1>(step_info, instruction_set, forward);
+            case 3:
+                return set_small_function_instruction_set_d<3,1>(step_info, instruction_set, forward);
+            case 4:
+                return set_small_function_instruction_set_d<4,1>(step_info, instruction_set, forward);
+            case 5:
+                return set_small_function_instruction_set_d<5,1>(step_info, instruction_set, forward);
+            case 6:
+                return set_small_function_instruction_set_d<6,1>(step_info, instruction_set, forward);
+            case 7:
+                return set_small_function_instruction_set_d<7,1>(step_info, instruction_set, forward);
+            case 8:
+                return set_small_function_instruction_set_d<8,1>(step_info, instruction_set, forward);
 
-        default:
-            break;
+            // Two fft levels needed
+            case 9:
+                return set_small_function_instruction_set_d<3,3>(step_info, instruction_set, forward);
+            case 10:
+                return set_small_function_instruction_set_d<2,5>(step_info, instruction_set, forward);
+            case 12:
+                return set_small_function_instruction_set_d<2,6>(step_info, instruction_set, forward);
+            case 14:
+                return set_small_function_instruction_set_d<2,7>(step_info, instruction_set, forward);
+            case 15:
+                return set_small_function_instruction_set_d<3,5>(step_info, instruction_set, forward);
+            case 16:
+                return set_small_function_instruction_set_d<4,4>(step_info, instruction_set, forward);
+            case 18:
+                return set_small_function_instruction_set_d<3,6>(step_info, instruction_set, forward);
+            case 20:
+                return set_small_function_instruction_set_d<4,5>(step_info, instruction_set, forward);
+            case 21:
+                return set_small_function_instruction_set_d<3,7>(step_info, instruction_set, forward);
+            case 24:
+                return set_small_function_instruction_set_d<4,6>(step_info, instruction_set, forward);
+            case 25:
+                return set_small_function_instruction_set_d<5,5>(step_info, instruction_set, forward);
+            case 28:
+                return set_small_function_instruction_set_d<4,7>(step_info, instruction_set, forward);
+            case 30:
+                return set_small_function_instruction_set_d<5,6>(step_info, instruction_set, forward);
+            case 32:
+                return set_small_function_instruction_set_d<4,8>(step_info, instruction_set, forward);
+            case 35:
+                return set_small_function_instruction_set_d<5,7>(step_info, instruction_set, forward);
+            case 36:
+                return set_small_function_instruction_set_d<6,6>(step_info, instruction_set, forward);
+            case 40:
+                return set_small_function_instruction_set_d<5,8>(step_info, instruction_set, forward);
+            case 42:
+                return set_small_function_instruction_set_d<6,7>(step_info, instruction_set, forward);
+            case 48:
+                return set_small_function_instruction_set_d<6,8>(step_info, instruction_set, forward);
+            case 49:
+                return set_small_function_instruction_set_d<7,7>(step_info, instruction_set, forward);
+            case 56:
+                return set_small_function_instruction_set_d<7,8>(step_info, instruction_set, forward);
+            case 64:
+                return set_small_function_instruction_set_d<8,8>(step_info, instruction_set, forward);
+
+            default:
+                break;
+        }
+
+        return std::vector<size_t>();
     }
 
-    return std::vector<size_t>();
-}
-
-void hhfft::HHFFT_1D_Complex_D_set_1level_raders_function(StepInfoD &step_info, bool forward, hhfft::InstructionSet instruction_set)
-{
-#ifdef HHFFT_COMPILED_WITH_AVX
-    if (instruction_set == hhfft::InstructionSet::avx)
+    template<> void HHFFT_1D_Complex_set_1level_raders_function<double>(StepInfoD &step_info, bool forward, hhfft::InstructionSet instruction_set)
     {
-        if(forward)
-            step_info.step_function = fft_1d_complex_1level_raders_avx_d<true>;
-        else
-            step_info.step_function = fft_1d_complex_1level_raders_avx_d<false>;
-        return;
-    }
-#endif
+    #ifdef HHFFT_COMPILED_WITH_AVX
+        if (instruction_set == hhfft::InstructionSet::avx)
+        {
+            if(forward)
+                step_info.step_function = fft_1d_complex_1level_raders_avx_d<true>;
+            else
+                step_info.step_function = fft_1d_complex_1level_raders_avx_d<false>;
+            return;
+        }
+    #endif
 
-    if (instruction_set == hhfft::InstructionSet::sse2)
-    {
-        if(forward)
-            step_info.step_function = fft_1d_complex_1level_raders_sse2_d<true>;
-        else
-            step_info.step_function = fft_1d_complex_1level_raders_sse2_d<false>;
-        return;
-    }
+        if (instruction_set == hhfft::InstructionSet::sse2)
+        {
+            if(forward)
+                step_info.step_function = fft_1d_complex_1level_raders_sse2_d<true>;
+            else
+                step_info.step_function = fft_1d_complex_1level_raders_sse2_d<false>;
+            return;
+        }
 
-    if (instruction_set == hhfft::InstructionSet::none)
-    {
-        if(forward)
-            step_info.step_function = fft_1d_complex_1level_raders_plain_d<true>;
-        else
-            step_info.step_function = fft_1d_complex_1level_raders_plain_d<false>;
-        return;
+        if (instruction_set == hhfft::InstructionSet::none)
+        {
+            if(forward)
+                step_info.step_function = fft_1d_complex_1level_raders_plain_d<true>;
+            else
+                step_info.step_function = fft_1d_complex_1level_raders_plain_d<false>;
+            return;
+        }
     }
 }

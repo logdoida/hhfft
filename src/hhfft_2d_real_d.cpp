@@ -28,8 +28,8 @@
 #include "hhfft_2d_real_d.h"
 #include "hhfft_1d_real_d.h"
 
-#include "1d_complex/hhfft_1d_complex_d.h"
-#include "2d_complex/hhfft_2d_complex_d.h"
+#include "1d_complex/hhfft_1d_complex_setter.h"
+#include "2d_complex/hhfft_2d_complex_setter.h"
 #include "1d_real/hhfft_1d_real_setter_d.h"
 #include "2d_real/hhfft_2d_real_setter_d.h"
 
@@ -77,7 +77,7 @@ HHFFT_2D_REAL_D::HHFFT_2D_REAL_D(size_t n, size_t m, InstructionSet instruction_
     }
 
     // Set the convolution function
-    convolution_function = HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
+    convolution_function = HHFFT_1D_Complex_set_convolution_function<double>(instruction_set);
 
     if ((n == 1) || (m == 1))
     {
@@ -248,7 +248,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         set_radix_raders(N_columns[0], step, instruction_set);
         step.radix = N_columns[0];
         step.repeats = n / step.radix;
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        HHFFT_1D_Complex_set_function<double>(step, instruction_set);
         forward_steps.push_back(step);
     }
 
@@ -267,7 +267,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors_columns[i].data();
-        HHFFT_2D_Complex_D_set_function_columns(step, instruction_set);
+        HHFFT_2D_Complex_set_function_columns<double>(step, instruction_set);
         forward_steps.push_back(step);
     }
 
@@ -310,7 +310,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.data_type_out = hhfft::StepDataType::temp_data;
         step.twiddle_factors = twiddle_factors_columns[i].data();
         step.forward = true;
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        HHFFT_1D_Complex_set_function<double>(step, instruction_set);
         inverse_steps.push_back(step);
     }
 
@@ -349,7 +349,7 @@ void HHFFT_2D_REAL_D::plan_odd(InstructionSet instruction_set)
         step.size = m2 - 1; // First column is in temp variable!
         step.twiddle_factors = twiddle_factors_columns[i].data();
         step.forward = true;
-        HHFFT_2D_Complex_D_set_function_columns(step, instruction_set);
+        HHFFT_2D_Complex_set_function_columns<double>(step, instruction_set);
         inverse_steps.push_back(step);
     }
 
@@ -472,7 +472,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.reorder_table = reorder_table_columns.data();
         step.radix = 1;
         step.repeats = n;
-        HHFFT_1D_Complex_D_set_reorder_function(step, instruction_set);
+        HHFFT_1D_Complex_set_reorder_function<double>(step, instruction_set);
         forward_steps.push_back(step);
 
     } else {
@@ -487,7 +487,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.stride = 1;
         step.repeats = m_complex / step.radix;
         step.size = n;
-        HHFFT_2D_Complex_D_set_function_rows(step, instruction_set);
+        HHFFT_2D_Complex_set_function_rows<double>(step, instruction_set);
         forward_steps.push_back(step);
     }
 
@@ -507,7 +507,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors_rows[i].data();
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        HHFFT_1D_Complex_set_function<double>(step, instruction_set);
         forward_steps.push_back(step);        
     }
 
@@ -535,7 +535,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.radix = N_columns[0];
         set_radix_raders(N_columns[0], step, instruction_set);
         step.repeats = n / step.radix;
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        HHFFT_1D_Complex_set_function<double>(step, instruction_set);
         forward_steps.push_back(step);        
     }
 
@@ -554,7 +554,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors_columns[i].data();
-        HHFFT_2D_Complex_D_set_function_columns(step, instruction_set);
+        HHFFT_2D_Complex_set_function_columns<double>(step, instruction_set);
         forward_steps.push_back(step);
     }
 
@@ -606,7 +606,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors_columns[i].data();
         step.forward = true;
-        HHFFT_2D_Complex_D_set_function_columns(step, instruction_set);
+        HHFFT_2D_Complex_set_function_columns<double>(step, instruction_set);
         inverse_steps.push_back(step);
     }
 
@@ -653,7 +653,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.radix = N_rows[0];
         step.repeats = n*m_complex / step.radix;
         step.forward = true;
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        HHFFT_1D_Complex_set_function<double>(step, instruction_set);
         inverse_steps.push_back(step);
     }
 
@@ -670,7 +670,7 @@ void HHFFT_2D_REAL_D::plan_even(InstructionSet instruction_set)
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors_rows[i].data();
         step.forward = true;
-        HHFFT_1D_Complex_D_set_function(step, instruction_set);
+        HHFFT_1D_Complex_set_function<double>(step, instruction_set);
         inverse_steps.push_back(step);
     }
 }

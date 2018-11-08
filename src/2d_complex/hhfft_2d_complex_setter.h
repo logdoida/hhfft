@@ -17,12 +17,21 @@
 *   along with HHFFT. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef HHFFT_1D_REAL_SETTER_F_H
-#define HHFFT_1D_REAL_SETTER_F_H
+#ifndef HHFFT_2D_COMPLEX_H
+#define HHFFT_2D_COMPLEX_H
 
 #include "step_info.h"
 #include "architecture.h"
 
-// TODO delete
+namespace hhfft
+{
 
-#endif // HHFFT_1D_REAL_SETTER_F_H
+// For column-wise operations
+template<typename T> void HHFFT_2D_Complex_set_function_columns(StepInfo<T> &step_info, hhfft::InstructionSet instruction_set);
+
+// For row-wise operations
+template<typename T> void HHFFT_2D_Complex_set_function_rows(StepInfo<T> &step_info, hhfft::InstructionSet instruction_set);
+
+}
+
+#endif // HHFFT_2D_COMPLEX_H

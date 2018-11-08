@@ -28,10 +28,8 @@
 #include "hhfft_2d_d.h"
 #include "hhfft_1d_d.h"
 
-#include "1d_complex/hhfft_1d_complex_d.h"
-#include "1d_complex/hhfft_1d_complex_f.h"
-#include "2d_complex/hhfft_2d_complex_d.h"
-#include "2d_complex/hhfft_2d_complex_f.h"
+#include "1d_complex/hhfft_1d_complex_setter.h"
+#include "2d_complex/hhfft_2d_complex_setter.h"
 
 using namespace hhfft;
 using hhfft::HHFFT_2D;
@@ -56,37 +54,6 @@ template<typename T> void HHFFT_2D<T>::set_radix_raders(size_t radix, StepInfo<T
     }
 }
 
-// Specialized template functions that call the proper setter function
-template<typename T> static void complex_set_function_columns(StepInfo<T> &step_info, hhfft::InstructionSet instruction_set);
-template<> void complex_set_function_columns<double>(StepInfo<double> &step_info, hhfft::InstructionSet instruction_set)
-{
-    HHFFT_2D_Complex_D_set_function_columns(step_info, instruction_set);
-}
-template<> void complex_set_function_columns<float>(StepInfo<float> &step_info, hhfft::InstructionSet instruction_set)
-{
-    HHFFT_2D_Complex_F_set_function_columns(step_info, instruction_set);
-}
-
-template<typename T> static void complex_set_function_rows(StepInfo<T> &step_info, hhfft::InstructionSet instruction_set);
-template<> void complex_set_function_rows<double>(StepInfo<double> &step_info, hhfft::InstructionSet instruction_set)
-{
-    HHFFT_2D_Complex_D_set_function_rows(step_info, instruction_set);
-}
-template<> void complex_set_function_rows<float>(StepInfo<float> &step_info, hhfft::InstructionSet instruction_set)
-{
-    HHFFT_2D_Complex_F_set_function_rows(step_info, instruction_set);
-}
-
-template<typename T> static void (*set_convolution_function(hhfft::InstructionSet instruction_set))(const T *, const T *, T *, size_t);
-template<> void (*set_convolution_function<double>(hhfft::InstructionSet instruction_set))(const double *, const double *, double *, size_t)
-{
-    return HHFFT_1D_Complex_D_set_convolution_function(instruction_set);
-}
-template<> void (*set_convolution_function<float>(hhfft::InstructionSet instruction_set))(const float *, const float *, float *, size_t)
-{
-    return HHFFT_1D_Complex_F_set_convolution_function(instruction_set);
-}
-
 // Does the planning step
 template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet instruction_set)
 {
@@ -106,7 +73,7 @@ template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet in
     }
 
     // Set the convolution function
-    convolution_function = set_convolution_function<T>(instruction_set);
+    convolution_function = HHFFT_1D_Complex_set_convolution_function<T>(instruction_set);
 
     if ((n == 1) || (m == 1))
     {
@@ -185,7 +152,7 @@ template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet in
         set_radix_raders(N_columns[0], step, instruction_set);
         step.radix = N_columns[0];
         step.repeats = n / step.radix;
-        complex_set_function_columns<T>(step, instruction_set);
+        HHFFT_2D_Complex_set_function_columns<T>(step, instruction_set);
         forward_steps.push_back(step);
         forward_step_columns.push_back(true);
     }
@@ -205,7 +172,7 @@ template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet in
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors_columns[i].data();
-        complex_set_function_columns<T>(step, instruction_set);
+        HHFFT_2D_Complex_set_function_columns<T>(step, instruction_set);
         forward_steps.push_back(step);
         forward_step_columns.push_back(true);
     }
@@ -222,7 +189,7 @@ template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet in
         step.repeats = m * n / step.radix;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
-        complex_set_function_rows<T>(step, instruction_set);
+        HHFFT_2D_Complex_set_function_rows<T>(step, instruction_set);
         forward_steps.push_back(step);
         forward_step_columns.push_back(false);
     }
@@ -240,7 +207,7 @@ template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet in
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors_rows[i].data();
-        complex_set_function_rows<T>(step, instruction_set);
+        HHFFT_2D_Complex_set_function_rows<T>(step, instruction_set);
         forward_steps.push_back(step);
         forward_step_columns.push_back(false);
     }
@@ -260,10 +227,10 @@ template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet in
 
         if (forward_step_columns[i])
         {
-            complex_set_function_columns<T>(step, instruction_set);
+            HHFFT_2D_Complex_set_function_columns<T>(step, instruction_set);
         } else
         {
-            complex_set_function_rows<T>(step, instruction_set);
+            HHFFT_2D_Complex_set_function_rows<T>(step, instruction_set);
         }
 
         inverse_steps.push_back(step);

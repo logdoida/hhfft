@@ -17,7 +17,7 @@
 *   along with HHFFT. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "hhfft_1d_real_setter_d.h"
+#include "hhfft_1d_real_setter.h"
 #include <stdexcept>
 #include <assert.h>
 #include <cmath>
@@ -93,26 +93,30 @@ void set_instruction2_d(StepInfoD &step_info, hhfft::InstructionSet instruction_
     }
 }
 
-// This set pointer to correct functions
-void hhfft::HHFFT_1D_Real_D_set_complex_to_complex_packed_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+namespace hhfft
 {
-    step_info.step_function = nullptr;
+    // This set pointer to correct functions
+    template<> void HHFFT_1D_Real_set_complex_to_complex_packed_function<double>(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+    {
+        step_info.step_function = nullptr;
 
-    if (step_info.reorder_table == nullptr)
-    {
-        if (step_info.forward)
-           set_instruction_set_d<true>(step_info, instruction_set);
-        else
-           set_instruction_set_d<false>(step_info, instruction_set);
-    } else
-    {
-        set_instruction2_d(step_info, instruction_set);
+        if (step_info.reorder_table == nullptr)
+        {
+            if (step_info.forward)
+               set_instruction_set_d<true>(step_info, instruction_set);
+            else
+               set_instruction_set_d<false>(step_info, instruction_set);
+        } else
+        {
+            set_instruction2_d(step_info, instruction_set);
+        }
+
+        if (step_info.step_function == nullptr)
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
     }
 
-    if (step_info.step_function == nullptr)
-    {
-        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
-    }
 }
 
 ////////////////////////////////////////// Odd sizes /////////////////////////////////////////////7////
@@ -231,23 +235,26 @@ void set_instruction_odd_other_level_radix_d(StepInfoD &step_info, hhfft::Instru
         set_instruction_odd_other_level_d<Raders>(step_info, instruction_set);
 }
 
-void hhfft::HHFFT_1D_Real_D_odd_set_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+namespace hhfft
 {
-    // First level of odd FFT/IFFT
-    if (step_info.stride == 1 && step_info.reorder_table != nullptr)
+    template<> void HHFFT_1D_Real_odd_set_function<double>(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
     {
-        set_instruction_odd_first_level_radix_d(step_info, instruction_set);
-    }
+        // First level of odd FFT/IFFT
+        if (step_info.stride == 1 && step_info.reorder_table != nullptr)
+        {
+            set_instruction_odd_first_level_radix_d(step_info, instruction_set);
+        }
 
-    // Other levels of odd FFT/IFFT
-    if (step_info.stride != 1 && step_info.reorder_table == nullptr)
-    {
-        set_instruction_odd_other_level_radix_d(step_info, instruction_set);
-    }
+        // Other levels of odd FFT/IFFT
+        if (step_info.stride != 1 && step_info.reorder_table == nullptr)
+        {
+            set_instruction_odd_other_level_radix_d(step_info, instruction_set);
+        }
 
-    if (step_info.step_function == nullptr)
-    {
-        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        if (step_info.step_function == nullptr)
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
     }
 }
 
@@ -296,81 +303,84 @@ template<size_t n> void set_small_function_instruction_set_real_d(StepInfoD &ste
     }
 }
 
-void hhfft::HHFFT_1D_Real_D_set_small_function(StepInfoD &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set)
+namespace hhfft
 {
-    step_info.step_function = nullptr;
+    template<> void HHFFT_1D_Real_set_small_function<double>(StepInfoD &step_info, size_t n, bool forward, hhfft::InstructionSet instruction_set)
+    {
+        step_info.step_function = nullptr;
 
-    if(n == 1)
-    {
-        set_small_function_instruction_set_real_d<1>(step_info, instruction_set, forward);
-    }
-    else if(n == 2)
-    {
-        set_small_function_instruction_set_real_d<2>(step_info, instruction_set, forward);
-    } else if(n == 3)
-    {
-        set_small_function_instruction_set_real_d<3>(step_info, instruction_set, forward);
-    } else if(n == 4)
-    {
-        set_small_function_instruction_set_real_d<4>(step_info, instruction_set, forward);
-    } else if(n == 5)
-    {
-        set_small_function_instruction_set_real_d<5>(step_info, instruction_set, forward);
-    } else if(n == 6)
-    {
-        set_small_function_instruction_set_real_d<6>(step_info, instruction_set, forward);
-    } else if(n == 7)
-    {
-        set_small_function_instruction_set_real_d<7>(step_info, instruction_set, forward);
-    } else if(n == 8)
-    {
-        set_small_function_instruction_set_real_d<8>(step_info, instruction_set, forward);
-    } else if(n == 10)
-    {
-        set_small_function_instruction_set_real_d<10>(step_info, instruction_set, forward);
-    } else if(n == 12)
-    {
-        set_small_function_instruction_set_real_d<12>(step_info, instruction_set, forward);
-    } else if(n == 14)
-    {
-        set_small_function_instruction_set_real_d<14>(step_info, instruction_set, forward);
-    } else if(n == 16)
-    {
-        set_small_function_instruction_set_real_d<16>(step_info, instruction_set, forward);
-    }
+        if(n == 1)
+        {
+            set_small_function_instruction_set_real_d<1>(step_info, instruction_set, forward);
+        }
+        else if(n == 2)
+        {
+            set_small_function_instruction_set_real_d<2>(step_info, instruction_set, forward);
+        } else if(n == 3)
+        {
+            set_small_function_instruction_set_real_d<3>(step_info, instruction_set, forward);
+        } else if(n == 4)
+        {
+            set_small_function_instruction_set_real_d<4>(step_info, instruction_set, forward);
+        } else if(n == 5)
+        {
+            set_small_function_instruction_set_real_d<5>(step_info, instruction_set, forward);
+        } else if(n == 6)
+        {
+            set_small_function_instruction_set_real_d<6>(step_info, instruction_set, forward);
+        } else if(n == 7)
+        {
+            set_small_function_instruction_set_real_d<7>(step_info, instruction_set, forward);
+        } else if(n == 8)
+        {
+            set_small_function_instruction_set_real_d<8>(step_info, instruction_set, forward);
+        } else if(n == 10)
+        {
+            set_small_function_instruction_set_real_d<10>(step_info, instruction_set, forward);
+        } else if(n == 12)
+        {
+            set_small_function_instruction_set_real_d<12>(step_info, instruction_set, forward);
+        } else if(n == 14)
+        {
+            set_small_function_instruction_set_real_d<14>(step_info, instruction_set, forward);
+        } else if(n == 16)
+        {
+            set_small_function_instruction_set_real_d<16>(step_info, instruction_set, forward);
+        }
 
-    return;
-}
-
-
-void hhfft::HHFFT_1D_Real_D_set_1level_raders_function(StepInfoD &step_info, bool forward, hhfft::InstructionSet instruction_set)
-{
-#ifdef HHFFT_COMPILED_WITH_AVX
-    if (instruction_set == hhfft::InstructionSet::avx)
-    {
-        if(forward)
-            step_info.step_function = fft_1d_real_1level_raders_avx_d<true>;
-        else
-            step_info.step_function = fft_1d_real_1level_raders_avx_d<false>;
         return;
     }
-#endif
 
-    if (instruction_set == hhfft::InstructionSet::sse2)
-    {
-        if(forward)
-            step_info.step_function = fft_1d_real_1level_raders_sse2_d<true>;
-        else
-            step_info.step_function = fft_1d_real_1level_raders_sse2_d<false>;
-        return;
-    }  
 
-    if (instruction_set == hhfft::InstructionSet::none)
+    template<> void HHFFT_1D_Real_set_1level_raders_function<double>(StepInfoD &step_info, bool forward, hhfft::InstructionSet instruction_set)
     {
-        if(forward)
-            step_info.step_function = fft_1d_real_1level_raders_plain_d<true>;
-        else
-            step_info.step_function = fft_1d_real_1level_raders_plain_d<false>;
-        return;
+    #ifdef HHFFT_COMPILED_WITH_AVX
+        if (instruction_set == hhfft::InstructionSet::avx)
+        {
+            if(forward)
+                step_info.step_function = fft_1d_real_1level_raders_avx_d<true>;
+            else
+                step_info.step_function = fft_1d_real_1level_raders_avx_d<false>;
+            return;
+        }
+    #endif
+
+        if (instruction_set == hhfft::InstructionSet::sse2)
+        {
+            if(forward)
+                step_info.step_function = fft_1d_real_1level_raders_sse2_d<true>;
+            else
+                step_info.step_function = fft_1d_real_1level_raders_sse2_d<false>;
+            return;
+        }
+
+        if (instruction_set == hhfft::InstructionSet::none)
+        {
+            if(forward)
+                step_info.step_function = fft_1d_real_1level_raders_plain_d<true>;
+            else
+                step_info.step_function = fft_1d_real_1level_raders_plain_d<false>;
+            return;
+        }
     }
 }

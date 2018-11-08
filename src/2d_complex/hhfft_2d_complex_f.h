@@ -20,18 +20,6 @@
 #ifndef HHFFT_2D_COMPLEX_F_H
 #define HHFFT_2D_COMPLEX_F_H
 
-#include "step_info.h"
-#include "architecture.h"
-
-namespace hhfft
-{
-
-// For column-wise operations
-void HHFFT_2D_Complex_F_set_function_columns(StepInfoF &step_info, hhfft::InstructionSet instruction_set);
-
-// For row-wise operations
-void HHFFT_2D_Complex_F_set_function_rows(StepInfoF &step_info, hhfft::InstructionSet instruction_set);
-
-}
+// TODO remove this file
 
 #endif // HHFFT_2D_COMPLEX_F_H
