@@ -62,6 +62,7 @@ template<RadixType radix_type, SizeType size_type, bool forward> void set_instru
 
     }
 #endif
+*/
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
@@ -75,6 +76,7 @@ template<RadixType radix_type, SizeType size_type, bool forward> void set_instru
     }
 #endif
 
+
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
         if (step_info.reorder_table == nullptr && step_info.reorder_table2 == nullptr && step_info.twiddle_factors != nullptr)
@@ -84,7 +86,6 @@ template<RadixType radix_type, SizeType size_type, bool forward> void set_instru
             step_info.step_function = fft_2d_complex_reorder2_sse2_f<radix_type, forward>;
         }
     }
-    */
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
@@ -231,6 +232,7 @@ template<RadixType radix_type> void set_instruction_set_rows_2d_f(StepInfoF &ste
 
     }
 #endif
+*/
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
@@ -255,7 +257,6 @@ template<RadixType radix_type> void set_instruction_set_rows_2d_f(StepInfoF &ste
             throw(std::runtime_error("HHFFT error: Unable to set a function!"));
         }
     }
-    */
 
     if (instruction_set == hhfft::InstructionSet::none)
     {

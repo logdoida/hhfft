@@ -292,23 +292,7 @@ template<RadixType radix_type>
             store_D2(x_temp_out2[4], data_out + 2*ind1);
             store_D2(x_temp_out2[5], data_out + 2*ind1 + 4);
             store_D2(x_temp_out2[6], data_out + 2*ind1 + 8);
-            store_D2(x_temp_out2[7], data_out + 2*ind1 + 12);
-
-            /*
-            ComplexD2 x_temp_out2[radix_type];
-            transpose_D2<8>(x_temp_out, x_temp_out2);
-            size_t i2 = 8*stride - i - 2;
-            size_t ind0 = reorder_table[reorder_table_size - i2 - 1];
-            size_t ind1 = reorder_table[reorder_table_size - i2 - 2];
-            store_D2(x_temp_out2[4], data_out + 2*ind1);
-            store_D2(x_temp_out2[5], data_out + 2*ind1 + 4);
-            store_D2(x_temp_out2[6], data_out + 2*ind1 + 8);
-            store_D2(x_temp_out2[7], data_out + 2*ind1 + 12);
-            store_D2(x_temp_out2[0], data_out + 2*ind0);
-            store_D2(x_temp_out2[1], data_out + 2*ind0 + 4);
-            store_D2(x_temp_out2[2], data_out + 2*ind0 + 8);
-            store_D2(x_temp_out2[3], data_out + 2*ind0 + 12);
-            */
+            store_D2(x_temp_out2[7], data_out + 2*ind1 + 12);           
         } else
         {
             for (size_t j = 0; j < radix; j++)
@@ -398,8 +382,7 @@ template<RadixType radix_type>
         // Multiply with coefficients
         multiply_coeff_forward_D2<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
-        // Save output taking reordering into account
-        // Save output taking reordering into account
+        // Save output taking reordering into account        
         if (radix_type == Radix8)
         {
             // Special optimized version for radix = 8, which is quite common

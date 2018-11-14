@@ -30,7 +30,7 @@
 
 #include "1d_complex/hhfft_1d_complex_setter.h"
 #include "2d_complex/hhfft_2d_complex_setter.h"
-#include "1d_real/hhfft_1d_real_setter_d.h"
+#include "1d_real/hhfft_1d_real_setter.h"
 #include "2d_real/hhfft_2d_real_setter_d.h"
 
 using namespace hhfft;
