@@ -1,5 +1,5 @@
 /*
-*   Copyright Jouko Kalmari 2017-2018
+*   Copyright Jouko Kalmari 2017-2019
 *
 *   This file is part of HHFFT.
 *
@@ -32,6 +32,9 @@
 
 namespace hhfft
 {
+
+// Forward declaration
+template <typename T> class HHFFT_2D_REAL;
 
 // Real to complex FFT and IFFT transformations
 // This class is responsible of making a plan on how to calculate the the FFT and calls the proper functions
@@ -99,7 +102,7 @@ private:
     void (*convolution_function)(const T *, const T *, T *, size_t n);
 
     // 2D fft real can copy the planning made in this class
-    friend class HHFFT_2D_REAL_D;
+    friend class HHFFT_2D_REAL<T>;
 };
 
 typedef HHFFT_1D_REAL<double> HHFFT_1D_REAL_D;

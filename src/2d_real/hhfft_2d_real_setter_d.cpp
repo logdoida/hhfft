@@ -17,7 +17,7 @@
 *   along with HHFFT. If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "hhfft_2d_real_setter_d.h"
+#include "hhfft_2d_real_setter.h"
 #include "../aligned_arrays.h"
 #include <stdexcept>
 #include <assert.h>
@@ -94,16 +94,19 @@ void fft_2d_real_odd_rows_combine_columns_d(const double *data_in, double *data_
 
 
 
-void hhfft::HHFFT_2D_Real_D_set_reorder_column_function(StepInfoD &step_info)
+namespace hhfft
 {
-    if (!step_info.forward)
-    {        
-        step_info.step_function = fft_2d_real_reorder_columns_inverse_inplace_d;
-    }
-
-    if (step_info.step_function == nullptr)
+    template<> void HHFFT_2D_Real_set_reorder_column_function<double>(StepInfoD &step_info)
     {
-        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        if (!step_info.forward)
+        {
+            step_info.step_function = fft_2d_real_reorder_columns_inverse_inplace_d;
+        }
+
+        if (step_info.step_function == nullptr)
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
     }
 }
 
@@ -143,22 +146,24 @@ template<bool forward> void set_instruction_set_d(StepInfoD &step_info, hhfft::I
     }      
 }
 
-// This set pointer to correct functions
-void hhfft::HHFFT_2D_Real_D_set_complex_to_complex_packed_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+namespace hhfft
 {
-    step_info.step_function = nullptr;
-
-    if (step_info.forward)
-       set_instruction_set_d<true>(step_info, instruction_set);
-    else
-       set_instruction_set_d<false>(step_info, instruction_set);
-
-    if (step_info.step_function == nullptr)
+    // This set pointer to correct functions
+    template<> void HHFFT_2D_Real_set_complex_to_complex_packed_function<double>(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
     {
-        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        step_info.step_function = nullptr;
+
+        if (step_info.forward)
+           set_instruction_set_d<true>(step_info, instruction_set);
+        else
+           set_instruction_set_d<false>(step_info, instruction_set);
+
+        if (step_info.step_function == nullptr)
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
     }
 }
-
 
 
 void fft_2d_complex_to_complex_packed_first_column_plain_d(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
@@ -193,17 +198,21 @@ void set_instruction_set_first_column_d(StepInfoD &step_info, hhfft::Instruction
     }
 }
 
-// This set pointer to correct functions
-void hhfft::HHFFT_2D_Real_D_set_complex_to_complex_packed_first_column_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+
+namespace hhfft
 {
-    step_info.step_function = nullptr;
-
-    if (step_info.forward)
-       set_instruction_set_first_column_d(step_info, instruction_set);
-
-    if (step_info.step_function == nullptr)
+    // This set pointer to correct functions
+    template<> void HHFFT_2D_Real_set_complex_to_complex_packed_first_column_function<double>(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
     {
-        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        step_info.step_function = nullptr;
+
+        if (step_info.forward)
+           set_instruction_set_first_column_d(step_info, instruction_set);
+
+        if (step_info.step_function == nullptr)
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
     }
 }
 
@@ -309,24 +318,27 @@ void set_instruction_set_2d_reorder_rows_d(StepInfoD &step_info, hhfft::Instruct
 }
 
 
-// Used for setting the first step where reordering and first fft are combined
-void hhfft::HHFFT_2D_Real_D_set_function(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+namespace hhfft
 {
-    step_info.step_function = nullptr;
-
-    if (step_info.radix == 1 && step_info.reorder_table_inplace != nullptr)
+    // Used for setting the first step where reordering and first fft are combined
+    template<> void HHFFT_2D_Real_set_function<double>(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
     {
-        set_instruction_set_2d_reorder_rows_d(step_info, instruction_set);
-    }
+        step_info.step_function = nullptr;
 
-    if (step_info.radix != 1 && !step_info.forward)
-    {
-        set_radix_2d_real_d(step_info, instruction_set);
-    }
+        if (step_info.radix == 1 && step_info.reorder_table_inplace != nullptr)
+        {
+            set_instruction_set_2d_reorder_rows_d(step_info, instruction_set);
+        }
 
-    if (step_info.step_function == nullptr)
-    {
-        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        if (step_info.radix != 1 && !step_info.forward)
+        {
+            set_radix_2d_real_d(step_info, instruction_set);
+        }
+
+        if (step_info.step_function == nullptr)
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
     }
 }
 
@@ -457,27 +469,29 @@ void set_radix_2d_odd_rows_d(StepInfoD &step_info, hhfft::InstructionSet instruc
     }
 }
 
-void hhfft::HHFFT_2D_Real_D_odd_set_function_rows(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+namespace hhfft
 {
-    step_info.step_function = nullptr;
-
-    if (step_info.radix != 1)
-    {        
-        set_radix_2d_odd_rows_d(step_info, instruction_set);
-    }
-
-    if (step_info.radix == 1 && step_info.forward)
+    template<> void HHFFT_2D_Real_odd_set_function_rows<double>(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
     {
-        step_info.step_function = fft_2d_real_fix_first_column_d;
-    }
+        step_info.step_function = nullptr;
+
+        if (step_info.radix != 1)
+        {
+            set_radix_2d_odd_rows_d(step_info, instruction_set);
+        }
+
+        if (step_info.radix == 1 && step_info.forward)
+        {
+            step_info.step_function = fft_2d_real_fix_first_column_d;
+        }
 
 
-    if (step_info.step_function == nullptr)
-    {
-        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        if (step_info.step_function == nullptr)
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
     }
 }
-
 
 // Reorder first column and calculate first FFT
 template<RadixType radix_type>
@@ -577,22 +591,25 @@ void set_radix_2d_odd_columns_d(StepInfoD &step_info, hhfft::InstructionSet inst
     }
 }
 
-void hhfft::HHFFT_2D_Real_D_odd_set_function_columns(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+namespace hhfft
 {
-    step_info.step_function = nullptr;
-
-    if (step_info.radix != 1)
+    template<> void HHFFT_2D_Real_odd_set_function_columns<double>(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
     {
-        set_radix_2d_odd_columns_d(step_info, instruction_set);
-    }
+        step_info.step_function = nullptr;
 
-    if (step_info.radix == 1)
-    {
-        step_info.step_function = fft_2d_real_odd_rows_combine_columns_d;
-    }
+        if (step_info.radix != 1)
+        {
+            set_radix_2d_odd_columns_d(step_info, instruction_set);
+        }
 
-    if (step_info.step_function == nullptr)
-    {
-        throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        if (step_info.radix == 1)
+        {
+            step_info.step_function = fft_2d_real_odd_rows_combine_columns_d;
+        }
+
+        if (step_info.step_function == nullptr)
+        {
+            throw(std::runtime_error("HHFFT error: Unable to set a function!"));
+        }
     }
 }

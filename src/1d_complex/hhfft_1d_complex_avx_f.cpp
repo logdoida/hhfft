@@ -79,38 +79,37 @@ template<RadixType radix_type>
     size_t radix = get_actual_radix<radix_type>(raders);
 
     // First use 256-bit variables
+    for (i = 0; i+3 < repeats; i+=4)
     {
         ComplexF4 x_temp_in[radix_type];
         ComplexF4 x_temp_out[radix_type];
-        for (i = 0; i+3 < repeats; i+=4)
+
+        // Initialize raders data with zeros
+        init_coeff_F4<radix_type>(data_raders, raders);
+
+        // Copy input data from four memory locations.
+        for (size_t j = 0; j < radix; j++)
         {
-            // Initialize raders data with zeros
-            init_coeff_F4<radix_type>(data_raders, raders);
+            size_t ind0 = i*radix + j;
+            size_t ind1 = i*radix + 1*radix + j;
+            size_t ind2 = i*radix + 2*radix + j;
+            size_t ind3 = i*radix + 3*radix + j;
+            ComplexF4 x = load_four_64_F4(data_in + 2*ind0, data_in + 2*ind1, data_in + 2*ind2, data_in + 2*ind3);
+            set_value_F4<radix_type>(x_temp_in, data_raders, j, raders, x);
+        }
 
-            // Copy input data from four memory locations.
-            for (size_t j = 0; j < radix; j++)
-            {
-                size_t ind0 = i*radix + j;
-                size_t ind1 = i*radix + 1*radix + j;
-                size_t ind2 = i*radix + 2*radix + j;
-                size_t ind3 = i*radix + 3*radix + j;
-                ComplexF4 x = load_four_64_F4(data_in + 2*ind0, data_in + 2*ind1, data_in + 2*ind2, data_in + 2*ind3);
-                set_value_F4<radix_type>(x_temp_in, data_raders, j, raders, x);
-            }
+        // Multiply with coefficients
+        multiply_coeff_forward_F4<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
-            // Multiply with coefficients
-            multiply_coeff_forward_F4<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-            // Save output to four memory locations.
-            for (size_t j = 0; j < radix; j++)
-            {
-                size_t ind0 = i*radix + j;
-                size_t ind1 = i*radix + 1*radix + j;
-                size_t ind2 = i*radix + 2*radix + j;
-                size_t ind3 = i*radix + 3*radix + j;
-                ComplexF4 x = get_value_F4<radix_type>(x_temp_out, data_raders, j, raders);
-                store_four_64_F4(x, data_out + 2*ind0, data_out + 2*ind1, data_out + 2*ind2, data_out + 2*ind3);
-            }
+        // Save output to four memory locations.
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t ind0 = i*radix + j;
+            size_t ind1 = i*radix + 1*radix + j;
+            size_t ind2 = i*radix + 2*radix + j;
+            size_t ind3 = i*radix + 3*radix + j;
+            ComplexF4 x = get_value_F4<radix_type>(x_temp_out, data_raders, j, raders);
+            store_four_64_F4(x, data_out + 2*ind0, data_out + 2*ind1, data_out + 2*ind2, data_out + 2*ind3);
         }
     }
 
@@ -597,32 +596,30 @@ template<RadixType radix_type, SizeType stride_type>
     size_t k = 0;
     size_t radix = get_actual_radix<radix_type>(raders);
 
-    // First use 256-bit variables
+    // First use 256-bit variables    
+    for (k = 0; k+1 < stride; k+=4)
     {
         ComplexF4 x_temp_in[radix_type];
         ComplexF4 x_temp_out[radix_type];
 
-        for (k = 0; k+1 < stride; k+=4)
+        // Initialize raders data with zeros
+        init_coeff_F4<radix_type>(data_raders, raders);
+
+        // Copy input data (squeeze)
+        for (size_t j = 0; j < radix; j++)
         {
-            // Initialize raders data with zeros
-            init_coeff_F4<radix_type>(data_raders, raders);
+            ComplexF4 x = load_F4(data_in + 2*k + 2*j*stride);
+            set_value_F4<radix_type>(x_temp_in, data_raders, j, raders, x);
+        }
 
-            // Copy input data (squeeze)
-            for (size_t j = 0; j < radix; j++)
-            {
-                ComplexF4 x = load_F4(data_in + 2*k + 2*j*stride);
-                set_value_F4<radix_type>(x_temp_in, data_raders, j, raders, x);
-            }
+        // Multiply with coefficients
+        multiply_coeff_forward_F4<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
 
-            // Multiply with coefficients
-            multiply_coeff_forward_F4<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-            // Copy output data (un-squeeze)
-            for (size_t j = 0; j < radix; j++)
-            {
-                ComplexF4 x = get_value_F4<radix_type>(x_temp_out, data_raders, j, raders);
-                store_F4(x, data_out + 2*k + 2*j*stride);
-            }
+        // Copy output data (un-squeeze)
+        for (size_t j = 0; j < radix; j++)
+        {
+            ComplexF4 x = get_value_F4<radix_type>(x_temp_out, data_raders, j, raders);
+            store_F4(x, data_out + 2*k + 2*j*stride);
         }
     }
 
@@ -695,38 +692,36 @@ template<RadixType radix_type, SizeType stride_type>
     size_t radix = get_actual_radix<radix_type>(raders);
 
     // First use 256-bit variables
+    for (k = 0; k+3 < stride; k+=4)
     {
-        for (k = 0; k+3 < stride; k+=4)
-        {            
-            // Initialize raders data with zeros
-            init_coeff_F4<radix_type>(data_raders, raders);
+        // Initialize raders data with zeros
+        init_coeff_F4<radix_type>(data_raders, raders);
 
-            ComplexF4 x_temp_in[radix_type];
-            ComplexF4 x_temp_out[radix_type];
-            ComplexF4 twiddle_temp[radix_type];
+        ComplexF4 x_temp_in[radix_type];
+        ComplexF4 x_temp_out[radix_type];
+        ComplexF4 twiddle_temp[radix_type];
 
-            // Copy input data and multiply with twiddle factors
-            for (size_t j = 0; j < radix; j++)
-            {
-                size_t j2 = 2*k + 2*j*stride;
-                ComplexF4 x = load_F4(data_in + j2);
-                ComplexF4 w = load_F4(twiddle_factors + j2);
-                set_value_twiddle_F4<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
-            }
-
-            // Multiply with coefficients
-            multiply_twiddle_F4<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
-            multiply_coeff_forward_F4<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-            // Copy output data (un-squeeze)
-            for (size_t j = 0; j < radix; j++)
-            {
-                size_t j2 = 2*k + 2*j*stride;
-                ComplexF4 x = get_value_F4<radix_type>(x_temp_out, data_raders, j, raders);
-                store_F4(x, data_out + j2);
-            }
+        // Copy input data and multiply with twiddle factors
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t j2 = 2*k + 2*j*stride;
+            ComplexF4 x = load_F4(data_in + j2);
+            ComplexF4 w = load_F4(twiddle_factors + j2);
+            set_value_twiddle_F4<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
         }
-    }    
+
+        // Multiply with coefficients
+        multiply_twiddle_F4<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
+        multiply_coeff_forward_F4<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
+
+        // Copy output data (un-squeeze)
+        for (size_t j = 0; j < radix; j++)
+        {
+            size_t j2 = 2*k + 2*j*stride;
+            ComplexF4 x = get_value_F4<radix_type>(x_temp_out, data_raders, j, raders);
+            store_F4(x, data_out + j2);
+        }
+    }
 
     // Then, if necassery, use 128-bit variables
     if (k+1 < stride)
