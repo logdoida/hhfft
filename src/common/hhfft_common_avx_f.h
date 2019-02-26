@@ -60,6 +60,7 @@ inline void store_F(ComplexF val, float &r, float &i)
 }
 inline void store_F(ComplexF val, float *v)
 {
+    // NOTE it is assumed that memory is alway 64-bit aligned, so this pointer will also be like that!
     _mm_storel_pi((__m64*) v, val);
 }
 // Store only real part
@@ -467,6 +468,12 @@ inline ComplexF2 load_two_64_F2(const float *a, const float *b)
     ComplexF x = _mm_setzero_ps();
     x = _mm_loadl_pi(x, (const __m64*) a);
     return _mm_loadh_pi(x, (const __m64*) b);
+}
+
+// Combines two complex numbers
+inline ComplexF2 combine_two_64_F2(ComplexF a, ComplexF b)
+{
+    return _mm_shuffle_ps(a, b, 0*1 + 1*4 + 0*16 + 1*64);
 }
 
 // Combines complex number from two separate real and imaginary memory locations: [r1 r2], [i1 i2] -> [r1 i1 r2 i2]

@@ -26,6 +26,8 @@
 #include "../common/hhfft_common_avx_f.h"
 #include "../raders/raders_avx_f.h"
 
+#include <iostream> // TESTING
+
 using namespace hhfft;
 
 const ComplexF const2_F = load_F(-0.0f, 0.0f);
@@ -181,7 +183,7 @@ template<bool forward, size_t n> void fft_1d_complex_to_complex_packed_1level_av
     if (forward)
     {
         float t0, t1;
-        store_F(x[0], t0, t1);
+        store_F(x[0], t0, t1);        
         x[0] = _mm_set_ss(t0 + t1);
         x[n/2] = _mm_set_ss(t0 - t1);
     } else
@@ -981,11 +983,11 @@ template<size_t n, bool forward> void fft_1d_real_1level_avx_f(const float *data
     {
         // even n
 
-        ComplexF x_temp_in[n/2+1];
-        ComplexF x_temp_out[n/2+1];
-
         if (forward)
         {
+            ComplexF x_temp_in[n/2+1];
+            ComplexF x_temp_out[n/2+1];
+
             // Copy input data
             for (size_t i = 0; i < n/2; i++)
             {
@@ -1005,6 +1007,9 @@ template<size_t n, bool forward> void fft_1d_real_1level_avx_f(const float *data
             }
         } else
         {
+            ComplexF x_temp_in[n/2+1];
+            ComplexF x_temp_out[n/2+1];
+
             // Copy input data
             for (size_t i = 0; i < n/2 + 1; i++)
             {

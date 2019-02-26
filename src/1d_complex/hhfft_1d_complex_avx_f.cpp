@@ -597,7 +597,7 @@ template<RadixType radix_type, SizeType stride_type>
     size_t radix = get_actual_radix<radix_type>(raders);
 
     // First use 256-bit variables    
-    for (k = 0; k+1 < stride; k+=4)
+    for (k = 0; k+3 < stride; k+=4)
     {
         ComplexF4 x_temp_in[radix_type];
         ComplexF4 x_temp_out[radix_type];
