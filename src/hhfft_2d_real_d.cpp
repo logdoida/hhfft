@@ -802,4 +802,4 @@ template<typename T> void HHFFT_2D_REAL<T>::print_real_matrix(const T *data, siz
 
 // Explicitly instantiate double and float versions
 template class hhfft::HHFFT_2D_REAL<double>;
-//template class hhfft::HHFFT_2D_REAL<float>;
+template class hhfft::HHFFT_2D_REAL<float>;
