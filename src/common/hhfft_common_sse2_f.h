@@ -75,7 +75,6 @@ inline ComplexF change_sign_F(ComplexF a, ComplexF s)
 }
 
 const ComplexF const1_F = load_F(0.0f, -0.0f);
-//const ComplexF const2_F = load_F(-0.0f, 0.0f);
 const ComplexF const3_F = _mm_setr_ps(0.0f, 0.0f, -0.0f, 0.0f);
 const ComplexF const4_F = _mm_setr_ps(0.0f, 0.0f, 0.0f, -0.0f);
 
@@ -472,6 +471,12 @@ inline ComplexF2 load_two_64_F2(const float *a, const float *b)
     ComplexF x = _mm_setzero_ps();
     x = _mm_loadl_pi(x, (const __m64*) a);
     return _mm_loadh_pi(x, (const __m64*) b);
+}
+
+// Combines two complex numbers
+inline ComplexF2 combine_two_64_F2(ComplexF a, ComplexF b)
+{
+    return _mm_shuffle_ps(a, b, 0*1 + 1*4 + 0*16 + 1*64);
 }
 
 // Combines complex number from two separate real and imaginary memory locations: [r1 r2], [i1 i2] -> [r1 i1 r2 i2]

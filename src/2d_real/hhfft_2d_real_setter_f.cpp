@@ -135,12 +135,12 @@ template<bool forward> void set_instruction_set_f(StepInfoF &step_info, hhfft::I
        step_info.step_function = fft_2d_complex_to_complex_packed_avx_f<forward>;
     }
 #endif
+*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
         step_info.step_function = fft_2d_complex_to_complex_packed_sse2_f<forward>;
-    }
-    */
+    }  
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
@@ -189,12 +189,11 @@ void set_instruction_set_first_column_f(StepInfoF &step_info, hhfft::Instruction
        step_info.step_function = fft_2d_complex_to_complex_packed_first_column_avx_f;
     }
 #endif
-
+*/
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
         step_info.step_function = fft_2d_complex_to_complex_packed_first_column_sse2_f;
     }
-    */
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
@@ -245,12 +244,12 @@ template<RadixType radix_type> void set_instruction_set_2d_real_f(StepInfoF &ste
         step_info.step_function = fft_2d_real_reorder2_inverse_avx_f<radix_type>;
     }
 #endif
+*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {        
         step_info.step_function = fft_2d_real_reorder2_inverse_sse2_f<radix_type>;
-    }
-    */
+    }    
 
 
     if (instruction_set == hhfft::InstructionSet::none)
@@ -312,12 +311,12 @@ void set_instruction_set_2d_reorder_rows_f(StepInfoF &step_info, hhfft::Instruct
         step_info.step_function = fft_2d_real_reorder_rows_in_place_avx_f;
     }
 #endif
+*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
         step_info.step_function = fft_2d_real_reorder_rows_in_place_sse2_f;
     }
-    */
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
@@ -422,6 +421,7 @@ template<RadixType radix_type> void set_instruction_set_odd_rows_2d_f(StepInfoF 
         }
     }
 #endif
+*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
@@ -438,8 +438,7 @@ template<RadixType radix_type> void set_instruction_set_odd_rows_2d_f(StepInfoF 
             else
                 step_info.step_function = fft_2d_real_odd_rows_inverse_sse2_f<radix_type>;
         }
-    }
-    */
+    }    
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
@@ -547,6 +546,7 @@ template<RadixType radix_type> void set_instruction_set_odd_columns_2d_f(StepInf
         }
     }
 #endif
+*/
 
     if (instruction_set == hhfft::InstructionSet::sse2)
     {
@@ -557,8 +557,7 @@ template<RadixType radix_type> void set_instruction_set_odd_columns_2d_f(StepInf
         {
             step_info.step_function = fft_2d_real_odd_rows_reorder_columns_sse2_f<radix_type>;
         }
-    }
-    */
+    }    
 
     if (instruction_set == hhfft::InstructionSet::none)
     {
