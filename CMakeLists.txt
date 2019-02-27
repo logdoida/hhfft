@@ -13,18 +13,30 @@ set(SRC_LIST
 ./src/1d_complex/hhfft_1d_complex_d.cpp
 ./src/1d_complex/hhfft_1d_complex_plain_d.cpp
 ./src/1d_complex/hhfft_1d_complex_sse2_d.cpp
+./src/1d_complex/hhfft_1d_complex_f.cpp
+./src/1d_complex/hhfft_1d_complex_plain_f.cpp
+./src/1d_complex/hhfft_1d_complex_sse2_f.cpp
 ./src/hhfft_2d_d.cpp
 ./src/2d_complex/hhfft_2d_complex_d.cpp
 ./src/2d_complex/hhfft_2d_complex_plain_d.cpp
 ./src/2d_complex/hhfft_2d_complex_sse2_d.cpp
+./src/2d_complex/hhfft_2d_complex_f.cpp
+./src/2d_complex/hhfft_2d_complex_plain_f.cpp
+./src/2d_complex/hhfft_2d_complex_sse2_f.cpp
 ./src/hhfft_1d_real_d.cpp
 ./src/1d_real/hhfft_1d_real_setter_d.cpp
 ./src/1d_real/hhfft_1d_real_plain_d.cpp
 ./src/1d_real/hhfft_1d_real_sse2_d.cpp
+./src/1d_real/hhfft_1d_real_setter_f.cpp
+./src/1d_real/hhfft_1d_real_plain_f.cpp
+./src/1d_real/hhfft_1d_real_sse2_f.cpp
 ./src/hhfft_2d_real_d.cpp
 ./src/2d_real/hhfft_2d_real_setter_d.cpp
 ./src/2d_real/hhfft_2d_real_plain_d.cpp
 ./src/2d_real/hhfft_2d_real_sse2_d.cpp
+./src/2d_real/hhfft_2d_real_setter_f.cpp
+./src/2d_real/hhfft_2d_real_plain_f.cpp
+./src/2d_real/hhfft_2d_real_sse2_f.cpp
 ./src/raders/raders_d.cpp
 )
 
@@ -46,6 +58,14 @@ if(COMPILER_SUPPORTS_AVX)
     set_source_files_properties(./src/1d_real/hhfft_1d_real_avx_d.cpp PROPERTIES COMPILE_FLAGS -mavx)
     set(SRC_LIST ${SRC_LIST} ./src/2d_real/hhfft_2d_real_avx_d.cpp)
     set_source_files_properties(./src/2d_real/hhfft_2d_real_avx_d.cpp PROPERTIES COMPILE_FLAGS -mavx)
+    set(SRC_LIST ${SRC_LIST} ./src/1d_complex/hhfft_1d_complex_avx_f.cpp)
+    set_source_files_properties(./src/1d_complex/hhfft_1d_complex_avx_f.cpp PROPERTIES COMPILE_FLAGS -mavx)
+    set(SRC_LIST ${SRC_LIST} ./src/2d_complex/hhfft_2d_complex_avx_f.cpp)
+    set_source_files_properties(./src/2d_complex/hhfft_2d_complex_avx_f.cpp PROPERTIES COMPILE_FLAGS -mavx)
+    set(SRC_LIST ${SRC_LIST} ./src/1d_real/hhfft_1d_real_avx_f.cpp)
+    set_source_files_properties(./src/1d_real/hhfft_1d_real_avx_f.cpp PROPERTIES COMPILE_FLAGS -mavx)
+    set(SRC_LIST ${SRC_LIST} ./src/2d_real/hhfft_2d_real_avx_f.cpp)
+    set_source_files_properties(./src/2d_real/hhfft_2d_real_avx_f.cpp PROPERTIES COMPILE_FLAGS -mavx)
     add_definitions(-DHHFFT_COMPILED_WITH_AVX=1)
 endif()
 
