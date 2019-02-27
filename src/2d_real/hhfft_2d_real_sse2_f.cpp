@@ -153,7 +153,7 @@ template<bool forward>
     {
         size_t j = 0;
 
-        // First use avx
+        // First use sse2
         for (j = 2; j + 2 < m/2; j+=4)
         {
             ComplexF2 sssc = load_F2(packing_table + j);
@@ -174,7 +174,7 @@ template<bool forward>
             store_two_64_F2(x1_out, data_out + i*m + (m-j), data_out + i*m + (m-j) - 2);
         }
 
-        // Then, if needed use sse2
+        // Then, if needed use shorter
         if (j < m/2)
         {
             ComplexF sssc = load_F(packing_table + j);
@@ -255,7 +255,7 @@ void fft_2d_real_reorder2_inverse_sse2_f(const float *data_in, float *data_out,c
             }
         }
 
-        // Second column using SSE (Better alignment for AVX)
+        // Second column using shorter
         size_t k = 1;
         if (k < m)
         {
@@ -285,7 +285,7 @@ void fft_2d_real_reorder2_inverse_sse2_f(const float *data_in, float *data_out,c
             }
         }
 
-        // Then use 256-bit variables as many times as possible
+        // Then use 128-bit variables as many times as possible
         for (k = 2; k+1 < m; k+=2)
         {
             // Initialize raders data with zeros
@@ -444,7 +444,7 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_reorder_first_column_ss
     else
         data_raders = allocate_raders_F2<radix_type>(raders);
 
-    // First use AVX
+    // First use sse2
     size_t i = 0;
     for (; i + 1 < repeats; i+=2)
     {
@@ -476,7 +476,7 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_reorder_first_column_ss
         }
     }
 
-    // Then use sse2 if needed
+    // Then use shorter if needed
     if (i < repeats)
     {
         // Initialize raders data with zeros
@@ -529,7 +529,7 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_reorder_columns_sse2_f(
     {
         // all columns, skip the first one as it is processed in temp variable
 
-        // First use avx
+        // First use sse2
         size_t j = 1;
         for (; j + 1 < m2; j+=2)
         {
@@ -603,7 +603,7 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_reorder_columns_sse2_f(
             }
         }
 
-        // Then use sse2 if needed
+        // Then use shorter if needed
         if (j < m2)
         {
             // Initialize raders data with zeros

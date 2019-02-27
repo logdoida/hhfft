@@ -39,6 +39,7 @@ inline ComplexF load_F(float r, float i)
 inline ComplexF load_F(const float *v)
 {    
     ComplexF x = _mm_setzero_ps();
+    // Note according to intriniscs guide, memory address does not need to be aligned
     return _mm_loadl_pi(x, (const __m64*) v);
 }
 inline ComplexF broadcast32_F(float x)
@@ -60,7 +61,7 @@ inline void store_F(ComplexF val, float &r, float &i)
 }
 inline void store_F(ComplexF val, float *v)
 {
-    // NOTE it is assumed that memory is alway 64-bit aligned, so this pointer will also be like that!
+    // It is assumed that there is no requirement for alignment, similar to _mm_loadl_pi
     _mm_storel_pi((__m64*) v, val);
 }
 // Store only real part
@@ -1025,7 +1026,7 @@ inline ComplexF4 change_sign_F4(ComplexF4 a, ComplexF4 s)
 
 
 const ComplexF4 const1_F4 = load_F4(0.0f, -0.0f, 0.0f, -0.0f, 0.0f, -0.0f, 0.0f, -0.0f);
-//const ComplexF4 const2_F4 = load_F4(-0.0f, 0.0f, -0.0f, 0.0f);
+//const ComplexF4 const2_F4 = load_F4(-0.0f, 0.0f, -0.0f, 0.0f, -0.0f, 0.0f, -0.0f, 0.0f);
 
 // Multiplies complex numbers. If other of them changes more frequently, set it to b.
 inline ComplexF4 mul_F4(ComplexF4 a, ComplexF4 b)

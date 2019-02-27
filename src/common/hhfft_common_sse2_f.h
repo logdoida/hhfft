@@ -39,6 +39,7 @@ inline ComplexF load_F(float r, float i)
 inline ComplexF load_F(const float *v)
 {    
     ComplexF x = _mm_setzero_ps();
+    // Note according to intriniscs guide, memory address does not need to be aligned
     return _mm_loadl_pi(x, (const __m64*) v);
 }
 inline ComplexF broadcast32_F(float x)
@@ -60,6 +61,7 @@ inline void store_F(ComplexF val, float &r, float &i)
 }
 inline void store_F(ComplexF val, float *v)
 {
+    // It is assumed that there is no requirement for alignment, similar to _mm_loadl_pi
     _mm_storel_pi((__m64*) v, val);
 }
 // Store only real part

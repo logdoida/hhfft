@@ -27,6 +27,7 @@
 #include "../raders/raders_avx_f.h"
 
 const ComplexF const2_F = load_F(-0.0f, 0.0f);
+const ComplexF4 const2_F4 = load_F4(-0.0f, 0.0f, -0.0f, 0.0f, -0.0f, 0.0f, -0.0f, 0.0f);
 
 using namespace hhfft;
 
@@ -66,11 +67,19 @@ void fft_2d_complex_to_complex_packed_first_column_avx_f(const float *data_in, f
     {
         size_t i2 = n - i - 1;
         size_t j = 0;
-        for (j = 0; j + 2 < m; j+=4)
+        for (j = 0; j + 6 < m; j+=8)
+        {
+            size_t j2 = m - j - 8;
+            ComplexF4 x = load_F4(data_out + i2*m + j2);
+            store_F4(x, data_out + i2*m2 + j2);
+        }
+
+        if (j + 2 < m)
         {
             size_t j2 = m - j - 4;
             ComplexF2 x = load_F2(data_out + i2*m + j2);
             store_F2(x, data_out + i2*m2 + j2);
+            j+=4;
         }
 
         if (j < m)
@@ -154,7 +163,29 @@ template<bool forward>
         size_t j = 0;
 
         // First use avx
-        for (j = 2; j + 2 < m/2; j+=4)
+        for (j = 2; j + 6 < m/2; j+=8)
+        {
+            ComplexF4 sssc = load_F4(packing_table + j);
+            if (!forward)
+            {
+                sssc = change_sign_F4(sssc, const1_F4);
+            }
+            ComplexF4 x0_in = load_F4(data_out + i*m + j);
+            float *ptr = data_out + i*m + (m-j);
+            ComplexF4 x1_in = load_four_64_F4(ptr, ptr - 2, ptr - 4, ptr - 6); // NOTE other option is to load ptr-6 and swap order
+
+            ComplexF4 temp0 = x0_in + change_sign_F4(x1_in, const2_F4);
+            ComplexF4 temp1 = mul_F4(sssc, temp0);
+
+            ComplexF4 x0_out = temp1 + x0_in;
+            ComplexF4 x1_out = change_sign_F4(temp1, const2_F4) + x1_in;
+
+            store_F4(x0_out, data_out + i*m + j);
+            store_four_64_F4(x1_out, ptr, ptr - 2, ptr - 4, ptr - 6); // NOTE other option is to swap order and store ptr-6
+        }
+
+        // First use sse2
+        if (j + 2 < m/2)
         {
             ComplexF2 sssc = load_F2(packing_table + j);
             if (!forward)
@@ -172,9 +203,10 @@ template<bool forward>
 
             store_F2(x0_out, data_out + i*m + j);
             store_two_64_F2(x1_out, data_out + i*m + (m-j), data_out + i*m + (m-j) - 2);
+            j+=4;
         }
 
-        // Then, if needed use sse2
+        // Then, if needed use shorter
         if (j < m/2)
         {
             ComplexF sssc = load_F(packing_table + j);
@@ -206,12 +238,20 @@ void fft_2d_real_reorder2_inverse_avx_f(const float *data_in, float *data_out,co
     uint32_t *reorder_table_columns = step_info.reorder_table;
     size_t reorder_table_size = step_info.reorder_table_size;
     ComplexF norm_factor = broadcast32_F(step_info.norm_factor);
-    ComplexF2 norm_factor_256 = broadcast32_F2(step_info.norm_factor);
+    ComplexF2 norm_factor_128 = broadcast32_F2(step_info.norm_factor);
+    ComplexF4 norm_factor_256 = broadcast32_F4(step_info.norm_factor);
     const hhfft::RadersF &raders = *step_info.raders;
     size_t radix = get_actual_radix<radix_type>(raders);
 
     // Allocate memory for Rader's algorithm if needed (m should always be > 1)
-    float *data_raders = allocate_raders_F2<radix_type>(raders);
+    float *data_raders;
+    if (m < 4)
+    {
+        data_raders = allocate_raders_F2<radix_type>(raders);
+    } else
+    {
+        data_raders = allocate_raders_F4<radix_type>(raders);
+    }
 
     for (size_t i = 0; i < repeats; i++)
     {
@@ -255,9 +295,9 @@ void fft_2d_real_reorder2_inverse_avx_f(const float *data_in, float *data_out,co
             }
         }
 
-        // Second column using SSE (Better alignment for AVX)
-        size_t k = 1;
-        if (k < m)
+        // Next three columns using 64-bit variables (Better alignment for AVX)
+        size_t k = 1;        
+        for (k = 1; k < m && k < 4; k++)
         {
             // Initialize raders data with zeros
             init_coeff_F<radix_type>(data_raders, raders);
@@ -286,7 +326,36 @@ void fft_2d_real_reorder2_inverse_avx_f(const float *data_in, float *data_out,co
         }
 
         // Then use 256-bit variables as many times as possible
-        for (k = 2; k+1 < m; k+=2)
+        for (k = 4; k+3 < m; k+=4)
+        {
+            // Initialize raders data with zeros
+            init_coeff_F4<radix_type>(data_raders, raders);
+
+            ComplexF4 x_temp_in[radix_type];
+            ComplexF4 x_temp_out[radix_type];
+
+            // Copy input data (squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                size_t j1 = i*radix + j;
+                size_t j2 = reorder_table_columns[reorder_table_size - j1 - 1];
+                ComplexF4 x = norm_factor_256*load_F4(data_in + 2*j2*m2 + 2*k);
+                set_value_F4<radix_type>(x_temp_in, data_raders, j, raders, x);
+            }
+
+            // Multiply with coefficients
+            multiply_coeff_forward_F4<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
+
+            // Copy output data (un-squeeze)
+            for (size_t j = 0; j < radix; j++)
+            {
+                ComplexF4 x = get_value_F4<radix_type>(x_temp_out, data_raders, j, raders);
+                store_F4(x, data_out + 2*i*radix*m + 2*j*m + 2*k);
+            }
+        }
+
+        // Use 128-bit variables if needed
+        if (k+1 < m)
         {
             // Initialize raders data with zeros
             init_coeff_F2<radix_type>(data_raders, raders);
@@ -299,7 +368,7 @@ void fft_2d_real_reorder2_inverse_avx_f(const float *data_in, float *data_out,co
             {
                 size_t j1 = i*radix + j;
                 size_t j2 = reorder_table_columns[reorder_table_size - j1 - 1];
-                ComplexF2 x = norm_factor_256*load_F2(data_in + 2*j2*m2 + 2*k);
+                ComplexF2 x = norm_factor_128*load_F2(data_in + 2*j2*m2 + 2*k);
                 set_value_F2<radix_type>(x_temp_in, data_raders, j, raders, x);
             }
 
@@ -312,8 +381,10 @@ void fft_2d_real_reorder2_inverse_avx_f(const float *data_in, float *data_out,co
                 ComplexF2 x = get_value_F2<radix_type>(x_temp_out, data_raders, j, raders);
                 store_F2(x, data_out + 2*i*radix*m + 2*j*m + 2*k);
             }
+            k+=2;
         }
 
+        // Use 64-bit variables if needed
         if (k < m)
         {
             // Initialize raders data with zeros
@@ -444,7 +515,7 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_reorder_first_column_av
     else
         data_raders = allocate_raders_F2<radix_type>(raders);
 
-    // First use AVX
+    // First use 128-bit variables
     size_t i = 0;
     for (; i + 1 < repeats; i+=2)
     {
@@ -476,7 +547,7 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_reorder_first_column_av
         }
     }
 
-    // Then use sse2 if needed
+    // Then use 64-bit variables if needed
     if (i < repeats)
     {
         // Initialize raders data with zeros

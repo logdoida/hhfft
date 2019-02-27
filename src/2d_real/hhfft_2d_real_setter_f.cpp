@@ -1,5 +1,5 @@
 /*
-*   Copyright Jouko Kalmari 2017-2018
+*   Copyright Jouko Kalmari 2017-2019
 *
 *   This file is part of HHFFT.
 *
@@ -236,7 +236,7 @@ template<RadixType radix_type> void set_instruction_set_2d_real_f(StepInfoF &ste
 
 #ifdef HHFFT_COMPILED_WITH_AVX
     if (instruction_set == hhfft::InstructionSet::avx)
-    {        
+    {
         step_info.step_function = fft_2d_real_reorder2_inverse_avx_f<radix_type>;
     }
 #endif
@@ -331,7 +331,7 @@ namespace hhfft
         }
 
         if (step_info.radix != 1 && !step_info.forward)
-        {
+        {            
             set_radix_2d_real_f(step_info, instruction_set);
         }
 

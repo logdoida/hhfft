@@ -26,8 +26,6 @@
 #include "../common/hhfft_common_avx_f.h"
 #include "../raders/raders_avx_f.h"
 
-#include <iostream> // TESTING
-
 using namespace hhfft;
 
 const ComplexF const2_F = load_F(-0.0f, 0.0f);
