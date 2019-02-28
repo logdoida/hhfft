@@ -9,35 +9,35 @@ set(SRC_LIST
 ./src/architecture.cpp
 ./src/aligned_arrays.cpp
 ./src/utilities.cpp
-./src/hhfft_1d_d.cpp
-./src/1d_complex/hhfft_1d_complex_d.cpp
+./src/hhfft_1d.cpp
+./src/1d_complex/hhfft_1d_complex_setter_d.cpp
 ./src/1d_complex/hhfft_1d_complex_plain_d.cpp
 ./src/1d_complex/hhfft_1d_complex_sse2_d.cpp
-./src/1d_complex/hhfft_1d_complex_f.cpp
+./src/1d_complex/hhfft_1d_complex_setter_f.cpp
 ./src/1d_complex/hhfft_1d_complex_plain_f.cpp
 ./src/1d_complex/hhfft_1d_complex_sse2_f.cpp
-./src/hhfft_2d_d.cpp
-./src/2d_complex/hhfft_2d_complex_d.cpp
+./src/hhfft_2d.cpp
+./src/2d_complex/hhfft_2d_complex_setter_d.cpp
 ./src/2d_complex/hhfft_2d_complex_plain_d.cpp
 ./src/2d_complex/hhfft_2d_complex_sse2_d.cpp
-./src/2d_complex/hhfft_2d_complex_f.cpp
+./src/2d_complex/hhfft_2d_complex_setter_f.cpp
 ./src/2d_complex/hhfft_2d_complex_plain_f.cpp
 ./src/2d_complex/hhfft_2d_complex_sse2_f.cpp
-./src/hhfft_1d_real_d.cpp
+./src/hhfft_1d_real.cpp
 ./src/1d_real/hhfft_1d_real_setter_d.cpp
 ./src/1d_real/hhfft_1d_real_plain_d.cpp
 ./src/1d_real/hhfft_1d_real_sse2_d.cpp
 ./src/1d_real/hhfft_1d_real_setter_f.cpp
 ./src/1d_real/hhfft_1d_real_plain_f.cpp
 ./src/1d_real/hhfft_1d_real_sse2_f.cpp
-./src/hhfft_2d_real_d.cpp
+./src/hhfft_2d_real.cpp
 ./src/2d_real/hhfft_2d_real_setter_d.cpp
 ./src/2d_real/hhfft_2d_real_plain_d.cpp
 ./src/2d_real/hhfft_2d_real_sse2_d.cpp
 ./src/2d_real/hhfft_2d_real_setter_f.cpp
 ./src/2d_real/hhfft_2d_real_plain_f.cpp
 ./src/2d_real/hhfft_2d_real_sse2_f.cpp
-./src/raders/raders_d.cpp
+./src/raders/raders.cpp
 )
 
 # All files are compiled with atleast these flags
@@ -91,12 +91,12 @@ target_link_libraries(hhfft_test2 ${PROJECT_NAME})
 #Installation rules
 install (TARGETS hhfft DESTINATION lib)
 install (FILES
-./src/hhfft_1d_d.h
-./src/hhfft_1d_real_d.h
-./src/hhfft_2d_d.h
-./src/hhfft_2d_real_d.h
+./src/hhfft_1d.h
+./src/hhfft_1d_real.h
+./src/hhfft_2d.h
+./src/hhfft_2d_real.h
 ./src/architecture.h
 ./src/step_info.h
 ./src/aligned_arrays.h
-./src/raders_d.h
+./src/raders.h
 DESTINATION include)

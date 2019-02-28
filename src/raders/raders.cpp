@@ -1,5 +1,5 @@
 /*
-*   Copyright Jouko Kalmari 2017-2018
+*   Copyright Jouko Kalmari 2017-2019
 *
 *   This file is part of HHFFT.
 *
@@ -25,7 +25,7 @@
 #include "architecture.h"
 #include "utilities.h"
 
-#include "raders_d.h"
+#include "raders.h"
 #include "1d_complex/hhfft_1d_complex_setter.h"
 
 using namespace hhfft;

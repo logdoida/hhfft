@@ -1,5 +1,5 @@
 /*
-*   Copyright Jouko Kalmari 2017-2018
+*   Copyright Jouko Kalmari 2017-2019
 *
 *   This file is part of HHFFT.
 *
@@ -25,7 +25,7 @@
 #include "architecture.h"
 #include "utilities.h"
 
-#include "hhfft_1d_real_d.h"
+#include "hhfft_1d_real.h"
 #include "1d_complex/hhfft_1d_complex_setter.h"
 #include "1d_real/hhfft_1d_real_setter.h"
 

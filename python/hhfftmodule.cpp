@@ -1,5 +1,5 @@
 /*
-*   Copyright Jouko Kalmari 2018
+*   Copyright Jouko Kalmari 2018-2019
 *
 *   This file is part of HHFFT.
 *
@@ -26,10 +26,10 @@
 #include "numpy/utils.h"
 
 // HHFFT includes
-#include "hhfft_1d_d.h"
-#include "hhfft_1d_real_d.h"
-#include "hhfft_2d_d.h"
-#include "hhfft_2d_real_d.h"
+#include "hhfft_1d.h"
+#include "hhfft_1d_real.h"
+#include "hhfft_2d.h"
+#include "hhfft_2d_real.h"
 
 
 // HHFFT objects

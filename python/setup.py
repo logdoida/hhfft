@@ -6,7 +6,7 @@ module = Extension('hhfft',
       libraries = ['hhfft'])
 
 setup (name = 'HHFFT', 
-      version = '0.2.2',
+      version = '0.4.0',
       author = 'Jouko Kalmari',
       url = 'https://github.com/logdoida/hhfft/',
       description = 'Fast Fourier Transform (FFT) package',

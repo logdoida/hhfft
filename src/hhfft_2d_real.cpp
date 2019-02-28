@@ -25,8 +25,8 @@
 #include "architecture.h"
 #include "utilities.h"
 
-#include "hhfft_2d_real_d.h"
-#include "hhfft_1d_real_d.h"
+#include "hhfft_2d_real.h"
+#include "hhfft_1d_real.h"
 
 #include "1d_complex/hhfft_1d_complex_setter.h"
 #include "2d_complex/hhfft_2d_complex_setter.h"

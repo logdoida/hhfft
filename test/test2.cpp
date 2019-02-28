@@ -1,5 +1,5 @@
 /*
-*   Copyright Jouko Kalmari 2017-2018
+*   Copyright Jouko Kalmari 2017-2019
 *
 *   This file is part of HHFFT.
 *
@@ -26,7 +26,7 @@
 #include <ctime>
 #include <cmath>
 
-#include "hhfft_2d_d.h"
+#include "hhfft_2d.h"
 
 using namespace hhfft;
 

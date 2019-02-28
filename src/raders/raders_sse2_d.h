@@ -1,5 +1,5 @@
 /*
-*   Copyright Jouko Kalmari 2017-2018
+*   Copyright Jouko Kalmari 2017-2019
 *
 *   This file is part of HHFFT.
 *
@@ -19,7 +19,7 @@
 
 // This header contains inline functions used in Rader's algorithm and wrappers that allow using it
 
-#include "raders_d.h"
+#include "raders.h"
 #include "../common/hhfft_common_sse2_d.h"
 
 

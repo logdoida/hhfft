@@ -1,5 +1,5 @@
 /*
-*   Copyright Jouko Kalmari 2017-2018
+*   Copyright Jouko Kalmari 2017-2019
 *
 *   This file is part of HHFFT.
 *
@@ -23,7 +23,7 @@
 #include <vector>
 #include <random>
 
-#include "hhfft_2d_real_d.h"
+#include "hhfft_2d_real.h"
 
 using namespace hhfft;
 
