@@ -25,6 +25,7 @@
 
 #include "../common/hhfft_common_avx_d.h"
 #include "../raders/raders_avx_d.h"
+#include "../common/hhfft_common_complex_d.h"
 
 using namespace hhfft;
 
@@ -143,12 +144,8 @@ template<RadixType radix_type>
 template<RadixType radix_type, bool forward>
     inline __attribute__((always_inline)) void fft_1d_complex_avx_d_internal_stride1_reorder(const double *data_in, double *data_out, size_t repeats, const hhfft::StepInfo<double> &step_info)
 {
-    size_t i = 0;
-    uint32_t *reorder_table = step_info.reorder_table;
-    double k = step_info.norm_factor;
-    const hhfft::RadersD &raders = *step_info.raders;
-    size_t radix = get_actual_radix<radix_type>(raders);
-    size_t reorder_table_size = step_info.reorder_table_size;
+    size_t i = 0;    
+    const hhfft::RadersD &raders = *step_info.raders;    
 
     // Amount of Raders memory needed depends on repeats
     double *data_raders = nullptr;
@@ -157,84 +154,16 @@ template<RadixType radix_type, bool forward>
     else
         data_raders = allocate_raders_D<radix_type>(raders);
 
-    // First use 256-bit variables
-    ComplexD2 x_temp_in[radix_type];
-    ComplexD2 x_temp_out[radix_type];
+    // First use 256-bit variables    
     for (i = 0; i+1 < repeats; i+=2)
     {
-        // Initialize raders data with zeros
-        init_coeff_D2<radix_type>(data_raders, raders);
-
-        for (size_t j = 0; j < radix; j++)
-        {
-            size_t i2 = i*radix + j;
-            size_t ind0, ind1;
-            if (forward)
-            {
-                ind0 = reorder_table[i2];
-                ind1 = reorder_table[i2 + radix];
-            } else
-            {
-                ind0 = reorder_table[reorder_table_size - i2 - 1];
-                ind1 = reorder_table[reorder_table_size - i2 - radix - 1];
-            }
-            ComplexD2 x = load_two_128_D2(data_in + 2*ind0, data_in + 2*ind1);
-            set_value_D2<radix_type>(x_temp_in, data_raders, j, raders, x);
-        }
-
-        // Multiply with coefficients
-        multiply_coeff_forward_D2<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-        // Save output to two memory locations.
-        for (size_t j = 0; j < radix; j++)
-        {
-            size_t ind0 = i*radix + j;
-            size_t ind1 = i*radix + radix + j;
-            ComplexD2 x = get_value_D2<radix_type>(x_temp_out, data_raders, j, raders);
-            if (!forward)
-            {
-                x = k*x;
-            }
-            store_two_128_D2(x, data_out + 2*ind0, data_out + 2*ind1);
-        }
+        fft_common_complex_stride1_reorder_2d<radix_type, forward>(data_in, data_out, data_raders, i, step_info);
     }
 
     // Then, if necessary, use 128-bit variables
     if (i < repeats)
     {
-        // Initialize raders data with zeros
-        init_coeff_D<radix_type>(data_raders, raders);
-
-        ComplexD x_temp_in[radix_type];
-        ComplexD x_temp_out[radix_type];
-
-        // Copy input data taking reordering into account
-        for (size_t j = 0; j < radix; j++)
-        {
-            size_t i2 = i*radix + j;
-
-            if (forward)
-            {
-                size_t ind = reorder_table[i2];
-                ComplexD x = load_D(data_in + 2*ind);
-                set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
-            } else
-            {
-                size_t ind = reorder_table[reorder_table_size - i2 - 1];
-                ComplexD x = k*load_D(data_in + 2*ind);
-                set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
-            }
-        }
-
-        // Multiply with coefficients        
-        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-        // Save output to two memory locations.
-        for (size_t j = 0; j < radix; j++)
-        {
-            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);            
-            store_D(x, data_out + 2*i*radix + 2*j);
-        }
+        fft_common_complex_stride1_reorder_d<radix_type, forward>(data_in, data_out, data_raders, i, step_info);
     }
 
     // Free temporary memory
@@ -510,10 +439,6 @@ template<RadixType radix_type, SizeType stride_type>
         }
     }
 
-    // NOTE slightly more performance could be gain by this
-    //if (strid_type is divisible by 2)
-    //    return;
-
     // Then, if necassery, use 128-bit variables
     if (k < stride)
     {
@@ -582,10 +507,6 @@ template<RadixType radix_type, SizeType stride_type>
             }
         }
     }
-
-    //NOTE slightly more performance could be gain by this
-    //if (stride_type is divisible by 2)
-    //    return;    
 
     // Then, if necassery, use 128-bit variables
     if (k < stride)

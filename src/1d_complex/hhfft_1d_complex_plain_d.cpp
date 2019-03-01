@@ -25,6 +25,7 @@
 
 #include "../common/hhfft_common_plain_d.h"
 #include "../raders/raders_plain_d.h"
+#include "../common/hhfft_common_complex_d.h"
 
 using namespace hhfft;
 
@@ -107,51 +108,13 @@ template<RadixType radix_type, bool forward>
     inline __attribute__((always_inline)) void fft_1d_complex_plain_d_internal_stride1_reorder(const double *data_in, double *data_out, size_t repeats, const hhfft::StepInfo<double> &step_info)
 {
     const hhfft::RadersD &raders = *step_info.raders;
-    size_t radix = get_actual_radix<radix_type>(raders);
-    uint32_t *reorder_table = step_info.reorder_table;
-    ComplexD k = broadcast64_D(step_info.norm_factor);
-    size_t reorder_table_size = step_info.reorder_table_size;
-
-    ComplexD x_temp_in[radix_type];
-    ComplexD x_temp_out[radix_type];
 
     // Allocate memory for Rader's algorithm if needed
     double *data_raders = allocate_raders_D<radix_type>(raders);
 
     for (size_t i = 0; i < repeats; i++)
-    {
-        // Initialize raders data with zeros
-        init_coeff_D<radix_type>(data_raders, raders);
-
-        // Copy input data taking reordering into account
-        for (size_t j = 0; j < radix; j++)
-        {
-            size_t i2 = i*radix + j;
-            size_t ind;
-            if (forward)
-            {
-                ind = reorder_table[i2];
-            } else
-            {
-                ind = reorder_table[reorder_table_size - i2 - 1];
-            }
-            ComplexD x = load_D(data_in + 2*ind);
-            set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
-        }
-
-        // Multiply with coefficients
-        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-        // Save output to two memory locations.
-        for (size_t j = 0; j < radix; j++)
-        {
-            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
-            if (!forward)
-            {
-                x = k*x;
-            }
-            store_D(x, data_out + 2*i*radix + 2*j);
-        }
+    {        
+        fft_common_complex_stride1_reorder_d<radix_type, forward>(data_in, data_out, data_raders, i, step_info);
     }
 
     // Free temporary memory
