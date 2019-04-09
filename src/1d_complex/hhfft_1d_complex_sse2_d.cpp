@@ -108,13 +108,17 @@ template<RadixType radix_type, bool forward>
     inline __attribute__((always_inline)) void fft_1d_complex_sse2_d_internal_stride1_reorder(const double *data_in, double *data_out, size_t repeats, const hhfft::StepInfo<double> &step_info)
 {
     const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
+    ComplexD k = broadcast64_D(step_info.norm_factor);
+    uint32_t *reorder_table = step_info.reorder_table;
+    size_t reorder_table_size = step_info.reorder_table_size;
 
     // Allocate memory for Rader's algorithm if needed
     double *data_raders = allocate_raders_D<radix_type>(raders);
 
     for (size_t i = 0; i < repeats; i++)
     {
-        fft_common_complex_stride1_reorder_d<radix_type, forward>(data_in, data_out, data_raders, i, step_info);
+        fft_common_complex_stride1_reorder_d<radix_type, forward>(data_in, data_out, data_raders, reorder_table, k, radix, reorder_table_size, raders, i);
     }
 
     // Free temporary memory

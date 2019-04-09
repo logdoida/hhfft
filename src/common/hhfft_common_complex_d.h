@@ -27,14 +27,8 @@ using namespace hhfft;
 // Functions that can be used in any implementation
 
 template<RadixType radix_type, bool forward> inline __attribute__((always_inline))
-   void fft_common_complex_stride1_reorder_d(const double *data_in, double *data_out, double *data_raders, size_t i, const hhfft::StepInfo<double> &step_info)
+   void fft_common_complex_stride1_reorder_d(const double *data_in, double *data_out, double *data_raders, uint32_t *reorder_table, ComplexD k, size_t radix, size_t reorder_table_size, const hhfft::RadersD &raders, size_t i)
 {
-    uint32_t *reorder_table = step_info.reorder_table;
-    ComplexD k = broadcast64_D(step_info.norm_factor);
-    const hhfft::RadersD &raders = *step_info.raders;
-    size_t radix = get_actual_radix<radix_type>(raders);
-    size_t reorder_table_size = step_info.reorder_table_size;
-
     // Initialize raders data with zeros
     init_coeff_D<radix_type>(data_raders, raders);
 
@@ -74,14 +68,8 @@ template<RadixType radix_type, bool forward> inline __attribute__((always_inline
 #ifdef HHFFT_COMMON_AVX_D
 
 template<RadixType radix_type, bool forward> inline __attribute__((always_inline))
-   void fft_common_complex_stride1_reorder_2d(const double *data_in, double *data_out, double *data_raders, size_t i, const hhfft::StepInfo<double> &step_info)
+   void fft_common_complex_stride1_reorder_2d(const double *data_in, double *data_out, double *data_raders, uint32_t *reorder_table, ComplexD2 k, size_t radix, size_t reorder_table_size, const hhfft::RadersD &raders, size_t i)
 {
-    uint32_t *reorder_table = step_info.reorder_table;    
-    ComplexD2 k = broadcast64_D2(step_info.norm_factor);
-    const hhfft::RadersD &raders = *step_info.raders;
-    size_t radix = get_actual_radix<radix_type>(raders);
-    size_t reorder_table_size = step_info.reorder_table_size;
-
     ComplexD2 x_temp_in[radix_type];
     ComplexD2 x_temp_out[radix_type];
 

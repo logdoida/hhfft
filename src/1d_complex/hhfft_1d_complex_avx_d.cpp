@@ -145,7 +145,12 @@ template<RadixType radix_type, bool forward>
     inline __attribute__((always_inline)) void fft_1d_complex_avx_d_internal_stride1_reorder(const double *data_in, double *data_out, size_t repeats, const hhfft::StepInfo<double> &step_info)
 {
     size_t i = 0;    
-    const hhfft::RadersD &raders = *step_info.raders;    
+    const hhfft::RadersD &raders = *step_info.raders;
+    size_t radix = get_actual_radix<radix_type>(raders);
+    ComplexD k = broadcast64_D(step_info.norm_factor);
+    ComplexD2 k2 = broadcast64_D2(step_info.norm_factor);
+    uint32_t *reorder_table = step_info.reorder_table;
+    size_t reorder_table_size = step_info.reorder_table_size;
 
     // Amount of Raders memory needed depends on repeats
     double *data_raders = nullptr;
@@ -157,13 +162,13 @@ template<RadixType radix_type, bool forward>
     // First use 256-bit variables    
     for (i = 0; i+1 < repeats; i+=2)
     {
-        fft_common_complex_stride1_reorder_2d<radix_type, forward>(data_in, data_out, data_raders, i, step_info);
+        fft_common_complex_stride1_reorder_2d<radix_type, forward>(data_in, data_out, data_raders, reorder_table, k2, radix, reorder_table_size, raders, i);
     }
 
     // Then, if necessary, use 128-bit variables
     if (i < repeats)
     {
-        fft_common_complex_stride1_reorder_d<radix_type, forward>(data_in, data_out, data_raders, i, step_info);
+        fft_common_complex_stride1_reorder_d<radix_type, forward>(data_in, data_out, data_raders, reorder_table, k, radix, reorder_table_size, raders, i);
     }
 
     // Free temporary memory
