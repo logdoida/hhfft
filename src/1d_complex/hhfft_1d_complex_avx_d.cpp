@@ -162,7 +162,7 @@ template<RadixType radix_type, bool forward>
     // First use 256-bit variables    
     for (i = 0; i+1 < repeats; i+=2)
     {
-        fft_common_complex_stride1_reorder_2d<radix_type, forward>(data_in, data_out, data_raders, reorder_table, k2, radix, reorder_table_size, raders, i);
+        fft_common_complex_stride1_reorder_d2<radix_type, forward>(data_in, data_out, data_raders, reorder_table, k2, radix, reorder_table_size, raders, i);
     }
 
     // Then, if necessary, use 128-bit variables
@@ -274,7 +274,7 @@ template<RadixType radix_type>
     free_raders_D<radix_type>(raders, data_raders);
 }
 
-    // To be used when stride is more than 1 and reordering is done after ifft
+// To be used when stride is more than 1 and reordering is done after ifft
 template<RadixType radix_type>
     inline __attribute__((always_inline)) void fft_1d_complex_avx_d_internal_striden_reorder_inverse(const double *data_in, double *data_out, size_t stride, const hhfft::StepInfo<double> &step_info)
 {
@@ -415,60 +415,17 @@ template<RadixType radix_type, SizeType stride_type>
     size_t k = 0;
     size_t radix = get_actual_radix<radix_type>(raders);
 
-    // First use 256-bit variables
+    // First use 256-bit variables    
+    for (k = 0; k+1 < stride; k+=2)
     {
-        ComplexD2 x_temp_in[radix_type];
-        ComplexD2 x_temp_out[radix_type];
-
-        for (k = 0; k+1 < stride; k+=2)
-        {
-            // Initialize raders data with zeros
-            init_coeff_D2<radix_type>(data_raders, raders);
-
-            // Copy input data (squeeze)
-            for (size_t j = 0; j < radix; j++)
-            {
-                ComplexD2 x = load_D2(data_in + 2*k + 2*j*stride);
-                set_value_D2<radix_type>(x_temp_in, data_raders, j, raders, x);
-            }
-
-            // Multiply with coefficients            
-            multiply_coeff_forward_D2<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-            // Copy output data (un-squeeze)
-            for (size_t j = 0; j < radix; j++)
-            {
-                ComplexD2 x = get_value_D2<radix_type>(x_temp_out, data_raders, j, raders);
-                store_D2(x, data_out + 2*k + 2*j*stride);
-            }
-        }
+        fft_common_complex_d2<radix_type>(data_in + 2*k, data_out + 2*k, data_raders, radix, stride, raders);
     }
+
 
     // Then, if necassery, use 128-bit variables
     if (k < stride)
     {
-        // Initialize raders data with zeros
-        init_coeff_D<radix_type>(data_raders, raders);
-
-        ComplexD x_temp_in[radix_type];
-        ComplexD x_temp_out[radix_type];
-
-        // Copy input data (squeeze)
-        for (size_t j = 0; j < radix; j++)
-        {
-            ComplexD x = load_D(data_in + 2*k + 2*j*stride);
-            set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
-        }
-
-        // Multiply with coefficients
-        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-        // Copy output data (un-squeeze)
-        for (size_t j = 0; j < radix; j++)
-        {
-            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
-            store_D(x, data_out + 2*k + 2*j*stride);
-        }    
+        fft_common_complex_d<radix_type>(data_in + 2*k, data_out + 2*k, data_raders, radix, stride, raders);
     }
 }
 
@@ -479,70 +436,16 @@ template<RadixType radix_type, SizeType stride_type>
     size_t k = 0;
     size_t radix = get_actual_radix<radix_type>(raders);
 
-    // First use 256-bit variables
+    // First use 256-bit variables    
+    for (k = 0; k+1 < stride; k+=2)
     {
-        for (k = 0; k+1 < stride; k+=2)
-        {
-            // Initialize raders data with zeros
-            init_coeff_D2<radix_type>(data_raders, raders);
-
-            ComplexD2 x_temp_in[radix_type];
-            ComplexD2 x_temp_out[radix_type];
-            ComplexD2 twiddle_temp[radix_type];
-
-            // Copy input data and multiply with twiddle factors
-            for (size_t j = 0; j < radix; j++)
-            {
-                size_t j2 = 2*k + 2*j*stride;
-                ComplexD2 x = load_D2(data_in + j2);
-                ComplexD2 w = load_D2(twiddle_factors + j2);
-                set_value_twiddle_D2<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
-            }
-
-            // Multiply with coefficients
-            multiply_twiddle_D2<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
-            multiply_coeff_forward_D2<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-            // Copy output data (un-squeeze)
-            for (size_t j = 0; j < radix; j++)
-            {
-                size_t j2 = 2*k + 2*j*stride;
-                ComplexD2 x = get_value_D2<radix_type>(x_temp_out, data_raders, j, raders);
-                store_D2(x, data_out + j2);
-            }
-        }
+        fft_common_complex_twiddle_d2<radix_type>(data_in + 2*k, data_out + 2*k, data_raders, twiddle_factors + 2*k, radix, stride, raders);
     }
 
     // Then, if necassery, use 128-bit variables
     if (k < stride)
     {
-        // Initialize raders data with zeros
-        init_coeff_D<radix_type>(data_raders, raders);
-
-        ComplexD x_temp_in[radix_type];
-        ComplexD x_temp_out[radix_type];
-        ComplexD twiddle_temp[radix_type];
-
-        // Copy input data (squeeze)
-        for (size_t j = 0; j < radix; j++)
-        {
-            size_t j2 = 2*k + 2*j*stride;
-            ComplexD x = load_D(data_in + j2);
-            ComplexD w = load_D(twiddle_factors + j2);
-            set_value_twiddle_D<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
-        }
-
-        // Multiply with coefficients
-        multiply_twiddle_D<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
-        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-        // Copy output data (un-squeeze)
-        for (size_t j = 0; j < radix; j++)
-        {
-            size_t j2 = 2*k + 2*j*stride;
-            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
-            store_D(x, data_out + j2);
-        }
+        fft_common_complex_twiddle_d<radix_type>(data_in + 2*k, data_out + 2*k, data_raders, twiddle_factors + 2*k, radix, stride, raders);
     }
 }
 

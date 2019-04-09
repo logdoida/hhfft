@@ -74,32 +74,12 @@ template<bool scale> void fft_1d_complex_reorder_sse2_d(const double *data_in, d
 
 template<RadixType radix_type>
     inline __attribute__((always_inline)) void fft_1d_complex_sse2_d_internal(const double *data_in, double *data_out, double *data_raders, const hhfft::RadersD &raders, size_t stride)
-{
-    ComplexD x_temp_in[radix_type];
-    ComplexD x_temp_out[radix_type];
+{    
     size_t radix = get_actual_radix<radix_type>(raders);
 
     for (size_t k = 0; k < stride; k++)
     {
-        // Initialize raders data with zeros
-        init_coeff_D<radix_type>(data_raders, raders);
-
-        // Copy input data (squeeze)
-        for (size_t j = 0; j < radix; j++)
-        {            
-            ComplexD x = load_D(data_in + 2*k + 2*j*stride);
-            set_value_D<radix_type>(x_temp_in, data_raders, j, raders, x);
-        }
-
-        // Multiply with coefficients        
-        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-        // Copy output data (un-squeeze)
-        for (size_t j = 0; j < radix; j++)
-        {
-            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
-            store_D(x, data_out + 2*k + 2*j*stride);
-        }
+        fft_common_complex_d<radix_type>(data_in + 2*k, data_out + 2*k, data_raders, radix, stride, raders);
     }
 }
 
@@ -245,37 +225,12 @@ template<RadixType radix_type>
 
 template<RadixType radix_type>
     inline __attribute__((always_inline)) void fft_1d_complex_twiddle_dit_sse2_d_internal(const double *data_in, double *data_out, const double *twiddle_factors, double *data_raders, const hhfft::RadersD &raders, size_t stride)
-{    
-    ComplexD x_temp_in[radix_type];
-    ComplexD x_temp_out[radix_type];
-    ComplexD twiddle_temp[radix_type];
+{
     size_t radix = get_actual_radix<radix_type>(raders);
 
     for (size_t k = 0; k < stride; k++)
     {
-        // Initialize raders data with zeros
-        init_coeff_D<radix_type>(data_raders, raders);
-
-        // Copy input data and multiply with twiddle factors
-        for (size_t j = 0; j < radix; j++)
-        {
-            size_t j2 = 2*k + 2*j*stride;
-            ComplexD x = load_D(data_in + j2);
-            ComplexD w = load_D(twiddle_factors + j2);
-            set_value_twiddle_D<radix_type>(x_temp_in, data_raders, twiddle_temp, j, raders, x, w);
-        }
-
-        // Multiply with coefficients
-        multiply_twiddle_D<radix_type,true>(x_temp_in, x_temp_in, twiddle_temp);
-        multiply_coeff_forward_D<radix_type>(x_temp_in, x_temp_out, data_raders, raders);
-
-        // Copy output data (un-squeeze)
-        for (size_t j = 0; j < radix; j++)
-        {
-            size_t j2 = 2*k + 2*j*stride;
-            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, j, raders);
-            store_D(x, data_out + j2);
-        }
+        fft_common_complex_twiddle_d<radix_type>(data_in + 2*k, data_out + 2*k, data_raders, twiddle_factors + 2*k, radix, stride, raders);
     }
 }
 
