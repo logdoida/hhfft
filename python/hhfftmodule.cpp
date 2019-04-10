@@ -37,28 +37,32 @@ typedef struct
 {
     PyObject_HEAD
     Py_ssize_t n;
-    hhfft::HHFFT_1D_D *hhfft_1d;
+    hhfft::HHFFT_1D_D *hhfft_1d_d;
+    hhfft::HHFFT_1D_F *hhfft_1d_f;
 } Hhfft1dPlanObject;
 
 typedef struct
 {
     PyObject_HEAD
     Py_ssize_t n;
-    hhfft::HHFFT_1D_REAL_D *hhfft_real_1d;
+    hhfft::HHFFT_1D_REAL_D *hhfft_real_1d_d;
+    hhfft::HHFFT_1D_REAL_F *hhfft_real_1d_f;
 } Hhfft1dRealPlanObject;
 
 typedef struct
 {
     PyObject_HEAD
     Py_ssize_t n, m;
-    hhfft::HHFFT_2D_D *hhfft_2d;
+    hhfft::HHFFT_2D_D *hhfft_2d_d;
+    hhfft::HHFFT_2D_F *hhfft_2d_f;
 } Hhfft2dPlanObject;
 
 typedef struct
 {
     PyObject_HEAD
     Py_ssize_t n, m;
-    hhfft::HHFFT_2D_REAL_D *hhfft_real_2d;
+    hhfft::HHFFT_2D_REAL_D *hhfft_real_2d_d;
+    hhfft::HHFFT_2D_REAL_F *hhfft_real_2d_f;
 } Hhfft2dRealPlanObject;
 
 // New
@@ -69,7 +73,8 @@ static PyObject *Hhfft1dPlan_new(PyTypeObject *type, PyObject *args, PyObject *k
     {
         // initialize object pointer to zero
         self->n = 0;
-        self->hhfft_1d = nullptr;
+        self->hhfft_1d_d = nullptr;
+        self->hhfft_1d_f = nullptr;
     }
     return (PyObject *) self;
 }
@@ -81,7 +86,8 @@ static PyObject *Hhfft1dRealPlan_new(PyTypeObject *type, PyObject *args, PyObjec
     {
         // initialize object pointer to zero
         self->n = 0;
-        self->hhfft_real_1d = nullptr;
+        self->hhfft_real_1d_d = nullptr;
+        self->hhfft_real_1d_f = nullptr;
     }
     return (PyObject *) self;
 }
@@ -94,7 +100,8 @@ static PyObject *Hhfft2dPlan_new(PyTypeObject *type, PyObject *args, PyObject *k
         // initialize object pointer to zero
         self->n = 0;
         self->m = 0;
-        self->hhfft_2d = nullptr;
+        self->hhfft_2d_d = nullptr;
+        self->hhfft_2d_f = nullptr;
     }
     return (PyObject *) self;
 }
@@ -107,12 +114,13 @@ static PyObject *Hhfft2dRealPlan_new(PyTypeObject *type, PyObject *args, PyObjec
         // initialize object pointer to zero
         self->n = 0;
         self->m = 0;
-        self->hhfft_real_2d = nullptr;
+        self->hhfft_real_2d_d = nullptr;
+        self->hhfft_real_2d_f = nullptr;
     }
     return (PyObject *) self;
 }
 
-static bool read_check_args(PyObject *args, PyObject *keywords, Py_ssize_t n_dims, Py_ssize_t *n)
+static bool read_check_args(PyObject *args, PyObject *keywords, Py_ssize_t n_dims, Py_ssize_t *n, bool *data_type_float)
 {
     // Descriptor is used
     PyArray_Descr* dtype = NULL;
@@ -191,18 +199,23 @@ static bool read_check_args(PyObject *args, PyObject *keywords, Py_ssize_t n_dim
     if (dtype != NULL)
     {
         PyArray_Descr *dtype_double = PyArray_DescrFromType(NPY_FLOAT64);
+        PyArray_Descr *dtype_float = PyArray_DescrFromType(NPY_FLOAT32);
         bool type_double = PyArray_EquivTypes(dtype, dtype_double);
+        bool type_float = PyArray_EquivTypes(dtype, dtype_float);
 
         // Decrement reference counters
         Py_DECREF(dtype);
         Py_DECREF(dtype_double);
+        Py_DECREF(dtype_float);
 
-        // Error if type is not 'double'
-        if (!type_double)
+        // Error if type is not 'double' or 'float'
+        if (!type_double && !type_float)
         {
-            PyErr_SetString(PyExc_ValueError, "dtype must be equivalent to np.float64");
+            PyErr_SetString(PyExc_ValueError, "dtype must be equivalent to np.float64 or np.float32");
             return false;
         }
+
+        *data_type_float = type_float;
     }
 
     return true;
@@ -212,8 +225,9 @@ static bool read_check_args(PyObject *args, PyObject *keywords, Py_ssize_t n_dim
 static int Hhfft1dPlan_init(Hhfft1dPlanObject *self, PyObject *args, PyObject *keywords)
 {
     Py_ssize_t n=0;
+    bool type_float = false;
 
-    if (!read_check_args(args, keywords, 1, &n))
+    if (!read_check_args(args, keywords, 1, &n, &type_float))
     {
         return -1;
     }
@@ -221,7 +235,13 @@ static int Hhfft1dPlan_init(Hhfft1dPlanObject *self, PyObject *args, PyObject *k
     // Initialize the HHFFT object
     try
     {
-        self->hhfft_1d = new hhfft::HHFFT_1D_D(n);
+        if (type_float)
+        {
+            self->hhfft_1d_f = new hhfft::HHFFT_1D_F(n);
+        } else 
+        {
+            self->hhfft_1d_d = new hhfft::HHFFT_1D_D(n);
+        }
     } catch (std::runtime_error &e)
     {
         PyErr_SetString(PyExc_RuntimeError, e.what());
@@ -235,8 +255,9 @@ static int Hhfft1dPlan_init(Hhfft1dPlanObject *self, PyObject *args, PyObject *k
 static int Hhfft1dRealPlan_init(Hhfft1dRealPlanObject *self, PyObject *args, PyObject *keywords)
 {
     Py_ssize_t n=0;
+    bool type_float = false;
 
-    if (!read_check_args(args, keywords, 1, &n))
+    if (!read_check_args(args, keywords, 1, &n, &type_float))
     {
         return -1;
     }
@@ -244,7 +265,13 @@ static int Hhfft1dRealPlan_init(Hhfft1dRealPlanObject *self, PyObject *args, PyO
     // Initialize the HHFFT object
     try
     {
-        self->hhfft_real_1d = new hhfft::HHFFT_1D_REAL_D(n);
+        if (type_float)
+        {
+            self->hhfft_real_1d_f = new hhfft::HHFFT_1D_REAL_F(n);
+        } else
+        {
+            self->hhfft_real_1d_d = new hhfft::HHFFT_1D_REAL_D(n);
+        }
     } catch (std::runtime_error &e)
     {
         PyErr_SetString(PyExc_RuntimeError, e.what());
@@ -258,8 +285,9 @@ static int Hhfft1dRealPlan_init(Hhfft1dRealPlanObject *self, PyObject *args, PyO
 static int Hhfft2dPlan_init(Hhfft2dPlanObject *self, PyObject *args, PyObject *keywords)
 {
     Py_ssize_t n[2];
+    bool type_float = false;
 
-    if (!read_check_args(args, keywords, 2, n))
+    if (!read_check_args(args, keywords, 2, n, &type_float))
     {
         return -1;
     }
@@ -267,7 +295,13 @@ static int Hhfft2dPlan_init(Hhfft2dPlanObject *self, PyObject *args, PyObject *k
     // Initialize the HHFFT object
     try
     {
-        self->hhfft_2d = new hhfft::HHFFT_2D_D(n[0],n[1]);
+        if (type_float)
+        {
+            self->hhfft_2d_f = new hhfft::HHFFT_2D_F(n[0],n[1]);
+        } else
+        {
+            self->hhfft_2d_d = new hhfft::HHFFT_2D_D(n[0],n[1]);
+        }
     } catch (std::runtime_error &e)
     {
         PyErr_SetString(PyExc_RuntimeError, e.what());
@@ -282,8 +316,9 @@ static int Hhfft2dPlan_init(Hhfft2dPlanObject *self, PyObject *args, PyObject *k
 static int Hhfft2dRealPlan_init(Hhfft2dRealPlanObject *self, PyObject *args, PyObject *keywords)
 {
     Py_ssize_t n[2];
+    bool type_float = false;
 
-    if (!read_check_args(args, keywords, 2, n))
+    if (!read_check_args(args, keywords, 2, n, &type_float))
     {
         return -1;
     }
@@ -291,7 +326,13 @@ static int Hhfft2dRealPlan_init(Hhfft2dRealPlanObject *self, PyObject *args, PyO
     // Initialize the HHFFT object
     try
     {
-        self->hhfft_real_2d = new hhfft::HHFFT_2D_REAL_D(n[0],n[1]);
+        if (type_float)
+        {
+            self->hhfft_real_2d_f = new hhfft::HHFFT_2D_REAL_F(n[0],n[1]);
+        } else
+        {
+            self->hhfft_real_2d_d = new hhfft::HHFFT_2D_REAL_D(n[0],n[1]);
+        }
     } catch (std::runtime_error &e)
     {
         PyErr_SetString(PyExc_RuntimeError, e.what());
@@ -307,8 +348,10 @@ static int Hhfft2dRealPlan_init(Hhfft2dRealPlanObject *self, PyObject *args, PyO
 static void Hhfft1dPlan_dealloc(Hhfft1dPlanObject *self)
 {
     // Delete the hhfft object
-    delete self->hhfft_1d;
-    self->hhfft_1d = nullptr;
+    delete self->hhfft_1d_d;
+    delete self->hhfft_1d_f;
+    self->hhfft_1d_d = nullptr;
+    self->hhfft_1d_f = nullptr;
     self->n = 0;
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
@@ -316,8 +359,10 @@ static void Hhfft1dPlan_dealloc(Hhfft1dPlanObject *self)
 static void Hhfft1dRealPlan_dealloc(Hhfft1dRealPlanObject *self)
 {
     // Delete the hhfft object
-    delete self->hhfft_real_1d;
-    self->hhfft_real_1d = nullptr;
+    delete self->hhfft_real_1d_d;
+    delete self->hhfft_real_1d_f;
+    self->hhfft_real_1d_d = nullptr;
+    self->hhfft_real_1d_f = nullptr;
     self->n = 0;
     Py_TYPE(self)->tp_free((PyObject *) self);
 }
@@ -325,8 +370,10 @@ static void Hhfft1dRealPlan_dealloc(Hhfft1dRealPlanObject *self)
 static void Hhfft2dPlan_dealloc(Hhfft2dPlanObject *self)
 {
     // Delete the hhfft object
-    delete self->hhfft_2d;
-    self->hhfft_2d = nullptr;
+    delete self->hhfft_2d_d;
+    delete self->hhfft_2d_f;
+    self->hhfft_2d_d = nullptr;
+    self->hhfft_2d_f = nullptr;
     self->n = 0;
     self->m = 0;
     Py_TYPE(self)->tp_free((PyObject *) self);
@@ -335,8 +382,10 @@ static void Hhfft2dPlan_dealloc(Hhfft2dPlanObject *self)
 static void Hhfft2dRealPlan_dealloc(Hhfft2dRealPlanObject *self)
 {
     // Delete the hhfft object
-    delete self->hhfft_real_2d;
-    self->hhfft_real_2d = nullptr;
+    delete self->hhfft_real_2d_d;
+    delete self->hhfft_real_2d_f;
+    self->hhfft_real_2d_d = nullptr;
+    self->hhfft_real_2d_f = nullptr;
     self->n = 0;
     self->m = 0;
     Py_TYPE(self)->tp_free((PyObject *) self);
@@ -448,6 +497,11 @@ static PyObject *Hhfft1dPlan_fft(Hhfft1dPlanObject *self, PyObject *args, PyObje
 {
     int type_in = NPY_COMPLEX128;
     int type_out = NPY_COMPLEX128;
+    if (self->hhfft_1d_f)
+    {
+        type_in = NPY_COMPLEX64;
+        type_out = NPY_COMPLEX64;
+    }
     int ndims = 1;
     npy_intp dims_in[1] = {self->n};
     npy_intp dims_out[1] = {self->n};
@@ -461,9 +515,17 @@ static PyObject *Hhfft1dPlan_fft(Hhfft1dPlanObject *self, PyObject *args, PyObje
     }
 
     // Do the actual fft
-    double *data_in = (double *) PyArray_DATA(in_arr);
-    double *data_out = (double *) PyArray_DATA(out_arr);
-    self->hhfft_1d->fft(data_in, data_out);
+    if (self->hhfft_1d_f)
+    {
+        float *data_in = (float *) PyArray_DATA(in_arr);
+        float *data_out = (float *) PyArray_DATA(out_arr);
+        self->hhfft_1d_f->fft(data_in, data_out);
+    } else
+    {
+        double *data_in = (double *) PyArray_DATA(in_arr);
+        double *data_out = (double *) PyArray_DATA(out_arr);
+        self->hhfft_1d_d->fft(data_in, data_out);
+    }
 
     // Decrement reference counter
     Py_DECREF(in_arr);
@@ -477,6 +539,11 @@ static PyObject *Hhfft1dRealPlan_fft(Hhfft1dRealPlanObject *self, PyObject *args
 {
     int type_in = NPY_DOUBLE;
     int type_out = NPY_COMPLEX128;
+    if (self->hhfft_real_1d_f)
+    {
+        type_in = NPY_FLOAT;
+        type_out = NPY_COMPLEX64;
+    }
     int ndims = 1;
     npy_intp dims_in[1] = {self->n};
     npy_intp dims_out[1] = {(self->n + 2)/2};
@@ -490,9 +557,17 @@ static PyObject *Hhfft1dRealPlan_fft(Hhfft1dRealPlanObject *self, PyObject *args
     }
 
     // Do the actual fft
-    double *data_in = (double *) PyArray_DATA(in_arr);
-    double *data_out = (double *) PyArray_DATA(out_arr);
-    self->hhfft_real_1d->fft(data_in, data_out);
+    if (self->hhfft_real_1d_f)
+    {
+        float *data_in = (float *) PyArray_DATA(in_arr);
+        float *data_out = (float *) PyArray_DATA(out_arr);
+        self->hhfft_real_1d_f->fft(data_in, data_out);
+    } else
+    {
+        double *data_in = (double *) PyArray_DATA(in_arr);
+        double *data_out = (double *) PyArray_DATA(out_arr);
+        self->hhfft_real_1d_d->fft(data_in, data_out);
+    } 
 
     // Decrement reference counter
     Py_DECREF(in_arr);
@@ -506,6 +581,11 @@ static PyObject *Hhfft2dPlan_fft(Hhfft2dPlanObject *self, PyObject *args, PyObje
 {
     int type_in = NPY_COMPLEX128;
     int type_out = NPY_COMPLEX128;
+    if (self->hhfft_2d_f)
+    {
+        type_in = NPY_COMPLEX64;
+        type_out = NPY_COMPLEX64;
+    }
     int ndims = 2;
     npy_intp dims_in[2] = {self->n,self->m};
     npy_intp dims_out[2] = {self->n,self->m};
@@ -519,9 +599,17 @@ static PyObject *Hhfft2dPlan_fft(Hhfft2dPlanObject *self, PyObject *args, PyObje
     }
 
     // Do the actual fft
-    double *data_in = (double *) PyArray_DATA(in_arr);
-    double *data_out = (double *) PyArray_DATA(out_arr);
-    self->hhfft_2d->fft(data_in, data_out);
+    if (self->hhfft_2d_f)
+    {
+        float *data_in = (float *) PyArray_DATA(in_arr);
+        float *data_out = (float *) PyArray_DATA(out_arr);
+        self->hhfft_2d_f->fft(data_in, data_out);
+    } else
+    {
+        double *data_in = (double *) PyArray_DATA(in_arr);
+        double *data_out = (double *) PyArray_DATA(out_arr);
+        self->hhfft_2d_d->fft(data_in, data_out);
+    }
 
     // Decrement reference counter
     Py_DECREF(in_arr);
@@ -535,6 +623,11 @@ static PyObject *Hhfft2dRealPlan_fft(Hhfft2dRealPlanObject *self, PyObject *args
 {
     int type_in = NPY_DOUBLE;
     int type_out = NPY_COMPLEX128;
+    if (self->hhfft_real_2d_f)
+    {
+        type_in = NPY_FLOAT;
+        type_out = NPY_COMPLEX64;
+    }
     int ndims = 2;
     npy_intp dims_in[2] = {self->n,self->m};
     npy_intp dims_out[2] = {self->n,(self->m + 2)/2};
@@ -548,9 +641,17 @@ static PyObject *Hhfft2dRealPlan_fft(Hhfft2dRealPlanObject *self, PyObject *args
     }
 
     // Do the actual fft
-    double *data_in = (double *) PyArray_DATA(in_arr);
-    double *data_out = (double *) PyArray_DATA(out_arr);
-    self->hhfft_real_2d->fft(data_in, data_out);
+    if (self->hhfft_real_2d_f)
+    {
+        float *data_in = (float *) PyArray_DATA(in_arr);
+        float *data_out = (float *) PyArray_DATA(out_arr);
+        self->hhfft_real_2d_f->fft(data_in, data_out);
+    } else
+    {
+        double *data_in = (double *) PyArray_DATA(in_arr);
+        double *data_out = (double *) PyArray_DATA(out_arr);
+        self->hhfft_real_2d_d->fft(data_in, data_out);
+    }
 
     // Decrement reference counter
     Py_DECREF(in_arr);
@@ -564,6 +665,11 @@ static PyObject *Hhfft1dPlan_ifft(Hhfft1dPlanObject *self, PyObject *args, PyObj
 {
     int type_in = NPY_COMPLEX128;
     int type_out = NPY_COMPLEX128;
+    if (self->hhfft_1d_f)
+    {
+        type_in = NPY_COMPLEX64;
+        type_out = NPY_COMPLEX64;
+    }
     int ndims = 1;
     npy_intp dims_in[1] = {self->n};
     npy_intp dims_out[1] = {self->n};
@@ -577,9 +683,17 @@ static PyObject *Hhfft1dPlan_ifft(Hhfft1dPlanObject *self, PyObject *args, PyObj
     }
 
     // Do the actual ifft
-    double *data_in = (double *) PyArray_DATA(in_arr);
-    double *data_out = (double *) PyArray_DATA(out_arr);
-    self->hhfft_1d->ifft(data_in, data_out);
+    if (self->hhfft_1d_f)
+    {
+        float *data_in = (float *) PyArray_DATA(in_arr);
+        float *data_out = (float *) PyArray_DATA(out_arr);
+        self->hhfft_1d_f->ifft(data_in, data_out);
+    } else
+    {
+        double *data_in = (double *) PyArray_DATA(in_arr);
+        double *data_out = (double *) PyArray_DATA(out_arr);
+        self->hhfft_1d_d->ifft(data_in, data_out);
+    }
 
     // Decrement reference counter
     Py_DECREF(in_arr);
@@ -593,6 +707,11 @@ static PyObject *Hhfft1dRealPlan_ifft(Hhfft1dRealPlanObject *self, PyObject *arg
 {
     int type_in = NPY_COMPLEX128;
     int type_out = NPY_DOUBLE;
+    if (self->hhfft_real_1d_f)
+    {
+        type_in = NPY_COMPLEX64;
+        type_out = NPY_FLOAT;
+    }
     int ndims = 1;
     npy_intp dims_in[1] = {(self->n + 2)/2};
     npy_intp dims_out[1] = {self->n};
@@ -606,9 +725,17 @@ static PyObject *Hhfft1dRealPlan_ifft(Hhfft1dRealPlanObject *self, PyObject *arg
     }
 
     // Do the actual ifft
-    double *data_in = (double *) PyArray_DATA(in_arr);
-    double *data_out = (double *) PyArray_DATA(out_arr);
-    self->hhfft_real_1d->ifft(data_in, data_out);
+    if (self->hhfft_real_1d_f)
+    {
+        float *data_in = (float *) PyArray_DATA(in_arr);
+        float *data_out = (float *) PyArray_DATA(out_arr);
+        self->hhfft_real_1d_f->ifft(data_in, data_out);
+    } else
+    {
+        double *data_in = (double *) PyArray_DATA(in_arr);
+        double *data_out = (double *) PyArray_DATA(out_arr);
+        self->hhfft_real_1d_d->ifft(data_in, data_out);
+    }
 
     // Decrement reference counter
     Py_DECREF(in_arr);
@@ -622,6 +749,11 @@ static PyObject *Hhfft2dPlan_ifft(Hhfft2dPlanObject *self, PyObject *args, PyObj
 {
     int type_in = NPY_COMPLEX128;
     int type_out = NPY_COMPLEX128;
+    if (self->hhfft_2d_f)
+    {
+        type_in = NPY_COMPLEX64;
+        type_out = NPY_COMPLEX64;
+    }
     int ndims = 2;
     npy_intp dims_in[2] = {self->n,self->m};
     npy_intp dims_out[2] = {self->n,self->m};
@@ -635,9 +767,17 @@ static PyObject *Hhfft2dPlan_ifft(Hhfft2dPlanObject *self, PyObject *args, PyObj
     }
 
     // Do the actual ifft
-    double *data_in = (double *) PyArray_DATA(in_arr);
-    double *data_out = (double *) PyArray_DATA(out_arr);
-    self->hhfft_2d->ifft(data_in, data_out);
+    if (self->hhfft_2d_f)
+    {
+        float *data_in = (float *) PyArray_DATA(in_arr);
+        float *data_out = (float *) PyArray_DATA(out_arr);
+        self->hhfft_2d_f->ifft(data_in, data_out);
+    } else
+    {
+        double *data_in = (double *) PyArray_DATA(in_arr);
+        double *data_out = (double *) PyArray_DATA(out_arr);
+        self->hhfft_2d_d->ifft(data_in, data_out);
+    }
 
     // Decrement reference counter
     Py_DECREF(in_arr);
@@ -651,6 +791,11 @@ static PyObject *Hhfft2dRealPlan_ifft(Hhfft2dRealPlanObject *self, PyObject *arg
 {
     int type_in = NPY_COMPLEX128;
     int type_out = NPY_DOUBLE;
+    if (self->hhfft_real_2d_f)
+    {
+        type_in = NPY_COMPLEX64;
+        type_out = NPY_FLOAT;
+    }
     int ndims = 2;
     npy_intp dims_in[2] = {self->n,(self->m + 2)/2};
     npy_intp dims_out[2] = {self->n,self->m};
@@ -664,9 +809,18 @@ static PyObject *Hhfft2dRealPlan_ifft(Hhfft2dRealPlanObject *self, PyObject *arg
     }
 
     // Do the actual fft
-    double *data_in = (double *) PyArray_DATA(in_arr);
-    double *data_out = (double *) PyArray_DATA(out_arr);
-    self->hhfft_real_2d->ifft(data_in, data_out);
+    if (self->hhfft_real_2d_f)
+    {
+        float *data_in = (float *) PyArray_DATA(in_arr);
+        float *data_out = (float *) PyArray_DATA(out_arr);
+        self->hhfft_real_2d_f->ifft(data_in, data_out);
+    } else
+    {
+        double *data_in = (double *) PyArray_DATA(in_arr);
+        double *data_out = (double *) PyArray_DATA(out_arr);
+        self->hhfft_real_2d_d->ifft(data_in, data_out);
+    }
+
 
     // Decrement reference counter
     Py_DECREF(in_arr);
