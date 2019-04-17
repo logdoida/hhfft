@@ -303,8 +303,8 @@ template<RadixType radix_type> void fft_2d_real_reorder2_odd_rows_forward_sse2_d
             // First/ last one is real
             if (dir_out) // direction normal
             {
-                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, 0, raders);
-                store_real_D(x, data_out + i*m2 + j*radix + 1);
+                ComplexD x0 = get_value_D<radix_type>(x_temp_out, data_raders, 0, raders);
+                store_real_D(x0, data_out + i*m2 + j*radix + 1);
 
                 for (size_t k = 1; k < radix/2 + 1; k++)
                 {
@@ -313,8 +313,8 @@ template<RadixType radix_type> void fft_2d_real_reorder2_odd_rows_forward_sse2_d
                 }
             } else // direction inverted
             {
-                ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, 0, raders);
-                store_real_D(x, data_out + i*m2 + j*radix + radix);
+                ComplexD x0 = get_value_D<radix_type>(x_temp_out, data_raders, 0, raders);
+                store_real_D(x0, data_out + i*m2 + j*radix + radix);
 
                 for (size_t k = 1; k < radix/2 + 1; k++)
                 {

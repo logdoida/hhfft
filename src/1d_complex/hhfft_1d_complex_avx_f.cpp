@@ -194,11 +194,12 @@ template<RadixType radix_type, bool forward>
         data_raders = allocate_raders_F<radix_type>(raders);
 
     // NOTE 256-bit variables are not used here, as they are typically slower due to packing and unpacking
-    // First use 128-bit variables
-    ComplexF2 x_temp_in[radix_type];
-    ComplexF2 x_temp_out[radix_type];
+    // First use 128-bit variables    
     for (i = 0; i+1 < repeats; i+=2)
     {
+        ComplexF2 x_temp_in[radix_type];
+        ComplexF2 x_temp_out[radix_type];
+
         // Initialize raders data with zeros
         init_coeff_F2<radix_type>(data_raders, raders);
 
@@ -564,8 +565,8 @@ template<RadixType radix_type>
         init_coeff_F<radix_type>(data_raders, raders);
 
         // Copy input data, taking the special case into account
-        ComplexF x = load_F(data_in + 0);
-        set_value_F<radix_type>(x_temp_in, data_raders, 0, raders, x);
+        ComplexF x0 = load_F(data_in + 0);
+        set_value_F<radix_type>(x_temp_in, data_raders, 0, raders, x0);
         for (size_t j = 0; j < radix - 1; j++)
         {
             size_t i2 = j*stride + i + 1;
@@ -923,7 +924,7 @@ void fft_1d_complex_convolution_avx_f(const float *data_in0, const float *data_i
 // fft for small sizes (1,2,3,4,5,7,8) where only one level is needed
 template<size_t n, bool forward> void fft_1d_complex_1level_avx_f(const float *data_in, float *data_out, const hhfft::StepInfo<float> &)
 {
-    ComplexF k = broadcast32_F(1.0/n);
+    ComplexF k = broadcast32_F(float(1.0/n));
 
     if (n == 1)
     {
@@ -957,8 +958,8 @@ template<size_t n, bool forward> void fft_1d_complex_1level_avx_f(const float *d
 // fft for small sizes where two levels are needed n = n1*n2;
 template<size_t n1, size_t n2, bool forward> void fft_1d_complex_2level_avx_f(const float *data_in, float *data_out, const hhfft::StepInfo<float> &step_info)
 {
-    ComplexF k = broadcast32_F(1.0/(n1*n2));
-    ComplexF2 k2 = broadcast32_F2(1.0/(n1*n2));
+    ComplexF k = broadcast32_F(float(1.0/(n1*n2)));
+    ComplexF2 k2 = broadcast32_F2(float(1.0/(n1*n2)));
 
     float x_temp[2*n1*n2];
 
@@ -1086,7 +1087,7 @@ template<size_t n1, size_t n2, bool forward> void fft_1d_complex_2level_avx_f(co
 template<bool forward> void fft_1d_complex_1level_raders_avx_f(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info)
 {
     size_t n = step_info.radix;
-    ComplexF k = broadcast32_F(1.0/n);
+    ComplexF k = broadcast32_F(float(1.0/n));
 
     // Allocate memory for Rader's algorithm
     const hhfft::RadersF &raders = *step_info.raders;

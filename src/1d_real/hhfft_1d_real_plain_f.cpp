@@ -47,8 +47,8 @@ template<bool forward>
     {
         float x_r = data_in[0];
         float x_i = data_in[n];
-        data_out[0] = 0.5*(x_r + x_i);
-        data_out[1] = 0.5*(x_r - x_i);
+        data_out[0] = 0.5f*(x_r + x_i);
+        data_out[1] = 0.5f*(x_r - x_i);
     }
 
     if (n%4 == 0)
@@ -90,8 +90,8 @@ void fft_1d_complex_to_complex_packed_ifft_plain_f(const float *data_in, float *
 
     float x_r = data_in[0];
     float x_i = data_in[2*n];
-    data_out[0] = 0.5*k*(x_r + x_i);
-    data_out[1] = 0.5*k*(x_r - x_i);
+    data_out[0] = 0.5f*k*(x_r + x_i);
+    data_out[1] = 0.5f*k*(x_r - x_i);
 
     if (n%2 == 0)
     {
@@ -205,8 +205,8 @@ template<RadixType radix_type> void fft_1d_real_first_level_forward_plain_f(cons
         // First/ last one is real
         if (dir_out) // direction normal
         {
-            ComplexF x = get_value_F<radix_type>(x_temp_out, data_raders, 0, raders);
-            store_real_F(x, data_out + i*radix); // only real part
+            ComplexF x0 = get_value_F<radix_type>(x_temp_out, data_raders, 0, raders);
+            store_real_F(x0, data_out + i*radix); // only real part
 
             for (size_t j = 1; j < radix/2 + 1; j++)
             {
@@ -215,8 +215,8 @@ template<RadixType radix_type> void fft_1d_real_first_level_forward_plain_f(cons
             }
         } else // direction inverted
         {
-            ComplexF x = get_value_F<radix_type>(x_temp_out, data_raders, 0, raders);
-            store_real_F(x, data_out + i*radix + radix - 1); // only real part
+            ComplexF x0 = get_value_F<radix_type>(x_temp_out, data_raders, 0, raders);
+            store_real_F(x0, data_out + i*radix + radix - 1); // only real part
 
             for (size_t j = 1; j < radix/2 + 1; j++)
             {
@@ -418,8 +418,8 @@ template<RadixType radix_type> void fft_1d_real_first_level_inverse_plain_f(cons
         // Initialize raders data with zeros
         init_coeff_F<radix_type>(data_raders, raders);
 
-        ComplexF x = norm_factor*load_real_F(data_in + 0);
-        set_value_F<radix_type>(x_temp_in, data_raders, 0, raders, x);
+        ComplexF x0 = norm_factor*load_real_F(data_in + 0);
+        set_value_F<radix_type>(x_temp_in, data_raders, 0, raders, x0);
 
         // Read other inputs and conjugate them
         for (size_t j = 1; j <= radix/2; j++)
@@ -503,8 +503,8 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_first_level_inverse_pla
             // Initialize raders data with zeros
             init_coeff_F<radix_type>(data_raders, raders);
 
-            ComplexF x = load_real_F(data_in + k*m);
-            set_value_F<radix_type>(x_temp_in, data_raders, 0, raders, x);
+            ComplexF x0 = load_real_F(data_in + k*m);
+            set_value_F<radix_type>(x_temp_in, data_raders, 0, raders, x0);
 
             // Read other inputs and conjugate them
             for (size_t j = 1; j <= radix/2; j++)
@@ -575,9 +575,9 @@ template<RadixType radix_type> inline void fft_1d_real_one_level_inverse_plain_i
             init_coeff_F<radix_type>(data_raders, raders);
 
             // Set first real value
-            ComplexF x = load_real_F(data_in + k);
-            ComplexF w = load_F(1,0);
-            set_value_twiddle_F<radix_type>(x_temp_in, data_raders, twiddle_temp, 0, raders, x, w);
+            ComplexF x0 = load_real_F(data_in + k);
+            ComplexF w0 = load_F(1,0);
+            set_value_twiddle_F<radix_type>(x_temp_in, data_raders, twiddle_temp, 0, raders, x0, w0);
 
             // Read other inputs, only about half of them is needed, conjugate other half
             for (size_t j = 1; j <= radix/2; j++)
@@ -680,7 +680,7 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_inverse_plain_f(const f
 // fft for small sizes (2,3,4,5,6,7,8,10,14,16) where only one level is needed
 template<size_t n, bool forward> void fft_1d_real_1level_plain_f(const float *data_in, float *data_out, const hhfft::StepInfo<float> &)
 {
-    ComplexF k = broadcast32_F(2.0/n);
+    ComplexF k = broadcast32_F(float(2.0/n));
 
     if (n == 1)
     {
@@ -759,7 +759,7 @@ template<size_t n, bool forward> void fft_1d_real_1level_plain_f(const float *da
             ComplexF x_temp_in[n];
             ComplexF x_temp_out[n];
 
-            ComplexF norm_factor = load_F(1.0/n, 1.0/n);
+            ComplexF norm_factor = load_F(float(1.0/n), float(1.0/n));
 
             // First input is real
             x_temp_in[0] = norm_factor*load_real_F(data_in + 0);
@@ -788,7 +788,7 @@ template<size_t n, bool forward> void fft_1d_real_1level_plain_f(const float *da
 template<bool forward> void fft_1d_real_1level_raders_plain_f(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info)
 {
     size_t n = step_info.radix;
-    ComplexF k = broadcast32_F(1.0/n);
+    ComplexF k = broadcast32_F(float(1.0/n));
 
     // Allocate memory for Rader's algorithm
     const hhfft::RadersF &raders = *step_info.raders;
@@ -817,8 +817,8 @@ template<bool forward> void fft_1d_real_1level_raders_plain_f(const float *data_
     } else
     {
         // IFFT
-        ComplexF x = load_real_F(data_in + 0);
-        set_value_inverse_F<Raders>(nullptr, data_raders, 0, raders, x);
+        ComplexF x0 = load_real_F(data_in + 0);
+        set_value_inverse_F<Raders>(nullptr, data_raders, 0, raders, x0);
 
         for (size_t j = 1; j < (n+1)/2; j++)
         {

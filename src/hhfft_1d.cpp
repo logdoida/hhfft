@@ -33,7 +33,7 @@ using hhfft::HHFFT_1D;
 
 template<typename T> T* HHFFT_1D<T>::allocate_memory() const
 {
-    return (T *) allocate_aligned_memory(2*n*sizeof(T));
+    return static_cast<T*>(allocate_aligned_memory(2*n*sizeof(T)));
 }
 
 template<typename T> void HHFFT_1D<T>::free_memory(T *data)
@@ -178,7 +178,7 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
         // Scaling is be done in reordering step
         if (i == 0)
         {
-             step.norm_factor = 1.0/(T(n));
+             step.norm_factor = T(1.0/(double(n)));
              step.forward = false;
         }
 
@@ -273,7 +273,7 @@ template<typename T> void HHFFT_1D<T>::print_complex_vector(const T *data, size_
     {
         T real = data[2*i];
         T imag = data[2*i+1];
-        if (imag >= 0.0)
+        if (imag >= T(0.0))
             std::cout << real << "+" << imag << "i  ";
         else
             std::cout << real << imag << "i  ";

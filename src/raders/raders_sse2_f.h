@@ -198,7 +198,7 @@ template<hhfft::RadixType radix_type> inline void multiply_coeff_forward_F(const
         raders.ifft(data_raders);
 
         // Add first value to others
-        ComplexF k = broadcast32_F(raders.scale);
+        ComplexF k = broadcast32_F(float(raders.scale));
         for (size_t i = 0; i < n_org - 1; i++)
         {
             ComplexF res = x0 + k*load_F(data_raders + 2*i);
@@ -422,7 +422,7 @@ template<hhfft::RadixType radix_type> inline void multiply_coeff_forward_F2(cons
             raders.ifft(data_raders + j*n_data);
 
             // Add first value to others
-            float k = raders.scale;
+            float k = float(raders.scale);
             for (size_t i = 0; i < n_org - 1; i++)
             {
                 ComplexF res = x0 + k*load_F(data_raders + j*n_data + 2*i);

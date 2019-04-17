@@ -250,8 +250,8 @@ template<RadixType radix_type>
         init_coeff_F<radix_type>(data_raders, raders);
 
         // Copy input data, taking the special case into account
-        ComplexF x = load_F(data_in + 0);
-        set_value_F<radix_type>(x_temp_in, data_raders, 0, raders, x);
+        ComplexF x0 = load_F(data_in + 0);
+        set_value_F<radix_type>(x_temp_in, data_raders, 0, raders, x0);
         for (size_t j = 0; j < radix - 1; j++)
         {
             size_t i2 = j*stride + i + 1;
@@ -388,7 +388,7 @@ void fft_1d_complex_convolution_plain_f(const float *data_in1, const float *data
 // fft for small sizes (1,2,3,4,5,7,8) where only one level is needed
 template<size_t n, bool forward> void fft_1d_complex_1level_plain_f(const float *data_in, float *data_out, const hhfft::StepInfo<float> &)
 {
-    ComplexF k = broadcast32_F(1.0/n);
+    ComplexF k = broadcast32_F(float(1.0/n));
 
     if (n == 1)
     {
@@ -423,7 +423,7 @@ template<size_t n, bool forward> void fft_1d_complex_1level_plain_f(const float 
 // fft for small sizes where two levels are needed n = n1*n2;
 template<size_t n1, size_t n2, bool forward> void fft_1d_complex_2level_plain_f(const float *data_in, float *data_out, const hhfft::StepInfo<float> &step_info)
 {
-    ComplexF k = broadcast32_F(1.0/(n1*n2));
+    ComplexF k = broadcast32_F(float(1.0/(n1*n2)));
 
     ComplexF x_temp[n1*n2];
 
@@ -480,7 +480,7 @@ template<size_t n1, size_t n2, bool forward> void fft_1d_complex_2level_plain_f(
 template<bool forward> void fft_1d_complex_1level_raders_plain_f(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info)
 {
     size_t n = step_info.radix;
-    ComplexF k = broadcast32_F(1.0/n);
+    ComplexF k = broadcast32_F(float(1.0/n));
 
     // Allocate memory for Rader's algorithm
     const hhfft::RadersF &raders = *step_info.raders;

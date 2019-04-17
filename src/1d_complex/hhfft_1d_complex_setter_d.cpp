@@ -219,7 +219,7 @@ template<RadixType radix_type> void set_stride_type_d(StepInfoD &step_info, hhff
     */
 }
 
-void set_radix_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
+inline void set_radix_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
 {
     size_t radix = step_info.radix;
 

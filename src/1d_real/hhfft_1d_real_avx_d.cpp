@@ -259,8 +259,8 @@ template<RadixType radix_type> void fft_1d_real_first_level_forward_avx_d(const 
         // First/ last one is real
         if (dir_out) // direction normal
         {
-            ComplexD x = get_value_D<radix_type>(x_temp_out, data_raders, 0, raders);
-            store_real_D(x, data_out + i*radix); // only real part
+            ComplexD x0 = get_value_D<radix_type>(x_temp_out, data_raders, 0, raders);
+            store_real_D(x0, data_out + i*radix); // only real part
 
             for (size_t j = 1; j < radix/2 + 1; j++)
             {
@@ -538,8 +538,8 @@ template<RadixType radix_type> void fft_1d_real_first_level_inverse_avx_d(const 
         // Initialize raders data with zeros
         init_coeff_D<radix_type>(data_raders, raders);
 
-        ComplexD x = norm_factor*load_real_D(data_in + 0);
-        set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x);
+        ComplexD x0 = norm_factor*load_real_D(data_in + 0);
+        set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x0);
 
         // Read other inputs and conjugate them
         for (size_t j = 1; j <= radix/2; j++)
@@ -624,8 +624,8 @@ template<RadixType radix_type> void fft_2d_real_odd_rows_first_level_inverse_avx
             // Initialize raders data with zeros
             init_coeff_D<radix_type>(data_raders, raders);
 
-            ComplexD x = load_real_D(data_in + k*m);
-            set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x);
+            ComplexD x0 = load_real_D(data_in + k*m);
+            set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x0);
 
             // Read other inputs and conjugate them
             for (size_t j = 1; j <= radix/2; j++)
@@ -695,9 +695,9 @@ template<RadixType radix_type> inline __attribute__((always_inline)) void fft_1d
             ComplexD2 twiddle_temp[radix_type];
 
             // Set first real value
-            ComplexD2 x = load_real_D2(data_in + k);
-            ComplexD2 w = load_D2(1,0,1,0);
-            set_value_twiddle_D2<radix_type>(x_temp_in, data_raders, twiddle_temp, 0, raders, x, w);
+            ComplexD2 x0 = load_real_D2(data_in + k);
+            ComplexD2 w0 = load_D2(1,0,1,0);
+            set_value_twiddle_D2<radix_type>(x_temp_in, data_raders, twiddle_temp, 0, raders, x0, w0);
 
             // Read other inputs, only about half of them is needed, conjugate other half
             for (size_t j = 1; j <= radix/2; j++)
@@ -732,9 +732,9 @@ template<RadixType radix_type> inline __attribute__((always_inline)) void fft_1d
             ComplexD twiddle_temp[radix_type];
 
             // Set first real value
-            ComplexD x = load_real_D(data_in + k);
-            ComplexD w = load_D(1,0);
-            set_value_twiddle_D<radix_type>(x_temp_in, data_raders, twiddle_temp, 0, raders, x, w);
+            ComplexD x0 = load_real_D(data_in + k);
+            ComplexD w0 = load_D(1,0);
+            set_value_twiddle_D<radix_type>(x_temp_in, data_raders, twiddle_temp, 0, raders, x0, w0);
 
             // Read other inputs, only about half of them is needed, conjugate other half
             for (size_t j = 1; j <= radix/2; j++)
@@ -1049,8 +1049,8 @@ template<bool forward> void fft_1d_real_1level_raders_avx_d(const double *data_i
     } else
     {
         // IFFT
-        ComplexD x = load_real_D(data_in + 0);
-        set_value_inverse_D<Raders>(nullptr, data_raders, 0, raders, x);
+        ComplexD x0 = load_real_D(data_in + 0);
+        set_value_inverse_D<Raders>(nullptr, data_raders, 0, raders, x0);
 
         for (size_t j = 1; j < (n+1)/2; j++)
         {

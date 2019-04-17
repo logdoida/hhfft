@@ -22,11 +22,9 @@
 #ifndef HHFFT_COMMON_COMPLEX_D
 #define HHFFT_COMMON_COMPLEX_D
 
-using namespace hhfft;
-
 // Functions that can be used in any implementation
 
-template<RadixType radix_type, bool forward> inline __attribute__((always_inline))
+template<hhfft::RadixType radix_type, bool forward> inline __attribute__((always_inline))
    void fft_common_complex_stride1_reorder_d(const double *data_in, double *data_out, double *data_raders, uint32_t *reorder_table, ComplexD k, size_t radix, size_t reorder_table_size, const hhfft::RadersD &raders, size_t i)
 {
     // Initialize raders data with zeros
@@ -64,7 +62,7 @@ template<RadixType radix_type, bool forward> inline __attribute__((always_inline
     }
 }
 
-template<RadixType radix_type> inline __attribute__((always_inline))
+template<hhfft::RadixType radix_type> inline __attribute__((always_inline))
 void fft_common_complex_d(const double *data_in, double *data_out, double *data_raders, size_t radix, size_t stride, const hhfft::RadersD &raders)
 {
     // Initialize raders data with zeros
@@ -91,7 +89,7 @@ void fft_common_complex_d(const double *data_in, double *data_out, double *data_
     }
 }
 
-template<RadixType radix_type> inline __attribute__((always_inline))
+template<hhfft::RadixType radix_type> inline __attribute__((always_inline))
 void fft_common_complex_twiddle_d(const double *data_in, double *data_out, double *data_raders, const double *twiddle_factors, size_t radix, size_t stride, const hhfft::RadersD &raders)
 {
     // Initialize raders data with zeros
@@ -125,7 +123,7 @@ void fft_common_complex_twiddle_d(const double *data_in, double *data_out, doubl
 // Functions that can be used if compiled with avx, avx512f etc
 #ifdef HHFFT_COMMON_AVX_D
 
-template<RadixType radix_type, bool forward> inline __attribute__((always_inline))
+template<hhfft::RadixType radix_type, bool forward> inline __attribute__((always_inline))
    void fft_common_complex_stride1_reorder_d2(const double *data_in, double *data_out, double *data_raders, uint32_t *reorder_table, ComplexD2 k, size_t radix, size_t reorder_table_size, const hhfft::RadersD &raders, size_t i)
 {
     ComplexD2 x_temp_in[radix_type];
@@ -169,7 +167,7 @@ template<RadixType radix_type, bool forward> inline __attribute__((always_inline
 }
 
 
-template<RadixType radix_type> inline __attribute__((always_inline))
+template<hhfft::RadixType radix_type> inline __attribute__((always_inline))
 void fft_common_complex_d2(const double *data_in, double *data_out, double *data_raders, size_t radix, size_t stride, const hhfft::RadersD &raders)
 {
     ComplexD2 x_temp_in[radix_type];
@@ -197,7 +195,7 @@ void fft_common_complex_d2(const double *data_in, double *data_out, double *data
 }
 
 
-template<RadixType radix_type> inline __attribute__((always_inline))
+template<hhfft::RadixType radix_type> inline __attribute__((always_inline))
 void fft_common_complex_twiddle_d2(const double *data_in, double *data_out, double *data_raders, const double *twiddle_factors, size_t radix, size_t stride, const hhfft::RadersD &raders)
 {
     // Initialize raders data with zeros

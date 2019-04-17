@@ -197,8 +197,8 @@ template<RadixType radix_type>
         init_coeff_D<radix_type>(data_raders, raders);
 
         // Copy input data, taking the special case into account
-        ComplexD x = load_D(data_in + 0);
-        set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x);
+        ComplexD x0 = load_D(data_in + 0);
+        set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x0);
         for (size_t j = 0; j < radix - 1; j++)
         {
             size_t i2 = j*stride + i + 1;

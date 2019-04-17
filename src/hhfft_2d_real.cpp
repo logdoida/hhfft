@@ -123,9 +123,9 @@ template<typename T> void fft_2d_real_one_column_conj(const T *data_in, T *data_
     }
 }
 
-template<typename T> void HHFFT_2D_REAL<T>::plan_vector(size_t n, InstructionSet instruction_set, bool is_column)
+template<typename T> void HHFFT_2D_REAL<T>::plan_vector(size_t nn, InstructionSet instruction_set, bool is_column)
 {
-    HHFFT_1D_REAL<T> fft_1d_real(n, instruction_set);
+    HHFFT_1D_REAL<T> fft_1d_real(nn, instruction_set);
 
     // Copy/move data from the 1d plan
     temp_data_size = fft_1d_real.temp_data_size;
@@ -141,9 +141,9 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_vector(size_t n, InstructionSet
     {
         // Copy and conjugate
         hhfft::StepInfo<T> step;
-        step.size = n;
+        step.size = nn;
         step.step_function = fft_2d_real_one_column_conj<T>;
-        step.forward = (forward_steps.size() > 1) && ((n & 1) == 1); // Determine in which cases the first real value is in wrong position
+        step.forward = (forward_steps.size() > 1) && ((nn & 1) == 1); // Determine in which cases the first real value is in wrong position
         forward_steps.push_back(step);
     }
 }
@@ -285,7 +285,7 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_odd(InstructionSet instruction_
         step.radix = N_columns[0];
         step.repeats = n / step.radix;
         step.forward = false;
-        step.norm_factor = 1.0/(n*m);
+        step.norm_factor = T(1.0/double(n*m));
         HHFFT_2D_Real_odd_set_function_columns<T>(step, instruction_set);
         inverse_steps.push_back(step);
         temp_data_size = 2*n;
@@ -330,7 +330,7 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_odd(InstructionSet instruction_
         step.repeats = n / step.radix;
         step.size = m2;
         step.forward = false;
-        step.norm_factor = 1.0/(n*m);
+        step.norm_factor = T(1.0/(n*m));
         HHFFT_2D_Real_odd_set_function_columns<T>(step, instruction_set);
         inverse_steps.push_back(step);
     }
@@ -584,7 +584,7 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_even(InstructionSet instruction
         set_radix_raders(N_columns[0], step, instruction_set);
         step.radix = N_columns[0];
         step.repeats = n / step.radix;
-        step.norm_factor = 1.0 / (m_complex*n);
+        step.norm_factor = T(1.0/double(m_complex*n));
         step.forward = false;
         HHFFT_2D_Real_set_function<T>(step, instruction_set);
         inverse_steps.push_back(step);

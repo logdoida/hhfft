@@ -237,9 +237,9 @@ template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet in
     }    
 }
 
-template<typename T> void HHFFT_2D<T>::plan_vector(size_t n, InstructionSet instruction_set)
+template<typename T> void HHFFT_2D<T>::plan_vector(size_t nn, InstructionSet instruction_set)
 {
-    HHFFT_1D<T> fft_1d(n, instruction_set);
+    HHFFT_1D<T> fft_1d(nn, instruction_set);
 
     // Copy/move data from the 1d plan
     temp_data_size = fft_1d.temp_data_size;
@@ -335,7 +335,7 @@ template<typename T> void HHFFT_2D<T>::print_complex_matrix(const T *data, size_
         {
             T real = data[2*i*m + 2*j];
             T imag = data[2*i*m + 2*j+1];
-            if (imag >= 0.0)
+            if (imag >= T(0.0))
                 std::cout << real << "+" << imag << "i  ";
             else
                 std::cout << real << imag << "i  ";

@@ -24,12 +24,12 @@
 
 #include "hhfft_common.h"
 
-static const float k5 = cos(2.0*M_PI*1.0/7.0);
-static const float k6 = sin(2.0*M_PI*1.0/7.0);
-static const float k7 = -cos(2.0*M_PI*2.0/7.0);
-static const float k8 = sin(2.0*M_PI*2.0/7.0);
-static const float k9 = -cos(2.0*M_PI*3.0/7.0);
-static const float k10 = sin(2.0*M_PI*3.0/7.0);
+static const float k5 = float(cos(2.0*M_PI*1.0/7.0));
+static const float k6 = float(sin(2.0*M_PI*1.0/7.0));
+static const float k7 = float(-cos(2.0*M_PI*2.0/7.0));
+static const float k8 = float(sin(2.0*M_PI*2.0/7.0));
+static const float k9 = float(-cos(2.0*M_PI*3.0/7.0));
+static const float k10 = float(sin(2.0*M_PI*3.0/7.0));
 
 static const float coeff_radix_7_cos[9] = {
     k5, -k7, -k9,

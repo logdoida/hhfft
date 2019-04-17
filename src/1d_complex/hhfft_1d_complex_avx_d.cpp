@@ -285,9 +285,6 @@ template<RadixType radix_type>
     ComplexD2 kk = broadcast64_D2(step_info.norm_factor);
     size_t reorder_table_size = step_info.reorder_table_size;
 
-    ComplexD x_temp_in[radix_type];
-    ComplexD x_temp_out[radix_type];
-
     // Amount of Raders memory needed depends on stride
     double *data_raders = nullptr;
     if (stride > 1)
@@ -379,12 +376,15 @@ template<RadixType radix_type>
 
     // Last value in stride is special case
     {
+        ComplexD x_temp_in[radix_type];
+        ComplexD x_temp_out[radix_type];
+
         // Initialize raders data with zeros
         init_coeff_D<radix_type>(data_raders, raders);
 
         // Copy input data, taking the special case into account
-        ComplexD x = load_D(data_in + 0);
-        set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x);
+        ComplexD x0 = load_D(data_in + 0);
+        set_value_D<radix_type>(x_temp_in, data_raders, 0, raders, x0);
         for (size_t j = 0; j < radix - 1; j++)
         {
             size_t i2 = j*stride + i + 1;

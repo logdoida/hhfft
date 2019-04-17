@@ -201,7 +201,7 @@ template<typename T> void HHFFT_1D_REAL<T>::plan_odd(InstructionSet instruction_
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table_ifft_odd.data();
-        step.norm_factor = 1.0/(T(n));
+        step.norm_factor = T(1.0/double(n));
         step.forward = false;
         HHFFT_1D_Real_odd_set_function<T>(step, instruction_set);
         inverse_steps.push_back(step);
@@ -322,7 +322,7 @@ template<typename T> void HHFFT_1D_REAL<T>::plan_even(InstructionSet instruction
         step.twiddle_factors = twiddle_factors[0].data();
         step.reorder_table = reorder_table_inverse.data();
         step.forward = false;
-        step.norm_factor = 1.0/(T(n_complex));
+        step.norm_factor = T(1.0/double(n_complex));
         HHFFT_1D_Real_set_complex_to_complex_packed_function<T>(step, instruction_set);
         inverse_steps.push_back(step);
     }
@@ -469,7 +469,7 @@ template<typename T> void HHFFT_1D_REAL<T>::print_complex_packed_vector(const T 
     {
         T real = data[i];
         T imag = data[i+1];
-        if (imag < 0.0)
+        if (imag < T(0.0))
             std::cout << " " << real << imag << "i";
         else
             std::cout << " " << real << "+" << imag << "i";
@@ -488,7 +488,7 @@ template<typename T> void HHFFT_1D_REAL<T>::print_complex_vector(const T *data, 
     {
         T real = data[2*i];
         T imag = data[2*i+1];
-        if (imag < 0.0)
+        if (imag < 0.0f)
             std::cout << real << imag << "i  ";
         else
             std::cout << real << "+" << imag << "i  ";

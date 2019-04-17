@@ -41,7 +41,7 @@ template<typename T> inline void calculate_cos_sin(size_t a, size_t b, T &c, T &
         c = 0.0; s = 1.0;
     } else
     {
-        T angle = 2.0*M_PI*a/b;
+        T angle = T(2.0*M_PI*a/b);
         c = cos(angle);
         s = -sin(angle);
     }
@@ -71,7 +71,7 @@ template<typename T> hhfft::AlignedVector<T> hhfft::calculate_twiddle_factors_DI
     temp1[0] = 1;
     for (size_t i = 1; i < n_dim+1; i++)
     {
-        temp1[i] = temp1[i-1]*N[n_dim-i];
+        temp1[i] = uint32_t(temp1[i-1]*N[n_dim-i]);
     }
 
     size_t N_tot = temp1.back(); // N1*N2*...
@@ -81,7 +81,7 @@ template<typename T> hhfft::AlignedVector<T> hhfft::calculate_twiddle_factors_DI
     temp2[0] = 1;
     for (size_t i = 1; i < n_dim; i++)
     {
-        temp2[i] = temp2[i-1]*N[i-1];
+        temp2[i] = uint32_t(temp2[i-1]*N[i-1]);
     }
 
     for (size_t i = 0; i < num; i++)
@@ -92,7 +92,7 @@ template<typename T> hhfft::AlignedVector<T> hhfft::calculate_twiddle_factors_DI
         {
             ww = ww + n[level]*temp1[n_dim-level-1]*n[j]*temp2[j];
         }        
-        calculate_cos_sin(ww, N_tot, w[2*i], w[2*i+1]);
+        calculate_cos_sin<T>(ww, N_tot, w[2*i], w[2*i+1]);
     }
 
     return w;
@@ -121,7 +121,7 @@ std::vector<uint32_t> hhfft::calculate_reorder_table(const std::vector<size_t> &
     temp1[0] = 1;
     for (size_t i = 1; i < n_dim+1; i++)
     {
-        temp1[i] = temp1[i-1]*N[n_dim-i];
+        temp1[i] = uint32_t(temp1[i-1]*N[n_dim-i]);
     }
 
     size_t N_tot = temp1.back(); // N1*N2*...
@@ -133,7 +133,7 @@ std::vector<uint32_t> hhfft::calculate_reorder_table(const std::vector<size_t> &
         uint32_t temp = 0;
         for(size_t j = 0; j < n_dim; j++)
         {
-            temp = temp + n[n_dim-j-1]*temp1[j];
+            temp = uint32_t(temp + n[n_dim-j-1]*temp1[j]);
         }
         reorder[i] = temp;
     }
@@ -148,7 +148,7 @@ std::vector<uint32_t> hhfft::calculate_inverse_reorder_table(const std::vector<u
 
     for (size_t i = 0; i < n; i++)
     {
-        reorder_inverse[reorder[i]] = i;
+        reorder_inverse[reorder[i]] = uint32_t(i);
     }
 
     return reorder_inverse;
@@ -192,7 +192,7 @@ std::vector<uint32_t> hhfft::calculate_reorder_table_in_place(const std::vector<
     std::vector<uint32_t> indices(N_tot); // Current status of the indices
     for (size_t i = 0; i < N_tot; i++)
     {
-        indices[i] = i;
+        indices[i] = uint32_t(i);
     }
 
     // NOTE this could be done more efficiently with the help of another table pointing where each index can be found

@@ -43,16 +43,16 @@ public:
         this->array = nullptr;
     }
 
-    AlignedVector(size_t n)
+    AlignedVector(size_t nn)
     {
-        if (n == 0)
+        if (nn == 0)
         {
             this->n = 0;
             this->array = nullptr;
         } else
         {
-            this->n = n;
-            this->array = (T*) allocate_aligned_memory(n*sizeof(T), true);
+            this->n = nn;
+            this->array = static_cast<T*>(allocate_aligned_memory(nn*sizeof(T), true));
         }
     }
 

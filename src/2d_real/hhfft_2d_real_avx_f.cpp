@@ -121,10 +121,10 @@ void fft_2d_complex_to_complex_packed_first_column_avx_f(const float *data_in, f
         float x1_r = data_in[i2*m2 + 0];
         float x1_i = data_in[i2*m2 + 1];
 
-        float t1 = 0.5*(x0_r + x1_r);
-        float t2 = 0.5*(x0_r - x1_r);
-        float t3 = 0.5*(x0_i + x1_i);
-        float t4 = 0.5*(x0_i - x1_i);
+        float t1 = 0.5f*(x0_r + x1_r);
+        float t2 = 0.5f*(x0_r - x1_r);
+        float t3 = 0.5f*(x0_i + x1_i);
+        float t4 = 0.5f*(x0_i - x1_i);
 
         data_out[i*m2 + 0] = t1 + t3;
         data_out[i*m2 + 1] = t4 - t2;
@@ -275,10 +275,10 @@ void fft_2d_real_reorder2_inverse_avx_f(const float *data_in, float *data_out,co
                 float x1_r = data_in[2*j2*m2 + 2*m + 0];
                 float x1_i = data_in[2*j2*m2 + 2*m + 1];
 
-                float t1 = 0.5*(x0_r + x1_r);
-                float t2 = 0.5*(x1_i - x0_i);
-                float t3 = 0.5*(x0_r - x1_r);
-                float t4 = 0.5*(x0_i + x1_i);
+                float t1 = 0.5f*(x0_r + x1_r);
+                float t2 = 0.5f*(x1_i - x0_i);
+                float t3 = 0.5f*(x0_r - x1_r);
+                float t4 = 0.5f*(x0_i + x1_i);
 
                 ComplexF x = norm_factor*load_F(t1 + t2, t3 + t4);
                 set_value_F<radix_type>(x_temp_in, data_raders, j, raders, x);
@@ -469,8 +469,8 @@ template<RadixType radix_type> void fft_2d_real_reorder2_odd_rows_forward_avx_f(
             // First/ last one is real
             if (dir_out) // direction normal
             {
-                ComplexF x = get_value_F<radix_type>(x_temp_out, data_raders, 0, raders);
-                store_real_F(x, data_out + i*m2 + j*radix + 1);
+                ComplexF x0 = get_value_F<radix_type>(x_temp_out, data_raders, 0, raders);
+                store_real_F(x0, data_out + i*m2 + j*radix + 1);
 
                 for (size_t k = 1; k < radix/2 + 1; k++)
                 {
