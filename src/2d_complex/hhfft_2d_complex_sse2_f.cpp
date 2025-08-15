@@ -375,6 +375,8 @@ template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix5, SizeType::Size1>(
 template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix6, SizeType::Size1>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix7, SizeType::Size1>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix8, SizeType::Size1>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix11, SizeType::Size1>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix13, SizeType::Size1>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 
 template void fft_2d_complex_column_twiddle_dit_sse2_f<Raders, SizeType::SizeN>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix2, SizeType::SizeN>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
@@ -384,6 +386,8 @@ template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix5, SizeType::SizeN>(
 template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix6, SizeType::SizeN>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix7, SizeType::SizeN>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix8, SizeType::SizeN>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix11, SizeType::SizeN>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
+template void fft_2d_complex_column_twiddle_dit_sse2_f<Radix13, SizeType::SizeN>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 
 template void fft_2d_complex_reorder2_sse2_f<Raders, true>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 template void fft_2d_complex_reorder2_sse2_f<Raders, false>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
@@ -401,6 +405,10 @@ template void fft_2d_complex_reorder2_sse2_f<Radix7, true>(const float *data_in,
 template void fft_2d_complex_reorder2_sse2_f<Radix7, false>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 template void fft_2d_complex_reorder2_sse2_f<Radix8, true>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 template void fft_2d_complex_reorder2_sse2_f<Radix8, false>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
+template void fft_2d_complex_reorder2_sse2_f<Radix11, true>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
+template void fft_2d_complex_reorder2_sse2_f<Radix11, false>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
+template void fft_2d_complex_reorder2_sse2_f<Radix13, true>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
+template void fft_2d_complex_reorder2_sse2_f<Radix13, false>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 
 template void fft_2d_complex_reorder2_rows_forward_sse2_f<Raders>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 template void fft_2d_complex_reorder2_rows_forward_sse2_f<Radix2>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
@@ -410,4 +418,6 @@ template void fft_2d_complex_reorder2_rows_forward_sse2_f<Radix5>(const float *d
 template void fft_2d_complex_reorder2_rows_forward_sse2_f<Radix6>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 template void fft_2d_complex_reorder2_rows_forward_sse2_f<Radix7>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 template void fft_2d_complex_reorder2_rows_forward_sse2_f<Radix8>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_sse2_f<Radix11>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
+template void fft_2d_complex_reorder2_rows_forward_sse2_f<Radix13>(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
 

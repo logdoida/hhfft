@@ -467,11 +467,15 @@ template void fft_2d_real_reorder2_inverse_sse2_d<Radix5>(const double *data_in,
 template void fft_2d_real_reorder2_inverse_sse2_d<Radix6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_sse2_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_inverse_sse2_d<Radix8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_inverse_sse2_d<Radix11>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_inverse_sse2_d<Radix13>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<Radix3>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<Radix5>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<Radix11>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_reorder2_odd_rows_forward_sse2_d<Radix13>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
@@ -481,6 +485,8 @@ template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix5>(const dou
 template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix11>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_first_column_sse2_d<Radix13>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 
 template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Raders>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix2>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
@@ -490,3 +496,5 @@ template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix5>(const double *
 template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix6>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix7>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
 template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix8>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix11>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);
+template void fft_2d_real_odd_rows_reorder_columns_sse2_d<Radix13>(const double *data_in, double *data_out,const hhfft::StepInfo<double> &step_info);

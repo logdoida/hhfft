@@ -24,23 +24,76 @@
 
 #include "hhfft_common.h"
 
-static const float k5 = float(cos(2.0*M_PI*1.0/7.0));
-static const float k6 = float(sin(2.0*M_PI*1.0/7.0));
-static const float k7 = float(-cos(2.0*M_PI*2.0/7.0));
-static const float k8 = float(sin(2.0*M_PI*2.0/7.0));
-static const float k9 = float(-cos(2.0*M_PI*3.0/7.0));
-static const float k10 = float(sin(2.0*M_PI*3.0/7.0));
+static const float cos_1_7_f = float(cos(2.0*M_PI*1.0/7.0));
+static const float sin_1_7_f = float(sin(2.0*M_PI*1.0/7.0));
+static const float cos_2_7_f = float(cos(2.0*M_PI*2.0/7.0));
+static const float sin_2_7_f = float(sin(2.0*M_PI*2.0/7.0));
+static const float cos_3_7_f = float(cos(2.0*M_PI*3.0/7.0));
+static const float sin_3_7_f = float(sin(2.0*M_PI*3.0/7.0));
 
 static const float coeff_radix_7_cos[9] = {
-    k5, -k7, -k9,
-    -k7, -k9,  k5,
-    -k9,  k5, -k7};
+    cos_1_7_f, cos_2_7_f, cos_3_7_f,
+    cos_2_7_f, cos_3_7_f,  cos_1_7_f,
+    cos_3_7_f,  cos_1_7_f, cos_2_7_f};
 
 static const float coeff_radix_7_sin[9] = {
-    -k6, -k8, -k10,
-    -k8, k10, k6,
-    -k10, k6, -k8};
+    -sin_1_7_f, -sin_2_7_f, -sin_3_7_f,
+    -sin_2_7_f, sin_3_7_f, sin_1_7_f,
+    -sin_3_7_f, sin_1_7_f, -sin_2_7_f};
 
+static const float cos_1_11_f = float(cos(2.0*M_PI*1.0/11.0));
+static const float sin_1_11_f = float(sin(2.0*M_PI*1.0/11.0));
+static const float cos_2_11_f = float(cos(2.0*M_PI*2.0/11.0));
+static const float sin_2_11_f = float(sin(2.0*M_PI*2.0/11.0));
+static const float cos_3_11_f = float(cos(2.0*M_PI*3.0/11.0));
+static const float sin_3_11_f = float(sin(2.0*M_PI*3.0/11.0));
+static const float cos_4_11_f = float(cos(2.0*M_PI*4.0/11.0));
+static const float sin_4_11_f = float(sin(2.0*M_PI*4.0/11.0));
+static const float cos_5_11_f = float(cos(2.0*M_PI*5.0/11.0));
+static const float sin_5_11_f = float(sin(2.0*M_PI*5.0/11.0));
+
+static const float coeff_radix_11_cos[25] = {
+    cos_1_11_f, cos_2_11_f, cos_3_11_f, cos_4_11_f, cos_5_11_f,
+    cos_2_11_f, cos_4_11_f, cos_5_11_f, cos_3_11_f, cos_1_11_f,
+    cos_3_11_f, cos_5_11_f, cos_2_11_f, cos_1_11_f, cos_4_11_f,
+    cos_4_11_f, cos_3_11_f, cos_1_11_f, cos_5_11_f, cos_2_11_f,
+    cos_5_11_f, cos_1_11_f, cos_4_11_f, cos_2_11_f, cos_3_11_f};
+    
+static const float coeff_radix_11_sin[25] = {
+    -sin_1_11_f, -sin_2_11_f, -sin_3_11_f, -sin_4_11_f, -sin_5_11_f,
+    -sin_2_11_f, -sin_4_11_f, sin_5_11_f, sin_3_11_f, sin_1_11_f,
+    -sin_3_11_f, sin_5_11_f, sin_2_11_f, -sin_1_11_f, -sin_4_11_f,
+    -sin_4_11_f, sin_3_11_f, -sin_1_11_f, -sin_5_11_f, sin_2_11_f,
+    -sin_5_11_f, sin_1_11_f, -sin_4_11_f, sin_2_11_f, -sin_3_11_f};
+
+static const float cos_1_13_f = float(cos(2.0*M_PI*1.0/13.0));
+static const float sin_1_13_f = float(sin(2.0*M_PI*1.0/13.0));
+static const float cos_2_13_f = float(cos(2.0*M_PI*2.0/13.0));
+static const float sin_2_13_f = float(sin(2.0*M_PI*2.0/13.0));
+static const float cos_3_13_f = float(cos(2.0*M_PI*3.0/13.0));
+static const float sin_3_13_f = float(sin(2.0*M_PI*3.0/13.0));
+static const float cos_4_13_f = float(cos(2.0*M_PI*4.0/13.0));
+static const float sin_4_13_f = float(sin(2.0*M_PI*4.0/13.0));
+static const float cos_5_13_f = float(cos(2.0*M_PI*5.0/13.0));
+static const float sin_5_13_f = float(sin(2.0*M_PI*5.0/13.0));
+static const float cos_6_13_f = float(cos(2.0*M_PI*6.0/13.0));
+static const float sin_6_13_f = float(sin(2.0*M_PI*6.0/13.0));
+
+static const float coeff_radix_13_cos[36] = {
+    cos_1_13_f, cos_2_13_f, cos_3_13_f, cos_4_13_f, cos_5_13_f, cos_6_13_f,
+    cos_2_13_f, cos_4_13_f, cos_6_13_f, cos_5_13_f, cos_3_13_f, cos_1_13_f,
+    cos_3_13_f, cos_6_13_f, cos_4_13_f, cos_1_13_f, cos_2_13_f, cos_5_13_f,
+    cos_4_13_f, cos_5_13_f, cos_1_13_f, cos_3_13_f, cos_6_13_f, cos_2_13_f,
+    cos_5_13_f, cos_3_13_f, cos_2_13_f, cos_6_13_f, cos_1_13_f, cos_4_13_f,
+    cos_6_13_f, cos_1_13_f, cos_5_13_f, cos_2_13_f, cos_4_13_f, cos_3_13_f};
+    
+static const float coeff_radix_13_sin[36] = {
+    -sin_1_13_f, -sin_2_13_f, -sin_3_13_f, -sin_4_13_f, -sin_5_13_f, -sin_6_13_f,
+    -sin_2_13_f, -sin_4_13_f, -sin_6_13_f, sin_5_13_f, sin_3_13_f, sin_1_13_f,
+    -sin_3_13_f, -sin_6_13_f, sin_4_13_f, sin_1_13_f, -sin_2_13_f, -sin_5_13_f,
+    -sin_4_13_f, sin_5_13_f, sin_1_13_f, -sin_3_13_f, sin_6_13_f, sin_2_13_f,
+    -sin_5_13_f, sin_3_13_f, -sin_2_13_f, sin_6_13_f, sin_1_13_f, -sin_4_13_f,
+    -sin_6_13_f, sin_1_13_f, -sin_5_13_f, sin_2_13_f, -sin_4_13_f, sin_3_13_f};
 
 // Packing tables to be used on small problems
 #define packing_a(i,n) float(0.5*cos(2.0*M_PI*(2*i+n)/(4*n))-0.5)
@@ -53,6 +106,8 @@ const float packing_table_10_f[6] = {-0.5, -0.5, packing_a(2,10), packing_b(2,10
 const float packing_table_12_f[6] = {-0.5, -0.5, packing_a(2,12), packing_b(2,12), packing_a(4,12), packing_b(4,12)};
 const float packing_table_14_f[8] = {-0.5, -0.5, packing_a(2,14), packing_b(2,14), packing_a(4,14), packing_b(4,14), packing_a(6,14), packing_b(6,14)};
 const float packing_table_16_f[8] = {-0.5, -0.5, packing_a(2,16), packing_b(2,16), packing_a(4,16), packing_b(4,16), packing_a(6,16), packing_b(6,16)};
+const float packing_table_22_f[12] = {-0.5, -0.5, packing_a(2,22), packing_b(2,22), packing_a(4,22), packing_b(4,22), packing_a(6,22), packing_b(6,22), packing_a(8,22), packing_b(8,22), packing_a(10,22), packing_b(10,22)};
+const float packing_table_26_f[14] = {-0.5, -0.5, packing_a(2,26), packing_b(2,26), packing_a(4,26), packing_b(4,26), packing_a(6,26), packing_b(6,26), packing_a(8,26), packing_b(8,26), packing_a(10,26), packing_b(10,26), packing_a(12,26), packing_b(12,26)};
 
 template<size_t n> static const float *get_packing_table_f()
 {
@@ -74,6 +129,10 @@ template<size_t n> static const float *get_packing_table_f()
             return packing_table_14_f;
         case 16:
             return packing_table_16_f;
+        case 22:
+            return packing_table_22_f;
+        case 26:
+            return packing_table_26_f;
         default:
             return nullptr;
     }

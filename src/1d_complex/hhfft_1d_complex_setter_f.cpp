@@ -227,10 +227,7 @@ void set_radix_f(StepInfoF &step_info, hhfft::InstructionSet instruction_set)
 {
     size_t radix = step_info.radix;
 
-    if (radix > 8)  // Rader's algorithm (radix can be something else)
-    {
-        set_stride_type_f<Raders>(step_info, instruction_set);
-    } else if (radix == 2)
+    if (radix == 2)
     {
         set_stride_type_f<Radix2>(step_info, instruction_set);
     } else if (radix == 3)
@@ -251,6 +248,16 @@ void set_radix_f(StepInfoF &step_info, hhfft::InstructionSet instruction_set)
     } else if (radix == 8)
     {
         set_stride_type_f<Radix8>(step_info, instruction_set);
+    } else if (radix == 11)
+    {
+        set_stride_type_f<Radix11>(step_info, instruction_set);
+    } else if (radix == 13)
+    {
+        set_stride_type_f<Radix13>(step_info, instruction_set);
+    } else if (radix > 13)
+    {
+        // Rader's algorithm (radix can be something else)
+        set_stride_type_f<Raders>(step_info, instruction_set);
     }
 }
 
@@ -446,6 +453,10 @@ namespace hhfft
                 return set_small_function_instruction_set_f<7,1>(step_info, instruction_set, forward);
             case 8:
                 return set_small_function_instruction_set_f<8,1>(step_info, instruction_set, forward);
+            case 11:
+                return set_small_function_instruction_set_f<11,1>(step_info, instruction_set, forward);
+            case 13:
+                return set_small_function_instruction_set_f<13,1>(step_info, instruction_set, forward);
 
             // Two fft levels needed
             case 9:
@@ -466,28 +477,42 @@ namespace hhfft
                 return set_small_function_instruction_set_f<4,5>(step_info, instruction_set, forward);
             case 21:
                 return set_small_function_instruction_set_f<3,7>(step_info, instruction_set, forward);
+            case 22:
+                return set_small_function_instruction_set_f<2,11>(step_info, instruction_set, forward);
             case 24:
                 return set_small_function_instruction_set_f<4,6>(step_info, instruction_set, forward);
             case 25:
                 return set_small_function_instruction_set_f<5,5>(step_info, instruction_set, forward);
+            case 26:
+                return set_small_function_instruction_set_f<2,13>(step_info, instruction_set, forward);
             case 28:
                 return set_small_function_instruction_set_f<4,7>(step_info, instruction_set, forward);
             case 30:
                 return set_small_function_instruction_set_f<5,6>(step_info, instruction_set, forward);
             case 32:
                 return set_small_function_instruction_set_f<4,8>(step_info, instruction_set, forward);
+            case 33:
+                return set_small_function_instruction_set_f<3,11>(step_info, instruction_set, forward);
             case 35:
                 return set_small_function_instruction_set_f<5,7>(step_info, instruction_set, forward);
             case 36:
                 return set_small_function_instruction_set_f<6,6>(step_info, instruction_set, forward);
+            case 39:
+                return set_small_function_instruction_set_f<3,13>(step_info, instruction_set, forward);
             case 40:
                 return set_small_function_instruction_set_f<5,8>(step_info, instruction_set, forward);
             case 42:
                 return set_small_function_instruction_set_f<6,7>(step_info, instruction_set, forward);
+            case 44:
+                return set_small_function_instruction_set_f<4,11>(step_info, instruction_set, forward);
             case 48:
                 return set_small_function_instruction_set_f<6,8>(step_info, instruction_set, forward);
             case 49:
                 return set_small_function_instruction_set_f<7,7>(step_info, instruction_set, forward);
+            case 52:
+                return set_small_function_instruction_set_f<4,13>(step_info, instruction_set, forward);
+            case 55:
+                return set_small_function_instruction_set_f<5,11>(step_info, instruction_set, forward);
             case 56:
                 return set_small_function_instruction_set_f<7,8>(step_info, instruction_set, forward);
             case 64:

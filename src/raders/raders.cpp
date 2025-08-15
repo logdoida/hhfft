@@ -201,7 +201,7 @@ template<typename T> void RadersGeneric<T>::free_memory(T *data)
 template<typename T> RadersGeneric<T>::RadersGeneric(size_t n_org, InstructionSet instruction_set)
 {
     // Raders should not be used for smaller radices
-    if (n_org < 11)
+    if (n_org <= 13)
     {
         throw(std::runtime_error("HHFFT error: Rader's algorithm used for too small problem"));
     }

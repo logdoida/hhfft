@@ -24,6 +24,7 @@
 
 #include "hhfft_common_f.h"
 #include <immintrin.h>
+#include <stdexcept>
 
 
 //////////////////////////////////////// ComplexF /////////////////////////////////////////
@@ -310,16 +311,32 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         return;
     }
 
-    // Implementation for radix = 7
-    if (radix == 7)
+    // Implementation for radix = 7, 11, 13
+    if (radix == 7 || radix == 11 || radix == 13)
     {
-        const float *coeff_cos = coeff_radix_7_cos;
-        const float *coeff_sin = coeff_radix_7_sin;
+        const float *coeff_cos = nullptr;
+        const float *coeff_sin = nullptr;
+
+        if (radix == 7)
+        {
+            coeff_cos = coeff_radix_7_cos;
+            coeff_sin = coeff_radix_7_sin;
+        } else if (radix == 11)
+        {
+            coeff_cos = coeff_radix_11_cos;
+            coeff_sin = coeff_radix_11_sin;
+        } else
+        {
+            coeff_cos = coeff_radix_13_cos;
+            coeff_sin = coeff_radix_13_sin;
+        }
+
+        const size_t n = (radix - 1) / 2;
 
         // Calculate sums and differences
-        ComplexF sums[3];
-        ComplexF diffs[3];
-        for (size_t i = 0; i < 3; i++)
+        ComplexF sums[6];
+        ComplexF diffs[6];
+        for (size_t i = 0; i < n; i++)
         {
             sums[i] = x_in[i+1] + x_in[radix - i - 1];
             diffs[i] = mul_i_F(x_in[radix - i - 1] - x_in[i+1]);
@@ -332,18 +349,18 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         }
 
         // Calculate x_out[0]
-        for (size_t i = 0; i < 3; i++)
+        for (size_t i = 0; i < n; i++)
         {
             x_out[0] += sums[i];
         }
 
         // use cos-coefficients
-        for (size_t i = 0; i < 3; i++)
+        for (size_t i = 0; i < n; i++)
         {
             ComplexF x = load_F(0,0);
-            for (size_t j = 0; j < 3; j++)
+            for (size_t j = 0; j < n; j++)
             {
-                ComplexF coeff = broadcast32_F(coeff_cos[3*i + j]);
+                ComplexF coeff = broadcast32_F(coeff_cos[n*i + j]);
                 x += coeff*sums[j];
             }
             x_out[i+1] += x;
@@ -351,12 +368,12 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         }
 
         // use sin-coefficients
-        for (size_t i = 0; i < 3; i++)
+        for (size_t i = 0; i < n; i++)
         {
             ComplexF x = load_F(0,0);
-            for (size_t j = 0; j < 3; j++)
+            for (size_t j = 0; j < n; j++)
             {
-                ComplexF coeff = broadcast32_F(coeff_sin[3*i + j]);
+                ComplexF coeff = broadcast32_F(coeff_sin[n*i + j]);
                 x += coeff*diffs[j];
             }
             if (forward)
@@ -763,16 +780,32 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         return;
     }
 
-    // Implementation for radix = 7
-    if (radix == 7)
+    // Implementation for radix = 7, 11, 13
+    if (radix == 7 || radix == 11 || radix == 13)
     {
-        const float *coeff_cos = coeff_radix_7_cos;
-        const float *coeff_sin = coeff_radix_7_sin;
+        const float *coeff_cos = nullptr;
+        const float *coeff_sin = nullptr;
+
+        if (radix == 7)
+        {
+            coeff_cos = coeff_radix_7_cos;
+            coeff_sin = coeff_radix_7_sin;
+        } else if (radix == 11)
+        {
+            coeff_cos = coeff_radix_11_cos;
+            coeff_sin = coeff_radix_11_sin;
+        } else
+        {
+            coeff_cos = coeff_radix_13_cos;
+            coeff_sin = coeff_radix_13_sin;
+        }
+
+        const size_t n = (radix - 1) / 2;
 
         // Calculate sums and differences
-        ComplexF2 sums[3];
-        ComplexF2 diffs[3];
-        for (size_t i = 0; i < 3; i++)
+        ComplexF2 sums[6];
+        ComplexF2 diffs[6];
+        for (size_t i = 0; i < n; i++)
         {
             sums[i] = x_in[i+1] + x_in[radix - i - 1];
             diffs[i] = mul_i_F2(x_in[radix - i - 1] - x_in[i+1]);
@@ -785,18 +818,18 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         }
 
         // Calculate x_out[0]
-        for (size_t i = 0; i < 3; i++)
+        for (size_t i = 0; i < n; i++)
         {
             x_out[0] += sums[i];
         }
 
         // use cos-coefficients
-        for (size_t i = 0; i < 3; i++)
+        for (size_t i = 0; i < n; i++)
         {
             ComplexF2 x = load_F(0,0);
-            for (size_t j = 0; j < 3; j++)
+            for (size_t j = 0; j < n; j++)
             {
-                ComplexF2 coeff = broadcast32_F2(coeff_cos[3*i + j]);
+                ComplexF2 coeff = broadcast32_F2(coeff_cos[n*i + j]);
                 x += coeff*sums[j];
             }
             x_out[i+1] += x;
@@ -804,12 +837,12 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         }
 
         // use sin-coefficients
-        for (size_t i = 0; i < 3; i++)
+        for (size_t i = 0; i < n; i++)
         {
             ComplexF2 x = load_F(0,0);
-            for (size_t j = 0; j < 3; j++)
+            for (size_t j = 0; j < n; j++)
             {
-                ComplexF2 coeff = broadcast32_F2(coeff_sin[3*i + j]);
+                ComplexF2 coeff = broadcast32_F2(coeff_sin[n*i + j]);
                 x += coeff*diffs[j];
             }
             if (forward)
@@ -1257,16 +1290,32 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         return;
     }
 
-    // Implementation for radix = 7
-    if (radix == 7)
+    // Implementation for radix = 7, 11, 13
+    if (radix == 7 || radix == 11 || radix == 13)
     {
-        const float *coeff_cos = coeff_radix_7_cos;
-        const float *coeff_sin = coeff_radix_7_sin;
+        const float *coeff_cos = nullptr;
+        const float *coeff_sin = nullptr;
+
+        if (radix == 7)
+        {
+            coeff_cos = coeff_radix_7_cos;
+            coeff_sin = coeff_radix_7_sin;
+        } else if (radix == 11)
+        {
+            coeff_cos = coeff_radix_11_cos;
+            coeff_sin = coeff_radix_11_sin;
+        } else
+        {
+            coeff_cos = coeff_radix_13_cos;
+            coeff_sin = coeff_radix_13_sin;
+        }
+
+        const size_t n = (radix - 1) / 2;
 
         // Calculate sums and differences
-        ComplexF4 sums[3];
-        ComplexF4 diffs[3];
-        for (size_t i = 0; i < 3; i++)
+        ComplexF4 sums[6];
+        ComplexF4 diffs[6];
+        for (size_t i = 0; i < n; i++)
         {
             sums[i] = x_in[i+1] + x_in[radix - i - 1];
             diffs[i] = mul_i_F4(x_in[radix - i - 1] - x_in[i+1]);
@@ -1279,18 +1328,18 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         }
 
         // Calculate x_out[0]
-        for (size_t i = 0; i < 3; i++)
+        for (size_t i = 0; i < n; i++)
         {
             x_out[0] += sums[i];
         }
 
         // use cos-coefficients
-        for (size_t i = 0; i < 3; i++)
+        for (size_t i = 0; i < n; i++)
         {
             ComplexF4 x = _mm256_setzero_ps();
-            for (size_t j = 0; j < 3; j++)
+            for (size_t j = 0; j < n; j++)
             {
-                ComplexF4 coeff = broadcast32_F4(coeff_cos[3*i + j]);
+                ComplexF4 coeff = broadcast32_F4(coeff_cos[n*i + j]);
                 x += coeff*sums[j];
             }
             x_out[i+1] += x;
@@ -1298,12 +1347,12 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         }
 
         // use sin-coefficients
-        for (size_t i = 0; i < 3; i++)
+        for (size_t i = 0; i < n; i++)
         {
             ComplexF4 x = _mm256_setzero_ps();
-            for (size_t j = 0; j < 3; j++)
+            for (size_t j = 0; j < n; j++)
             {
-                ComplexF4 coeff = broadcast32_F4(coeff_sin[3*i + j]);
+                ComplexF4 coeff = broadcast32_F4(coeff_sin[n*i + j]);
                 x += coeff*diffs[j];
             }
             if (forward)

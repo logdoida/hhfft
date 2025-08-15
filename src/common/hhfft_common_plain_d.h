@@ -25,6 +25,8 @@
 
 #include "hhfft_common_d.h"
 
+#include <stdexcept>
+
 // contains a single complex number: [r i]
 typedef struct
 {
@@ -328,16 +330,32 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         return;
     }
 
-    // Implementation for radix = 7
-    if (radix == 7)
+    // Implementation for radix = 7, 11, 13
+    if (radix == 7 || radix == 11 || radix == 13)
     {
-        const double *coeff_cos = coeff_radix_7_cos_d;
-        const double *coeff_sin = coeff_radix_7_sin_d;
+        const double *coeff_cos = nullptr;
+        const double *coeff_sin = nullptr;
 
+        if (radix == 7)
+        {
+            coeff_cos = coeff_radix_7_cos_d;
+            coeff_sin = coeff_radix_7_sin_d;
+        } else if (radix == 11)
+        {
+            coeff_cos = coeff_radix_11_cos_d;
+            coeff_sin = coeff_radix_11_sin_d;
+        } else
+        {
+            coeff_cos = coeff_radix_13_cos_d;
+            coeff_sin = coeff_radix_13_sin_d;
+        }
+
+        const size_t n = (radix - 1) / 2;
+    
         // Calculate sums and differences
-        ComplexD sums[3];
-        ComplexD diffs[3];
-        for (size_t i = 0; i < 3; i++)
+        ComplexD sums[6];
+        ComplexD diffs[6];
+        for (size_t i = 0; i < n; i++)
         {
             sums[i] = x_in[i+1] + x_in[radix - i - 1];
             diffs[i] = mul_i_D(x_in[radix - i - 1] - x_in[i+1]);
@@ -350,18 +368,18 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         }
 
         // Calculate x_out[0]
-        for (size_t i = 0; i < 3; i++)
+        for (size_t i = 0; i < n; i++)
         {
             x_out[0] += sums[i];
         }
 
         // use cos-coefficients
-        for (size_t i = 0; i < 3; i++)
+        for (size_t i = 0; i < n; i++)
         {
             ComplexD x = load_D(0,0);
-            for (size_t j = 0; j < 3; j++)
+            for (size_t j = 0; j < n; j++)
             {
-                ComplexD coeff = broadcast64_D(coeff_cos[3*i + j]);
+                ComplexD coeff = broadcast64_D(coeff_cos[n*i + j]);
                 x += coeff*sums[j];
             }
             x_out[i+1] += x;
@@ -369,12 +387,12 @@ template<size_t radix, bool forward> inline __attribute__((always_inline)) void 
         }
 
         // use sin-coefficients
-        for (size_t i = 0; i < 3; i++)
+        for (size_t i = 0; i < n; i++)
         {
             ComplexD x = load_D(0,0);
-            for (size_t j = 0; j < 3; j++)
+            for (size_t j = 0; j < n; j++)
             {
-                ComplexD coeff = broadcast64_D(coeff_sin[3*i + j]);
+                ComplexD coeff = broadcast64_D(coeff_sin[n*i + j]);
                 x += coeff*diffs[j];
             }
             if (forward)

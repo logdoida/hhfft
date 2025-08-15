@@ -36,7 +36,7 @@ enum StepDataType {data_in = 0, data_out = 1, temp_data = 2};
 // StrideN -> stride something else
 enum SizeType{Size1, Size2, Size4, Size2N, Size4N, SizeN};
 
-enum RadixType{RadixNone = 0, Raders = 1, Radix2 = 2, Radix3 = 3, Radix4 = 4, Radix5 = 5, Radix6 = 6, Radix7 = 7, Radix8 = 8};
+enum RadixType{RadixNone = 0, Raders = 1, Radix2 = 2, Radix3 = 3, Radix4 = 4, Radix5 = 5, Radix6 = 6, Radix7 = 7, Radix8 = 8, Radix11 = 11, Radix13 = 13};
 
 template<typename T> struct StepInfo
 {

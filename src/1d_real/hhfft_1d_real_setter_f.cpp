@@ -184,7 +184,11 @@ void set_instruction_odd_first_level_radix_f(StepInfoF &step_info, hhfft::Instru
         set_instruction_odd_first_level_f<Radix5>(step_info, instruction_set);
     else if(step_info.radix == 7)
         set_instruction_odd_first_level_f<Radix7>(step_info, instruction_set);
-    else if(step_info.radix > 8)
+    else if(step_info.radix == 11)
+        set_instruction_odd_first_level_f<Radix11>(step_info, instruction_set);
+    else if(step_info.radix == 13)
+        set_instruction_odd_first_level_f<Radix13>(step_info, instruction_set);
+    else if(step_info.radix > 13)
         set_instruction_odd_first_level_f<Raders>(step_info, instruction_set);
 }
 
@@ -234,7 +238,11 @@ void set_instruction_odd_other_level_radix_f(StepInfoF &step_info, hhfft::Instru
         set_instruction_odd_other_level_f<Radix5>(step_info, instruction_set);
     else if(step_info.radix == 7)
         set_instruction_odd_other_level_f<Radix7>(step_info, instruction_set);
-    else if(step_info.radix > 8)
+    else if(step_info.radix == 11)
+        set_instruction_odd_other_level_f<Radix11>(step_info, instruction_set);
+    else if(step_info.radix == 13)
+        set_instruction_odd_other_level_f<Radix13>(step_info, instruction_set);
+    else if(step_info.radix > 13)
         set_instruction_odd_other_level_f<Raders>(step_info, instruction_set);
 }
 
@@ -341,16 +349,29 @@ namespace hhfft
         } else if(n == 10)
         {
             set_small_function_instruction_set_real_f<10>(step_info, instruction_set, forward);
+        } else if(n == 11)
+        {
+            set_small_function_instruction_set_real_f<11>(step_info, instruction_set, forward);
         } else if(n == 12)
         {
             set_small_function_instruction_set_real_f<12>(step_info, instruction_set, forward);
+        } else if(n == 13)
+        {
+            set_small_function_instruction_set_real_f<13>(step_info, instruction_set, forward);
         } else if(n == 14)
         {
             set_small_function_instruction_set_real_f<14>(step_info, instruction_set, forward);
         } else if(n == 16)
         {
             set_small_function_instruction_set_real_f<16>(step_info, instruction_set, forward);
+        } else if(n == 22)
+        {
+            set_small_function_instruction_set_real_f<22>(step_info, instruction_set, forward);
+        } else if(n == 26)
+        {
+            set_small_function_instruction_set_real_f<26>(step_info, instruction_set, forward);
         }
+
 
         return;
     }

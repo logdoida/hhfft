@@ -21,6 +21,7 @@
 #include <array>
 #include <algorithm>
 #include <assert.h>
+#include <cmath>
 
 // calculates cos and -sin for a = 2*M_PI*a/b
 template<typename T> inline void calculate_cos_sin(size_t a, size_t b, T &c, T &s)
@@ -230,9 +231,9 @@ std::vector<size_t> hhfft::calculate_factorization(size_t n)
     std::vector<size_t> factors;
 
     // This list is the supported factorizations in order of preference
-    std::array<size_t, 7> radices = {6,8,4,2,3,5,7};
-    //std::array<size_t, 4> radices = {2,3,5,7}; // for TESTING use 2 and 3 instead of 4 or 8 or 6
-    //std::array<size_t, 6> radices = {6,4,2,3,5,7}; // for TESTING use 4 instead of 8
+    std::array<size_t, 9> radices = {6,8,4,2,3,5,7,11,13};
+    //std::array<size_t, 6> radices = {2,3,5,7,11,13}; // for TESTING use 2 and 3 instead of 4 or 8 or 6
+    //std::array<size_t, 8> radices = {6,4,2,3,5,7,11,13}; // for TESTING use 4 instead of 8
 
     bool radix_found = true;
     while(radix_found)
@@ -252,7 +253,7 @@ std::vector<size_t> hhfft::calculate_factorization(size_t n)
     }
 
     // Then start searching for larger ones
-    size_t r = 11;
+    size_t r = 17;
     while (n > 1)
     {
         while ((n % r) == 0)

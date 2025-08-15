@@ -149,10 +149,7 @@ void set_radix_2d_colums_d(StepInfoD &step_info, hhfft::InstructionSet instructi
 {
     size_t radix = step_info.radix;
 
-    if (radix > 8)
-    {
-        set_stride_type_2d_columns_d<Raders>(step_info, instruction_set);
-    } else if (radix == 2)
+    if (radix == 2)
     {
         set_stride_type_2d_columns_d<Radix2>(step_info, instruction_set);
     } else if (radix == 3)
@@ -173,6 +170,15 @@ void set_radix_2d_colums_d(StepInfoD &step_info, hhfft::InstructionSet instructi
     } else if (radix == 8)
     {
        set_stride_type_2d_columns_d<Radix8>(step_info, instruction_set);
+    } else if (radix == 11)
+    {
+        set_stride_type_2d_columns_d<Radix11>(step_info, instruction_set);
+    } else if (radix == 13)
+    {
+        set_stride_type_2d_columns_d<Radix13>(step_info, instruction_set);
+    } else if (radix > 13)
+    {
+        set_stride_type_2d_columns_d<Raders>(step_info, instruction_set);
     }
 }
 
@@ -270,30 +276,36 @@ void set_radix_2d_rows_d(StepInfoD &step_info, hhfft::InstructionSet instruction
 {
     size_t radix = step_info.radix;
 
-    if (radix > 8)
-    {
-        set_instruction_set_rows_2d_d<Raders>(step_info, instruction_set);
-    } if (radix == 2)
+    if (radix == 2)
     {
         set_instruction_set_rows_2d_d<Radix2>(step_info, instruction_set);
-    } if (radix == 3)
+    } else if (radix == 3)
     {
         set_instruction_set_rows_2d_d<Radix3>(step_info, instruction_set);
-    } if (radix == 4)
+    } else if (radix == 4)
     {
         set_instruction_set_rows_2d_d<Radix4>(step_info, instruction_set);
-    } if (radix == 5)
+    } else if (radix == 5)
     {
         set_instruction_set_rows_2d_d<Radix5>(step_info, instruction_set);
-    } if (radix == 6)
+    } else if (radix == 6)
     {
         set_instruction_set_rows_2d_d<Radix6>(step_info, instruction_set);
-    } if (radix == 7)
+    } else if (radix == 7)
     {
         set_instruction_set_rows_2d_d<Radix7>(step_info, instruction_set);
-    } if (radix == 8)
+    } else if (radix == 8)
     {
        set_instruction_set_rows_2d_d<Radix8>(step_info, instruction_set);
+    }  else if (radix == 11)
+    {
+       set_instruction_set_rows_2d_d<Radix11>(step_info, instruction_set);
+    } else if (radix == 13)
+    {
+       set_instruction_set_rows_2d_d<Radix13>(step_info, instruction_set);
+    } else if (radix > 13)
+    {
+        set_instruction_set_rows_2d_d<Raders>(step_info, instruction_set);
     }
 }
 

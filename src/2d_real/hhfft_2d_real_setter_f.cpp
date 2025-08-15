@@ -257,11 +257,7 @@ void set_radix_2d_real_f(StepInfoF &step_info, hhfft::InstructionSet instruction
 {
     size_t radix = step_info.radix;
 
-    if (radix > 8)
-    {
-        set_instruction_set_2d_real_f<Raders>(step_info, instruction_set);
-    }
-    else if (radix == 2)
+    if (radix == 2)
     {
         set_instruction_set_2d_real_f<Radix2>(step_info, instruction_set);
     } else if (radix == 3)
@@ -282,7 +278,16 @@ void set_radix_2d_real_f(StepInfoF &step_info, hhfft::InstructionSet instruction
     } else if (radix == 8)
     {
        set_instruction_set_2d_real_f<Radix8>(step_info, instruction_set);
-    }
+    } else if (radix == 11)
+    {
+       set_instruction_set_2d_real_f<Radix11>(step_info, instruction_set);
+    } else if (radix == 13)
+    {
+       set_instruction_set_2d_real_f<Radix13>(step_info, instruction_set);
+    } else if (radix > 13)
+    {
+        set_instruction_set_2d_real_f<Raders>(step_info, instruction_set);
+    }    
 }
 
 void fft_2d_real_reorder_rows_in_place_plain_f(const float *data_in, float *data_out,const hhfft::StepInfo<float> &step_info);
@@ -453,11 +458,7 @@ void set_radix_2d_odd_rows_f(StepInfoF &step_info, hhfft::InstructionSet instruc
 {
     size_t radix = step_info.radix;
 
-    if (radix > 8)
-    {
-        set_instruction_set_odd_rows_2d_f<Raders>(step_info, instruction_set);
-    }
-    else if (radix == 3)
+    if (radix == 3)
     {
         set_instruction_set_odd_rows_2d_f<Radix3>(step_info, instruction_set);
     } else if (radix == 5)
@@ -466,6 +467,15 @@ void set_radix_2d_odd_rows_f(StepInfoF &step_info, hhfft::InstructionSet instruc
     } else if (radix == 7)
     {
         set_instruction_set_odd_rows_2d_f<Radix7>(step_info, instruction_set);
+    } else if (radix == 11)
+    {
+        set_instruction_set_odd_rows_2d_f<Radix11>(step_info, instruction_set);
+    } else if (radix == 13)
+    {
+        set_instruction_set_odd_rows_2d_f<Radix13>(step_info, instruction_set);
+    } else if (radix > 13)
+    {
+        set_instruction_set_odd_rows_2d_f<Raders>(step_info, instruction_set);
     }
 }
 
@@ -564,10 +574,7 @@ void set_radix_2d_odd_columns_f(StepInfoF &step_info, hhfft::InstructionSet inst
 {
     size_t radix = step_info.radix;
 
-    if (radix > 8)
-    {
-        set_instruction_set_odd_columns_2d_f<Raders>(step_info, instruction_set);
-    } else if (radix == 2)
+    if (radix == 2)
     {
         set_instruction_set_odd_columns_2d_f<Radix2>(step_info, instruction_set);
     } else if (radix == 3)
@@ -588,6 +595,15 @@ void set_radix_2d_odd_columns_f(StepInfoF &step_info, hhfft::InstructionSet inst
     } else if (radix == 8)
     {
         set_instruction_set_odd_columns_2d_f<Radix8>(step_info, instruction_set);
+    } else if (radix == 11)
+    {
+        set_instruction_set_odd_columns_2d_f<Radix11>(step_info, instruction_set);
+    } else if (radix == 13)
+    {
+        set_instruction_set_odd_columns_2d_f<Radix13>(step_info, instruction_set);
+    } else if (radix > 13)
+    {
+        set_instruction_set_odd_columns_2d_f<Raders>(step_info, instruction_set);
     }
 }
 

@@ -182,8 +182,13 @@ void set_instruction_odd_first_level_radix_d(StepInfoD &step_info, hhfft::Instru
         set_instruction_odd_first_level_d<Radix5>(step_info, instruction_set);
     else if(step_info.radix == 7)
         set_instruction_odd_first_level_d<Radix7>(step_info, instruction_set);
-    else if(step_info.radix > 8)
+    else if(step_info.radix == 11)
+        set_instruction_odd_first_level_d<Radix11>(step_info, instruction_set);
+    else if(step_info.radix == 13)
+        set_instruction_odd_first_level_d<Radix13>(step_info, instruction_set);
+    else if(step_info.radix > 13)
         set_instruction_odd_first_level_d<Raders>(step_info, instruction_set);
+    
 }
 
 template<RadixType radix_type> void set_instruction_odd_other_level_d(StepInfoD &step_info, hhfft::InstructionSet instruction_set)
@@ -231,7 +236,11 @@ void set_instruction_odd_other_level_radix_d(StepInfoD &step_info, hhfft::Instru
         set_instruction_odd_other_level_d<Radix5>(step_info, instruction_set);
     else if(step_info.radix == 7)
         set_instruction_odd_other_level_d<Radix7>(step_info, instruction_set);
-    else if(step_info.radix > 8)
+    else if(step_info.radix == 11)
+        set_instruction_odd_other_level_d<Radix11>(step_info, instruction_set);
+    else if(step_info.radix == 13)
+        set_instruction_odd_other_level_d<Radix13>(step_info, instruction_set);
+    else if(step_info.radix > 13)
         set_instruction_odd_other_level_d<Raders>(step_info, instruction_set);
 }
 
@@ -337,15 +346,28 @@ namespace hhfft
         } else if(n == 10)
         {
             set_small_function_instruction_set_real_d<10>(step_info, instruction_set, forward);
+        } else if(n == 11)
+        {
+            set_small_function_instruction_set_real_d<11>(step_info, instruction_set, forward);
         } else if(n == 12)
         {
             set_small_function_instruction_set_real_d<12>(step_info, instruction_set, forward);
-        } else if(n == 14)
+        } else if(n == 13)
+        {
+            set_small_function_instruction_set_real_d<13>(step_info, instruction_set, forward);
+        }
+         else if(n == 14)
         {
             set_small_function_instruction_set_real_d<14>(step_info, instruction_set, forward);
         } else if(n == 16)
         {
             set_small_function_instruction_set_real_d<16>(step_info, instruction_set, forward);
+        } else if(n == 22)
+        {
+            set_small_function_instruction_set_real_d<22>(step_info, instruction_set, forward);
+        } else if(n == 26)
+        {
+            set_small_function_instruction_set_real_d<26>(step_info, instruction_set, forward);
         }
 
         return;

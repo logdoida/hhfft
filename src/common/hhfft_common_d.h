@@ -24,23 +24,78 @@
 
 #include "hhfft_common.h"
 
-static const double k5_d = cos(2.0*M_PI*1.0/7.0);
-static const double k6_d = sin(2.0*M_PI*1.0/7.0);
-static const double k7_d = -cos(2.0*M_PI*2.0/7.0);
-static const double k8_d = sin(2.0*M_PI*2.0/7.0);
-static const double k9_d = -cos(2.0*M_PI*3.0/7.0);
-static const double k10_d = sin(2.0*M_PI*3.0/7.0);
+static const double cos_1_7_d = cos(2.0*M_PI*1.0/7.0);
+static const double sin_1_7_d = sin(2.0*M_PI*1.0/7.0);
+static const double cos_2_7_d = cos(2.0*M_PI*2.0/7.0);
+static const double sin_2_7_d = sin(2.0*M_PI*2.0/7.0);
+static const double cos_3_7_d = cos(2.0*M_PI*3.0/7.0);
+static const double sin_3_7_d = sin(2.0*M_PI*3.0/7.0);
 
 static const double coeff_radix_7_cos_d[9] = {
-    k5_d, -k7_d, -k9_d,
-    -k7_d, -k9_d,  k5_d,
-    -k9_d,  k5_d, -k7_d};
+    cos_1_7_d, cos_2_7_d, cos_3_7_d,
+    cos_2_7_d, cos_3_7_d,  cos_1_7_d,
+    cos_3_7_d,  cos_1_7_d, cos_2_7_d};
 
 static const double coeff_radix_7_sin_d[9] = {
-    -k6_d, -k8_d, -k10_d,
-    -k8_d, k10_d, k6_d,
-    -k10_d, k6_d, -k8_d};
+    -sin_1_7_d, -sin_2_7_d, -sin_3_7_d,
+    -sin_2_7_d, sin_3_7_d, sin_1_7_d,
+    -sin_3_7_d, sin_1_7_d, -sin_2_7_d};
 
+
+static const double cos_1_11_d = cos(2.0*M_PI*1.0/11.0);
+static const double sin_1_11_d = sin(2.0*M_PI*1.0/11.0);
+static const double cos_2_11_d = cos(2.0*M_PI*2.0/11.0);
+static const double sin_2_11_d = sin(2.0*M_PI*2.0/11.0);
+static const double cos_3_11_d = cos(2.0*M_PI*3.0/11.0);
+static const double sin_3_11_d = sin(2.0*M_PI*3.0/11.0);
+static const double cos_4_11_d = cos(2.0*M_PI*4.0/11.0);
+static const double sin_4_11_d = sin(2.0*M_PI*4.0/11.0);
+static const double cos_5_11_d = cos(2.0*M_PI*5.0/11.0);
+static const double sin_5_11_d = sin(2.0*M_PI*5.0/11.0);
+
+static const double coeff_radix_11_cos_d[25] = {
+    cos_1_11_d, cos_2_11_d, cos_3_11_d, cos_4_11_d, cos_5_11_d,
+    cos_2_11_d, cos_4_11_d, cos_5_11_d, cos_3_11_d, cos_1_11_d,
+    cos_3_11_d, cos_5_11_d, cos_2_11_d, cos_1_11_d, cos_4_11_d,
+    cos_4_11_d, cos_3_11_d, cos_1_11_d, cos_5_11_d, cos_2_11_d,
+    cos_5_11_d, cos_1_11_d, cos_4_11_d, cos_2_11_d, cos_3_11_d};
+    
+static const double coeff_radix_11_sin_d[25] = {
+    -sin_1_11_d, -sin_2_11_d, -sin_3_11_d, -sin_4_11_d, -sin_5_11_d,
+    -sin_2_11_d, -sin_4_11_d, sin_5_11_d, sin_3_11_d, sin_1_11_d,
+    -sin_3_11_d, sin_5_11_d, sin_2_11_d, -sin_1_11_d, -sin_4_11_d,
+    -sin_4_11_d, sin_3_11_d, -sin_1_11_d, -sin_5_11_d, sin_2_11_d,
+    -sin_5_11_d, sin_1_11_d, -sin_4_11_d, sin_2_11_d, -sin_3_11_d};
+
+
+static const double cos_1_13_d = cos(2.0*M_PI*1.0/13.0);
+static const double sin_1_13_d = sin(2.0*M_PI*1.0/13.0);
+static const double cos_2_13_d = cos(2.0*M_PI*2.0/13.0);
+static const double sin_2_13_d = sin(2.0*M_PI*2.0/13.0);
+static const double cos_3_13_d = cos(2.0*M_PI*3.0/13.0);
+static const double sin_3_13_d = sin(2.0*M_PI*3.0/13.0);
+static const double cos_4_13_d = cos(2.0*M_PI*4.0/13.0);
+static const double sin_4_13_d = sin(2.0*M_PI*4.0/13.0);
+static const double cos_5_13_d = cos(2.0*M_PI*5.0/13.0);
+static const double sin_5_13_d = sin(2.0*M_PI*5.0/13.0);
+static const double cos_6_13_d = cos(2.0*M_PI*6.0/13.0);
+static const double sin_6_13_d = sin(2.0*M_PI*6.0/13.0);
+
+static const double coeff_radix_13_cos_d[36] = {
+    cos_1_13_d, cos_2_13_d, cos_3_13_d, cos_4_13_d, cos_5_13_d, cos_6_13_d,
+    cos_2_13_d, cos_4_13_d, cos_6_13_d, cos_5_13_d, cos_3_13_d, cos_1_13_d,
+    cos_3_13_d, cos_6_13_d, cos_4_13_d, cos_1_13_d, cos_2_13_d, cos_5_13_d,
+    cos_4_13_d, cos_5_13_d, cos_1_13_d, cos_3_13_d, cos_6_13_d, cos_2_13_d,
+    cos_5_13_d, cos_3_13_d, cos_2_13_d, cos_6_13_d, cos_1_13_d, cos_4_13_d,
+    cos_6_13_d, cos_1_13_d, cos_5_13_d, cos_2_13_d, cos_4_13_d, cos_3_13_d};
+    
+static const double coeff_radix_13_sin_d[36] = {
+    -sin_1_13_d, -sin_2_13_d, -sin_3_13_d, -sin_4_13_d, -sin_5_13_d, -sin_6_13_d,
+    -sin_2_13_d, -sin_4_13_d, -sin_6_13_d, sin_5_13_d, sin_3_13_d, sin_1_13_d,
+    -sin_3_13_d, -sin_6_13_d, sin_4_13_d, sin_1_13_d, -sin_2_13_d, -sin_5_13_d,
+    -sin_4_13_d, sin_5_13_d, sin_1_13_d, -sin_3_13_d, sin_6_13_d, sin_2_13_d,
+    -sin_5_13_d, sin_3_13_d, -sin_2_13_d, sin_6_13_d, sin_1_13_d, -sin_4_13_d,
+    -sin_6_13_d, sin_1_13_d, -sin_5_13_d, sin_2_13_d, -sin_4_13_d, sin_3_13_d};
 
 // Packing tables to be used on small problems
 #define packing_a_d(i,n) (0.5*cos(2.0*M_PI*(2*i+n)/(4*n))-0.5)
@@ -53,6 +108,8 @@ const double packing_table_10[6] = {-0.5, -0.5, packing_a_d(2,10), packing_b_d(2
 const double packing_table_12[6] = {-0.5, -0.5, packing_a_d(2,12), packing_b_d(2,12), packing_a_d(4,12), packing_b_d(4,12)};
 const double packing_table_14[8] = {-0.5, -0.5, packing_a_d(2,14), packing_b_d(2,14), packing_a_d(4,14), packing_b_d(4,14), packing_a_d(6,14), packing_b_d(6,14)};
 const double packing_table_16[8] = {-0.5, -0.5, packing_a_d(2,16), packing_b_d(2,16), packing_a_d(4,16), packing_b_d(4,16), packing_a_d(6,16), packing_b_d(6,16)};
+const double packing_table_22[12] = {-0.5, -0.5, packing_a_d(2,22), packing_b_d(2,22), packing_a_d(4,22), packing_b_d(4,22), packing_a_d(6,22), packing_b_d(6,22), packing_a_d(8,22), packing_b_d(8,22), packing_a_d(10,22), packing_b_d(10,22)};
+const double packing_table_26[14] = {-0.5, -0.5, packing_a_d(2,26), packing_b_d(2,26), packing_a_d(4,26), packing_b_d(4,26), packing_a_d(6,26), packing_b_d(6,26), packing_a_d(8,26), packing_b_d(8,26), packing_a_d(10,26), packing_b_d(10,26), packing_a_d(12,26), packing_b_d(12,26)};
 
 template<size_t n> static const double *get_packing_table()
 {
@@ -74,6 +131,10 @@ template<size_t n> static const double *get_packing_table()
             return packing_table_14;
         case 16:
             return packing_table_16;
+        case 22:
+            return packing_table_22;
+        case 26:
+            return packing_table_26;
         default:
             return nullptr;
     }

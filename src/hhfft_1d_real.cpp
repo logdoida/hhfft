@@ -96,7 +96,7 @@ template<typename T> HHFFT_1D_REAL<T>::HHFFT_1D_REAL(size_t n, InstructionSet in
 
 template<typename T> void HHFFT_1D_REAL<T>::set_radix_raders(size_t radix, StepInfo<T> &step, InstructionSet instruction_set)
 {
-    if (radix > 8)
+    if (radix > 13)
     {
         // Use Rader's algorithm instead
         raders.push_back(std::unique_ptr<RadersGeneric<T>>(new RadersGeneric<T>(radix, instruction_set)));
