@@ -48,6 +48,26 @@ template<typename T> void HHFFT_2D_REAL<T>::free_memory(T *data)
     free(data);
 }
 
+template<typename T> std::array<size_t, 2> HHFFT_2D_REAL<T>::get_real_size() const
+{
+    return {n, m};
+}
+
+template<typename T> std::array<size_t, 2> HHFFT_2D_REAL<T>::get_complex_size() const
+{
+    return {n, m/2 + 1};
+}
+
+template<typename T> std::array<size_t, 2> HHFFT_2D_REAL<T>::get_real_stride() const
+{
+    return {m, 1};
+}
+
+template<typename T> std::array<size_t, 2> HHFFT_2D_REAL<T>::get_complex_stride() const
+{
+    return {m/2 + 1, 1};
+}
+
 template<typename T> void HHFFT_2D_REAL<T>::set_radix_raders(size_t radix, StepInfo<T> &step, InstructionSet instruction_set)
 {
     if (radix > 13)
@@ -96,7 +116,7 @@ template<typename T> HHFFT_2D_REAL<T>::HHFFT_2D_REAL(size_t n, size_t m, Instruc
     {
         plan_even(instruction_set);
     } else
-    {        
+    {
         plan_odd(instruction_set);
     }
 }
@@ -129,7 +149,7 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_vector(size_t nn, InstructionSe
 
     // Copy/move data from the 1d plan
     temp_data_size = fft_1d_real.temp_data_size;
-    reorder_table_rows = std::move(fft_1d_real.reorder_table);    
+    reorder_table_rows = std::move(fft_1d_real.reorder_table);
     forward_steps = std::move(fft_1d_real.forward_steps);
     inverse_steps = std::move(fft_1d_real.inverse_steps);
     twiddle_factors_rows = std::move(fft_1d_real.twiddle_factors);
@@ -201,7 +221,7 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_odd(InstructionSet instruction_
         step.radix = N_rows[0];
         step.stride = 1;
         step.repeats = m / step.radix;
-        step.size = n;        
+        step.size = n;
         HHFFT_2D_Real_odd_set_function_rows<T>(step, instruction_set);
         forward_steps.push_back(step);
     }
@@ -214,7 +234,7 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_odd(InstructionSet instruction_
         set_radix_raders(N_rows[i], step, instruction_set);
         step.radix = N_rows[i];
         step.stride = step_prev.stride * step_prev.radix;
-        step.repeats = step_prev.repeats / step.radix;      
+        step.repeats = step_prev.repeats / step.radix;
         step.size = n;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
@@ -278,7 +298,7 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_odd(InstructionSet instruction_
         hhfft::StepInfo<T> step;
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::temp_data;
-        step.reorder_table = reorder_table_columns.data();        
+        step.reorder_table = reorder_table_columns.data();
         step.reorder_table_size = reorder_table_columns.size();
         step.stride = m2;
         set_radix_raders(N_columns[0], step, instruction_set);
@@ -411,7 +431,7 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_even(InstructionSet instruction
     std::vector<size_t> N_columns = calculate_factorization(n);
     std::vector<size_t> N_rows = calculate_factorization(m_complex);
 
-    // TESTING print factorization    
+    // TESTING print factorization
     //for (size_t i = 0; i < N_columns.size(); i++)  { std::cout << N_columns[i] << " ";} std::cout << std::endl;
     //for (size_t i = 0; i < N_rows.size(); i++)  { std::cout << N_rows[i] << " ";} std::cout << std::endl;
 
@@ -481,7 +501,7 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_even(InstructionSet instruction
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
         step.reorder_table = reorder_table_columns.data();
-        step.reorder_table2 = reorder_table_rows.data();        
+        step.reorder_table2 = reorder_table_rows.data();
         set_radix_raders(N_rows[0], step, instruction_set);
         step.radix = N_rows[0];
         step.stride = 1;
@@ -508,7 +528,7 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_even(InstructionSet instruction
         step.data_type_out = hhfft::StepDataType::data_out;
         step.twiddle_factors = twiddle_factors_rows[i].data();
         HHFFT_1D_Complex_set_function<T>(step, instruction_set);
-        forward_steps.push_back(step);        
+        forward_steps.push_back(step);
     }
 
     // Convert from complex packed to complex.
@@ -524,7 +544,7 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_even(InstructionSet instruction
         forward_steps.push_back(step);
     }
 
-    ///////// FFT column-wise /////////////    
+    ///////// FFT column-wise /////////////
     // First FFT step
     // NOTE 1D fft is used as no twiddle factors are involved
     {
@@ -536,7 +556,7 @@ template<typename T> void HHFFT_2D_REAL<T>::plan_even(InstructionSet instruction
         set_radix_raders(N_columns[0], step, instruction_set);
         step.repeats = n / step.radix;
         HHFFT_1D_Complex_set_function<T>(step, instruction_set);
-        forward_steps.push_back(step);        
+        forward_steps.push_back(step);
     }
 
     // then put rest fft steps combined with twiddle factor
@@ -693,7 +713,7 @@ template<typename T> void HHFFT_2D_REAL<T>::fft(const T *in, T *out) const
         in = temp_data_in.data();
     }
 
-    // Allocate some extra space if needed    
+    // Allocate some extra space if needed
     hhfft::AlignedVector<T> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
@@ -705,10 +725,10 @@ template<typename T> void HHFFT_2D_REAL<T>::fft(const T *in, T *out) const
         // Run all the steps
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
-        // TESTING print        
+        // TESTING print
         //print_complex_matrix(data_out[step.data_type_out], n, m/2);
         //print_complex_matrix(data_out[step.data_type_out], n, m/2 + 1);
-    }    
+    }
 
     // On odd FFTs the first real value needs to be moved one position if there is only one row
     // Note that for m = 1 same thing is done in a special function
@@ -735,10 +755,10 @@ template<typename T> void HHFFT_2D_REAL<T>::ifft(const T *in, T *out) const
         size_t nn = 2*n*((m/2)+1);
         temp_data_in.resize(nn);
         std::copy(in, in + nn, temp_data_in.data());
-        in = temp_data_in.data();        
+        in = temp_data_in.data();
     }
 
-    // Allocate some extra space if needed    
+    // Allocate some extra space if needed
     hhfft::AlignedVector<T> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
@@ -750,7 +770,7 @@ template<typename T> void HHFFT_2D_REAL<T>::ifft(const T *in, T *out) const
         // Run all the steps
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
-        // TESTING print        
+        // TESTING print
         //print_complex_matrix(data_out[step.data_type_out], n, m/2);
         //print_real_matrix(data_out[step.data_type_out], n, m);
     }

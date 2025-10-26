@@ -49,6 +49,16 @@ template<typename T> void HHFFT_1D_REAL<T>::free_memory(T *data)
     free(data);
 }
 
+template<typename T> size_t HHFFT_1D_REAL<T>::get_real_size() const
+{
+    return n;
+}
+
+template<typename T> size_t HHFFT_1D_REAL<T>::get_complex_size() const
+{
+    return n/2 + 1;
+}
+
 // Does the planning step
 template<typename T> HHFFT_1D_REAL<T>::HHFFT_1D_REAL(size_t n, InstructionSet instruction_set)
 {
@@ -91,7 +101,7 @@ template<typename T> HHFFT_1D_REAL<T>::HHFFT_1D_REAL(size_t n, InstructionSet in
     } else
     {
         plan_odd(instruction_set);
-    }    
+    }
 }
 
 template<typename T> void HHFFT_1D_REAL<T>::set_radix_raders(size_t radix, StepInfo<T> &step, InstructionSet instruction_set)
@@ -165,7 +175,7 @@ template<typename T> void HHFFT_1D_REAL<T>::plan_odd(InstructionSet instruction_
         step.repeats = n / step.radix;
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
-        step.reorder_table = reorder_table.data();        
+        step.reorder_table = reorder_table.data();
         step.start_index_out = 1; // This way there is no need to move data when it is ready
         HHFFT_1D_Real_odd_set_function<T>(step, instruction_set);
         forward_steps.push_back(step);
@@ -276,7 +286,7 @@ template<typename T> void HHFFT_1D_REAL<T>::plan_even(InstructionSet instruction
         step.repeats = n_complex / step.radix;
         step.data_type_in = hhfft::StepDataType::data_in;
         step.data_type_out = hhfft::StepDataType::data_out;
-        step.reorder_table = reorder_table.data();        
+        step.reorder_table = reorder_table.data();
         step.norm_factor = 1.0;
         HHFFT_1D_Complex_set_function<T>(step, instruction_set);
         forward_steps.push_back(step);
@@ -313,7 +323,7 @@ template<typename T> void HHFFT_1D_REAL<T>::plan_even(InstructionSet instruction
 
     ///////// IFFT /////////////
 
-    // Combined complex-packed-to-complex, reordering    
+    // Combined complex-packed-to-complex, reordering
     {
         hhfft::StepInfo<T> step;
         step.repeats = n_complex;
@@ -331,12 +341,12 @@ template<typename T> void HHFFT_1D_REAL<T>::plan_even(InstructionSet instruction
     {
         hhfft::StepInfo<T> step;
         set_radix_raders(N[0], step, instruction_set);
-        step.radix = N[0];        
+        step.radix = N[0];
         step.stride = 1;
         step.repeats = n_complex / step.radix;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
-        step.reorder_table = nullptr;        
+        step.reorder_table = nullptr;
         HHFFT_1D_Complex_set_function<T>(step, instruction_set);
         inverse_steps.push_back(step);
     }
@@ -352,7 +362,7 @@ template<typename T> void HHFFT_1D_REAL<T>::plan_even(InstructionSet instruction
         step.repeats = step_prev.repeats / step.radix;
         step.data_type_in = hhfft::StepDataType::data_out;
         step.data_type_out = hhfft::StepDataType::data_out;
-        step.twiddle_factors = twiddle_factors[i].data();        
+        step.twiddle_factors = twiddle_factors[i].data();
         HHFFT_1D_Complex_set_function<T>(step, instruction_set);
         inverse_steps.push_back(step);
     }
@@ -361,13 +371,13 @@ template<typename T> void HHFFT_1D_REAL<T>::plan_even(InstructionSet instruction
 
 
 template<typename T> void HHFFT_1D_REAL<T>::fft(const T *in, T *out) const
-{    
+{
     // If there is just one step, run it directly
     if (forward_steps.size() == 1)
     {
         forward_steps[0].step_function(in,out,forward_steps[0]);
         return;
-    }    
+    }
 
     // If transform is made in-place, copy input to a temporary variable
     hhfft::AlignedVector<T> temp_data_in;
@@ -379,7 +389,7 @@ template<typename T> void HHFFT_1D_REAL<T>::fft(const T *in, T *out) const
         in = temp_data_in.data();
     }
 
-    // Allocate some extra space if needed    
+    // Allocate some extra space if needed
     hhfft::AlignedVector<T> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
@@ -422,7 +432,7 @@ template<typename T> void HHFFT_1D_REAL<T>::ifft(const T *in, T *out) const
         in = temp_data_in.data();
     }
 
-    // Allocate some extra space if needed    
+    // Allocate some extra space if needed
     hhfft::AlignedVector<T> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
@@ -436,7 +446,7 @@ template<typename T> void HHFFT_1D_REAL<T>::ifft(const T *in, T *out) const
 
         // TESTING print
         //print_complex_vector(data_out[step.data_type_out], n/2 + 1);
-    }    
+    }
 }
 
 // Calculates convolution in Fourier space

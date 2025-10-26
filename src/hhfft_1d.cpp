@@ -41,13 +41,18 @@ template<typename T> void HHFFT_1D<T>::free_memory(T *data)
     free(data);
 }
 
+template<typename T> size_t HHFFT_1D<T>::get_size() const
+{
+    return n;
+}
+
 template<typename T> void HHFFT_1D<T>::set_radix_raders(size_t radix, StepInfo<T> &step, InstructionSet instruction_set)
 {
     if (radix > 13)
     {
         // Use Rader's algorithm instead
         raders.push_back(std::unique_ptr<RadersGeneric<T>>(new RadersGeneric<T>(radix, instruction_set)));
-        step.raders = raders.back().get();        
+        step.raders = raders.back().get();
     }
 }
 
@@ -107,7 +112,7 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
         return;
     }
 
-    // TESTING print factorization    
+    // TESTING print factorization
     // for (size_t i = 0; i < N.size(); i++)  { std::cout << N[i] << " ";} std::cout << std::endl;
 
     // First calculate the reorder table
@@ -125,9 +130,9 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
     // NOTE that a portion of these are always one and they could be removed to decrease memory requirements.
     twiddle_factors.push_back(AlignedVector<T>()); // No twiddle factors are needed before the first fft-level
     for (size_t i = 1; i < N.size(); i++)
-    {     
+    {
         AlignedVector<T> w = calculate_twiddle_factors_DIT<T>(i, N);
-        twiddle_factors.push_back(w);        
+        twiddle_factors.push_back(w);
     }
 
     // Put first fft step combined with reordering
@@ -170,7 +175,7 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
         forward_steps.push_back(step);
     }
 
-    // Make the inverse steps. They are otherwise the same, but different version of function is called    
+    // Make the inverse steps. They are otherwise the same, but different version of function is called
     for (size_t i = 0; i < forward_steps.size(); i++)
     {
         auto step = forward_steps[i];
@@ -184,11 +189,11 @@ template<typename T> HHFFT_1D<T>::HHFFT_1D(size_t n, InstructionSet instruction_
 
         HHFFT_1D_Complex_set_function<T>(step, instruction_set);
         inverse_steps.push_back(step);
-    }    
+    }
 }
 
 template<typename T> void HHFFT_1D<T>::fft(const T *in, T *out) const
-{    
+{
     // If there is just one step, run it directly
     if (forward_steps.size() == 1)
     {
@@ -206,7 +211,7 @@ template<typename T> void HHFFT_1D<T>::fft(const T *in, T *out) const
         in = temp_data_in.data();
     }
 
-    // Allocate some extra space if needed    
+    // Allocate some extra space if needed
     hhfft::AlignedVector<T> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
@@ -215,7 +220,7 @@ template<typename T> void HHFFT_1D<T>::fft(const T *in, T *out) const
 
     // Run all the steps
     for (auto &step: forward_steps)
-    {        
+    {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
         // TESTING print
@@ -224,7 +229,7 @@ template<typename T> void HHFFT_1D<T>::fft(const T *in, T *out) const
 }
 
 template<typename T> void HHFFT_1D<T>::ifft(const T *in, T *out) const
-{    
+{
     // If there is just one step, run it directly
     if (inverse_steps.size() == 1)
     {
@@ -242,7 +247,7 @@ template<typename T> void HHFFT_1D<T>::ifft(const T *in, T *out) const
         in = temp_data_in.data();
     }
 
-    // Allocate some extra space if needed    
+    // Allocate some extra space if needed
     hhfft::AlignedVector<T> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here

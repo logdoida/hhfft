@@ -38,7 +38,7 @@ template <typename T> class HHFFT_2D;
 // This class is responsible of making a plan on how to calculate the the FFT and calls the proper functions
 template<typename T>
 class HHFFT_1D
-{    
+{
 public:
     HHFFT_1D(size_t n, InstructionSet instruction_set = InstructionSet::automatic);
 
@@ -58,6 +58,9 @@ public:
     // Allocate aligned array that contains enough space for the complex input and output data
     T* allocate_memory() const;
 
+    // Return size as number complex values.
+    size_t get_size() const;
+
     // Free memory
     static void free_memory(T *data);
 
@@ -67,7 +70,7 @@ private:
 
     void set_radix_raders(size_t radix, StepInfo<T> &step, InstructionSet instruction_set);
 
-    // Dimension of the vector (Number of complex numbers)
+    // Size of the complex data
     size_t n;
 
     // Twiddle factors for each level

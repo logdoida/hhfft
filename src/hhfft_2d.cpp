@@ -44,6 +44,17 @@ template<typename T> void HHFFT_2D<T>::free_memory(T *data)
     free(data);
 }
 
+template<typename T> std::array<size_t, 2> HHFFT_2D<T>::get_size() const
+{
+    return {n, m};
+}
+
+template<typename T> std::array<size_t, 2> HHFFT_2D<T>::get_stride() const
+{
+    return {m, 1};
+}
+
+
 template<typename T> void HHFFT_2D<T>::set_radix_raders(size_t radix, StepInfo<T> &step, InstructionSet instruction_set)
 {
     if (radix > 13)
@@ -92,7 +103,7 @@ template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet in
     std::vector<size_t> N_columns = calculate_factorization(n);
     std::vector<size_t> N_rows = calculate_factorization(m);
 
-    // TESTING print factorization    
+    // TESTING print factorization
     //for (size_t i = 0; i < N_columns.size(); i++)  { std::cout << N_columns[i] << " ";} std::cout << std::endl;
     //for (size_t i = 0; i < N_rows.size(); i++)  { std::cout << N_rows[i] << " ";} std::cout << std::endl;
 
@@ -104,7 +115,7 @@ template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet in
     append_reorder_table(reorder_table_columns, n/N_columns.back());
     append_reorder_table(reorder_table_rows, m/N_rows.back());
 
-    // TESTING print reorder tables    
+    // TESTING print reorder tables
     //std::cout << "reorder_table_columns = " << std::endl;
     //for (auto r: reorder_table_columns)  { std::cout << r << " ";} std::cout << std::endl;
     //std::cout << "reorder_table_rows = " << std::endl;
@@ -133,7 +144,7 @@ template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet in
         //print_complex_vector(w.data(), w.size()/2);
     }
 
-    // This helps to create the inverse steps    
+    // This helps to create the inverse steps
     std::vector<bool> forward_step_columns;
 
     ///////// FFT column-wise /////////////
@@ -213,7 +224,7 @@ template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet in
     }
 
 
-    // Make the inverse steps. They are otherwise the same, but different version of function is called    
+    // Make the inverse steps. They are otherwise the same, but different version of function is called
     for (size_t i = 0; i < forward_steps.size(); i++)
     {
         auto step = forward_steps[i];
@@ -234,7 +245,7 @@ template<typename T> HHFFT_2D<T>::HHFFT_2D(size_t n, size_t m, InstructionSet in
         }
 
         inverse_steps.push_back(step);
-    }    
+    }
 }
 
 template<typename T> void HHFFT_2D<T>::plan_vector(size_t nn, InstructionSet instruction_set)
@@ -243,7 +254,7 @@ template<typename T> void HHFFT_2D<T>::plan_vector(size_t nn, InstructionSet ins
 
     // Copy/move data from the 1d plan
     temp_data_size = fft_1d.temp_data_size;
-    reorder_table_rows = std::move(fft_1d.reorder_table);    
+    reorder_table_rows = std::move(fft_1d.reorder_table);
     forward_steps = std::move(fft_1d.forward_steps);
     inverse_steps = std::move(fft_1d.inverse_steps);
     twiddle_factors_rows = std::move(fft_1d.twiddle_factors);
@@ -268,7 +279,7 @@ template<typename T> void HHFFT_2D<T>::fft(const T *in, T *out) const
         in = temp_data_in.data();
     }
 
-    // Allocate some extra space if needed    
+    // Allocate some extra space if needed
     hhfft::AlignedVector<T> temp_data(temp_data_size);
 
     // Put all possible input/output data sources here
@@ -280,7 +291,7 @@ template<typename T> void HHFFT_2D<T>::fft(const T *in, T *out) const
     {
         step.step_function(data_in[step.data_type_in] + step.start_index_in, data_out[step.data_type_out] + step.start_index_out, step);
 
-        // TESTING print        
+        // TESTING print
         //print_complex_matrix(data_out[step.data_type_out], n, m);
     }
 }

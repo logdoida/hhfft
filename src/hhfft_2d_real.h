@@ -55,6 +55,19 @@ public:
     // Allocate aligned array that contains enough space for the complex input and output data
     T* allocate_memory() const;
 
+    // Return size of real data as number real values.
+    std::array<size_t, 2> get_real_size() const;
+
+    // Return size of complex data as number complex values.
+    std::array<size_t, 2> get_complex_size() const;
+
+    // Return strides of real data as number real values.
+    std::array<size_t, 2> get_real_stride() const;
+
+    // Return strides of complex data as number complex values.
+    std::array<size_t, 2> get_complex_stride() const;
+
+
     // Free memory
     static void free_memory(T *data);
 
@@ -71,7 +84,7 @@ private:
     // Used for cases when n=1 or m=1
     void plan_vector(size_t n, InstructionSet instruction_set, bool is_column);
 
-    // Dimensions of the matrix (Number of complex numbers)
+    // Size of the real data
     size_t n; // Number of rows
     size_t m; // Number of columns
 

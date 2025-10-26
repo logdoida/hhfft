@@ -48,10 +48,10 @@ public:
     HHFFT_1D_REAL(const HHFFT_1D_REAL &other) = delete;
     HHFFT_1D_REAL& operator=(const HHFFT_1D_REAL &other) = delete;
 
-    // FFT with complex inputs and outputs
+    // FFT with real inputs and complex outputs
     void fft(const T *in, T *out) const;
 
-    // IFFT with complex inputs and outputs
+    // IFFT with complex inputs and real outputs
     void ifft(const T *in, T *out) const;
 
     // Calculates convolution of fourier transformed inputs
@@ -59,6 +59,12 @@ public:
 
     // Allocate aligned array that contains enough space for the complex input and output data
     T* allocate_memory() const;
+
+    // Return size of real data as number real values.
+    size_t get_real_size() const;
+
+    // Return size of complex data as number complex values.
+    size_t get_complex_size() const;
 
     // Free memory
     static void free_memory(T *data);
@@ -70,10 +76,10 @@ public:
 private:
 
     void plan_even(InstructionSet instruction_set);
-    void plan_odd(InstructionSet instruction_set);    
+    void plan_odd(InstructionSet instruction_set);
     void set_radix_raders(size_t radix, StepInfo<T> &step, InstructionSet instruction_set);
 
-    // Dimension of the vector (Number of complex numbers)
+    // Dimension of the vector.
     size_t n;
 
     // Twiddle factors for each level

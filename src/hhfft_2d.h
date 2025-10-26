@@ -55,6 +55,12 @@ public:
     // Allocate aligned array that contains enough space for the complex input and output data
     T* allocate_memory() const;
 
+    // Return size as number complex values.
+    std::array<size_t, 2> get_size() const;
+
+    // Return strides as number complex values.
+    std::array<size_t, 2> get_stride() const;
+
     // Free memory
     static void free_memory(T *data);
 
