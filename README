@@ -1,6 +1,6 @@
 HHFFT
 
-Copyright Jouko Kalmari 2017-2019
+Copyright Jouko Kalmari 2017-2025
 
 0.0 Introduction
 
@@ -30,7 +30,7 @@ To compile the library start the terminal, go to the directory where HHFFT is un
    make
 
 If user does not wish to install the library to the default location use
-   cmake -DCMAKE_INSTALL_PREFIX=/path/where/to/install/hhfft .. 
+   cmake -DCMAKE_INSTALL_PREFIX=/path/where/to/install/hhfft ..
 instead of just plain "cmake .."
 
 If you want to install the compiled library, run

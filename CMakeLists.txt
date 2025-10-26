@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8)
 project(hhfft CXX)
 
 set(HHFFT_VERSION_MAJOR 0)
-set(HHFFT_VERSION_MINOR 2)
+set(HHFFT_VERSION_MINOR 5)
 
 set(SRC_LIST
 ./src/architecture.cpp
